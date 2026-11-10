@@ -1,5 +1,6 @@
-# Data model — PostGIS contract v1.2.0
+# Data model — PostGIS contract v1.3.0
 
+> v1.3.0 (2026-11-10, CR-ROUTING-5/6/8): `wp.edge.name`; `wp.community_report.terminal_at`; canonical source ids.
 > v1.2.0 (2026-11-10, CR-DATA-1/2/3/5): additive columns on `wp.edge` and `wp.closure`; new `wp.weather_daily`.
 
 **Migration owner: Data agent** (`db/migrations/`, Alembic). Other agents read these tables; they never create migrations. Schema changes → change request (integration-rules §3).
@@ -14,6 +15,7 @@ Conventions: schema `wp`; geometry SRID **4326** with GiST index; metric values 
 ## Tables
 
 ### `wp.source` — registry (mirrors `/data-sources`)
+Canonical `source_id`s (v1.3): `osm`, `mtl-voirie`, `mtl-311`, `mtl-entraves`, `mtl-planif-neige`, `eccc-geomet`. All agents use exactly these.
 `source_id text PK`, `name`, `publisher`, `license`, `license_url`, `commercial_use` (enum as OpenAPI), `attribution`, `url`, `status`, `last_success_at`, `notes`.
 
 ### `wp.ingest_run`
@@ -36,6 +38,7 @@ Conventions: schema `wp`; geometry SRID **4326** with GiST index; metric values 
 | incline_percent, width_m | double null | |
 | surface | text null | |
 | lit | boolean null | |
+| name | text null | v1.3: OSM `name` (street name for step directions) |
 | crossing_type | text null | v1.2: `CrossingInfo.type` enum; null when edge is not a crossing |
 | crossing_kerb | text null | v1.2: `CrossingInfo.kerb` enum |
 | highway | text null | v1.2: OSM `highway` value (traceability) |
@@ -63,7 +66,7 @@ Indexes: GiST(geom), btree(from_node_id), btree(to_node_id), btree(component_id)
 `station_id`, `day date`, `total_precip_mm`, `total_snow_cm`, `snow_on_ground_cm`, `min_temp_c`, `max_temp_c`, `source_collection` (`climate-daily`), `ingest_run_id`. PK(station_id, day). Added because station 7025251's hourly precipitation is null throughout, while daily `SNOW_ON_GROUND`/`TOTAL_PRECIPITATION` are populated.
 
 ### `wp.community_report`
-`report_id uuid PK`, `category`, `geom Point 4326` (stored only with consent), `description`, `status (pending|approved|rejected|expired|deleted)`, `created_at`, `expires_at` (default +72 h), `deletion_token_hash`, `moderated_at`, `moderation_note`, `client_hash` (salted, rotated daily, for rate-limit only). Hard-deleted 30 days after terminal status.
+`report_id uuid PK`, `category`, `geom Point 4326` (stored only with consent), `description`, `status (pending|approved|rejected|expired|deleted)`, `created_at`, `expires_at` (default +72 h), `deletion_token_hash`, `moderated_at`, `moderation_note`, `terminal_at timestamptz null` (v1.3: time the report reached rejected/expired/deleted — drives the 30-day hard delete), `client_hash` (salted, rotated daily, for rate-limit only). Hard-deleted 30 days after terminal status.
 
 ### `wp.edge_risk` — ML/heuristic output (written by ML pipeline via Data-owned migration)
 `edge_id FK`, `valid_from`, `valid_to`, `level (low|moderate|elevated|high|unknown)`, `probability double null`, `evidence_state`, `model_id`, PK(edge_id, valid_from).

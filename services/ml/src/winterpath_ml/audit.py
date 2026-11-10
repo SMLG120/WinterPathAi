@@ -1,0 +1,259 @@
+"""Label audit -> models/label-audit.md (measured numbers only, aggregated; no individual points).
+
+uv run python -m winterpath_ml.audit
+"""
+
+from __future__ import annotations
+
+from collections import Counter
+
+import h3
+import numpy as np
+import pandas as pd
+
+from . import config, data_311
+from .evaluate import ensure_raw, sha256
+
+
+def _md(df: pd.DataFrame, floatfmt: str = "{:.4f}") -> str:
+    cols = [str(c) for c in df.columns]
+    lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
+    for _, r in df.iterrows():
+        cells = [
+            floatfmt.format(v) if isinstance(v, (float, np.floating)) else str(v)
+            for v in r.tolist()
+        ]
+        lines.append("| " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
+def _spearman(a: pd.Series, b: pd.Series) -> float:
+    return float(a.rank().corr(b.rank()))
+
+
+def run() -> str:
+    raw = ensure_raw()
+    df = data_311.read_raw_311(raw)
+    n_all = len(df)
+    period = f"{df['day'].min().date()} … {df['day'].max().date()}"
+
+    cand = df[df["ACTI_NOM"].isin(list(config.WINTER_CATEGORIES))]
+    by_nature = (
+        cand.groupby(["ACTI_NOM", "NATURE"]).size().unstack(fill_value=0).reset_index()
+    )
+
+    w = data_311.winter_reports(df)
+    w["winter"] = [
+        config.winter_of(d.date()) if pd.notna(d) else None for d in w["day"]
+    ]
+    valid = data_311.valid_location(w)
+    no_coord = w["lon"].isna() | w["lat"].isna()
+
+    season = (
+        w.assign(winter=w["winter"].fillna(-1).astype(int))
+        .groupby(["winter", "category"])
+        .size()
+        .unstack(fill_value=0)
+        .reset_index()
+    )
+    season["winter"] = season["winter"].map(
+        lambda x: "off-season (May–Oct)" if x == -1 else f"{x}-{(x + 1) % 100:02d}"
+    )
+
+    wv = w[valid].copy()
+    wv["h3"] = data_311.to_cells(wv["lon"], wv["lat"])
+    cell_counts = wv.groupby("h3").size().sort_values(ascending=False)
+    top10 = cell_counts.head(max(1, len(cell_counts) // 10)).sum() / cell_counts.sum()
+
+    allv = df[data_311.valid_location(df)].copy()
+    allv["borough"] = (
+        allv["ARRONDISSEMENT_GEO"].fillna(allv["ARRONDISSEMENT"]).fillna("UNKNOWN")
+    )
+    allv["h3"] = data_311.to_cells(allv["lon"], allv["lat"])
+    wv["borough"] = (
+        wv["ARRONDISSEMENT_GEO"].fillna(wv["ARRONDISSEMENT"]).fillna("UNKNOWN")
+    )
+    # area proxy = summed area of H3 cells with any geolocated 311 request in the borough
+    cell_boro = (
+        allv.groupby(["h3", "borough"])
+        .size()
+        .reset_index()
+        .sort_values(0, ascending=False)
+        .drop_duplicates("h3")
+    )
+    area = cell_boro.groupby("borough")["h3"].apply(
+        lambda s: sum(h3.cell_area(c, "km^2") for c in s)
+    )
+    boro = pd.DataFrame(
+        {
+            "winter_reports": wv.groupby("borough").size(),
+            "all_geolocated_requests": allv.groupby("borough").size(),
+            "active_area_km2": area,
+        }
+    ).fillna(0)
+    boro[["winter_reports", "all_geolocated_requests"]] = boro[
+        ["winter_reports", "all_geolocated_requests"]
+    ].astype(int)
+    boro["winter_per_km2"] = boro["winter_reports"] / boro["active_area_km2"].replace(
+        0, np.nan
+    )
+    boro["winter_per_1000_requests"] = (
+        1000
+        * boro["winter_reports"]
+        / boro["all_geolocated_requests"].replace(0, np.nan)
+    )
+    boro = boro.sort_values("winter_reports", ascending=False).reset_index(
+        names="borough"
+    )
+    rho = _spearman(
+        boro["winter_per_km2"].fillna(0),
+        (boro["all_geolocated_requests"] / boro["active_area_km2"]).fillna(0),
+    )
+
+    channel = (
+        w["PROVENANCE_ORIGINALE"]
+        .fillna("UNKNOWN")
+        .value_counts(normalize=True)
+        .rename("share")
+        .reset_index()
+    )
+    loc_type = (
+        w["TYPE_LIEU_INTERV"]
+        .fillna("UNKNOWN")
+        .value_counts(normalize=True)
+        .rename("share")
+        .reset_index()
+    )
+    decimals = (
+        w["lon"]
+        .dropna()
+        .map(
+            lambda v: len(repr(float(v)).split(".")[1]) if "." in repr(float(v)) else 0
+        )
+    )
+    dec_tab = (
+        pd.cut(
+            decimals, [0, 4, 6, 8, 10, 20], labels=["≤4", "5–6", "7–8", "9–10", ">10"]
+        )
+        .value_counts(normalize=True)
+        .sort_index()
+        .rename("share")
+        .reset_index()
+    )
+    key = list(zip(w.loc[valid, "lon"].round(7), w.loc[valid, "lat"].round(7)))
+    cnt = Counter(key)
+    dup_share = sum(v for v in cnt.values() if v > 1) / len(key)
+
+    # cell-day label density inside the evaluated panel coverage
+    panel_note = ""
+    import json
+
+    ev_path = None
+    if config.REGISTRY_PATH.exists():
+        ev_path = (
+            config.MODELS_DIR
+            / "evaluation"
+            / f"{json.loads(config.REGISTRY_PATH.read_text())['run_id']}.json"
+        )
+    if ev_path and ev_path.exists():
+        ev = json.loads(ev_path.read_text())
+        rates = {
+            k: ev["positives"][k] / ev["rows"][k] for k in ev["rows"] if ev["rows"][k]
+        }
+        panel_note = "\n".join(
+            f"- `{k}`: {ev['positives'][k]} positive cell-days / {ev['rows'][k]} = {rates[k]:.4f}"
+            for k in rates
+        )
+
+    no_coord_all = (df["lon"].isna() | df["lat"].isna()).mean()
+    no_coord_req = (
+        df.loc[df["NATURE"].isin(config.REPORT_NATURES), "lon"].isna()
+    ).mean()
+
+    md = f"""# Label audit — winter 311 reports
+
+*Generated by `uv run python -m winterpath_ml.audit`. Source: Ville de Montréal « Requêtes 3-1-1 (2022 à ce jour) », CC BY 4.0, sha256 `{sha256(raw)}`. Period in file: {period}. All figures measured from that file; nothing is estimated.*
+
+**What the label is:** a row in this dataset is a *request to the City*, not a verified condition. The dataset states it contains all requests whether or not the City intervened. Labels therefore measure **reporting behaviour**.
+
+## 1. Winter category list
+
+Included `ACTI_NOM` → normalised category (only `NATURE ∈ {{{", ".join(config.REPORT_NATURES)}}}` counts; `Information`/`Commentaire` are enquiries/comments, not condition reports):
+
+{_md(pd.DataFrame(list(config.WINTER_CATEGORIES.items()), columns=["ACTI_NOM", "category"]))}
+
+Counts by `NATURE` for these activities (whole file):
+
+{_md(by_nature)}
+
+Considered and **excluded**: `Signalisation - Neige` (parking signage for snow operations), `Piste cyclable déneigement` (cycle lanes), `Trottoir ou bordure - Réparation` (structural repair, not winter-specific), `Carte Info-Neige`, permits/tickets/towing. Snow-clearing *operations* requests are kept because they are the largest pedestrian-relevant winter category, but they are a **request for service**, not evidence a sidewalk was uncleared.
+
+Total winter reports: **{len(w)}** of {n_all} rows in the file.
+
+## 2. Counts by season and category
+
+{_md(season)}
+
+Off-season rows exist (mostly snow-clearing complaints logged late); the model is only defined Nov–Apr.
+
+## 3. Counts by cell (H3 res-9)
+
+- Geolocated winter reports: {int(valid.sum())} in {cell_counts.size} distinct cells.
+- Median reports per cell (cells with ≥1): {float(cell_counts.median()):.1f}; max: {int(cell_counts.max())}.
+- Share of reports in the top 10 % of cells: **{top10:.3f}** (concentration).
+
+Positive cell-day rates in the evaluated panel (Nov–Apr, covered cells):
+
+{panel_note or "(run `winterpath_ml.evaluate` first)"}
+
+## 4. Counts and reporting-bias indicators by borough
+
+`active_area_km2` = summed area of H3 res-9 cells with any geolocated 311 request whose modal borough is this one (a proxy, not the legal borough area). `winter_per_1000_requests` normalises by the borough's overall 311 activity, a rough proxy for reporting propensity.
+
+{_md(boro)}
+
+Spearman rank correlation across boroughs between winter reports per km² and *all* 311 requests per km²: **{rho:.3f}**. A high value means winter-report density largely tracks general 311 usage (population, density, reporting habits) — the model partly learns *who reports*, not where conditions are worse.
+
+**Coverage consequence:** the dataset covers only the 19 boroughs of the City of Montréal. Demerged municipalities (Westmount, Mont-Royal, Côte-Saint-Luc, Hampstead, Dorval, …) have almost no rows because they are not served by this 311 system. Absence of reports there means *no data*, so the pipeline treats cells whose modal borough is not one of the 19 boroughs as **outside coverage (`unknown`)**. This matters for the pilot: the McGill bbox borders Westmount.
+
+**Not done (blocked):** normalisation by resident population. No population source is in `docs/data-sources-and-licenses.md`; adding one (e.g. Statistics Canada census by arrondissement) needs a licence check and a coordinator change request.
+
+### Reporting channel (`PROVENANCE_ORIGINALE`, winter reports)
+
+{_md(channel)}
+
+## 5. Missing coordinates
+
+- All rows in file lacking LOC_LONG/LOC_LAT: **{no_coord_all:.4f}** (dominated by `Information` calls, which have no location).
+- `Requete`/`Plainte` rows (all categories) lacking coordinates: **{no_coord_req:.4f}**.
+- Winter reports lacking coordinates: **{no_coord.mean():.4f}** ({int(no_coord.sum())} rows).
+- Winter reports flagged `LOC_ERREUR_GDT = 1` (geocoding error; excluded): **{(w["LOC_ERREUR_GDT"] == "1").mean():.4f}** ({int((w["LOC_ERREUR_GDT"] == "1").sum())} rows).
+- Winter reports excluded for any location reason (missing, error flag, outside envelope {config.MTL_ENVELOPE}): **{1 - valid.mean():.4f}**.
+
+## 6. Location precision
+
+Location type (`TYPE_LIEU_INTERV`, winter reports):
+
+{_md(loc_type)}
+
+Decimal places of `LOC_LONG` (winter reports):
+
+{_md(dec_tab)}
+
+Share of geolocated winter reports whose exact coordinate (7 dp) is shared with ≥1 other winter report: **{dup_share:.3f}**.
+
+Interpretation: coordinates are published with many decimal places, but the publisher's methodology (verified by the Data agent, 2026-11-10; see `docs/data-sources-and-licenses.md`) states that address/installation locations are **relocated to the middle of the nearest street segment longer than 45 m** ("Position obfusquée"). That explains the high share of repeated identical coordinates. Published precision is therefore *not* positional accuracy: effective resolution is a street segment (≥45 m), comfortably below the ~0.1 km² H3 res-9 cell but enough to place a report in a neighbouring cell near cell edges. `LOC_ERREUR_GDT = 1` means "located at the borough office" and those rows are excluded. The `DDS_DATE_CREATION` timezone is not stated by the publisher; this pipeline assumes local time (America/Montréal), which matters only for reports filed near midnight. Either way the pipeline aggregates immediately to H3 res-9 (~0.1 km²) and never stores or displays individual points.
+
+## 7. Conclusions for modelling
+
+- Labels are dense enough to train (≈1.5–2.6 % positive cell-days per winter), but strongly concentrated and correlated with general 311 activity → **reporting bias is material**.
+- Labels cannot be read as ice/snow presence; absence of reports is not evidence of a clear sidewalk.
+- Winter-to-winter volume varies with weather and city operations (e.g. Feb 2025 snow-clearing spike), so chronological evaluation is required.
+"""
+    path = config.MODELS_DIR / "label-audit.md"
+    path.write_text(md)
+    return str(path)
+
+
+if __name__ == "__main__":
+    print(run())

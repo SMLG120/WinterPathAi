@@ -1,0 +1,914 @@
+{
+  "generated_at": "2026-11-10T21:27:42+00:00",
+  "target": "P(>=1 winter-related 311 report in H3 res-9 cell within next 24h)",
+  "source_311_sha256": "8d19aa86ebc17270697883bcc3d0f746b381899501a5dc8967477bd6d49de8bb",
+  "data_window": {
+    "panel_start": "2022-02-01",
+    "panel_end": "2026-04-30",
+    "train_winters": [
+      2021,
+      2022,
+      2023
+    ],
+    "valid_winter": 2024,
+    "test_winter": 2025
+  },
+  "n_cells": 2930,
+  "n_holdout_blocks": 5,
+  "rows": {
+    "train": 929764,
+    "valid": 372317,
+    "test_chrono": 372317,
+    "test_spatial": 158013
+  },
+  "positives": {
+    "train": 20675,
+    "valid": 10608,
+    "test_chrono": 11356,
+    "test_spatial": 3607
+  },
+  "valid_positive_rate": 0.028491849687228895,
+  "level_thresholds": {
+    "moderate": 0.028491849687228895,
+    "elevated": 0.05698369937445779,
+    "high": 0.11396739874891558
+  },
+  "k_per_day": 50,
+  "results": {
+    "test_chrono": {
+      "baseline_hist_freq": {
+        "pr_auc": 0.07524569928607959,
+        "brier": 0.02887516932443697,
+        "precision_at_k": 0.11093922651933702,
+        "recall_at_k": 0.08841141246917929,
+        "base_rate": 0.030500890370302725,
+        "n": 372317
+      },
+      "baseline_freq_x_weather": {
+        "pr_auc": 0.09302366943135654,
+        "brier": 0.028753180591168482,
+        "precision_at_k": 0.11093922651933702,
+        "recall_at_k": 0.08841141246917929,
+        "base_rate": 0.030500890370302725,
+        "n": 372317
+      },
+      "baseline_logistic": {
+        "pr_auc": 0.1648583700450065,
+        "brier": 0.027363861113448268,
+        "precision_at_k": 0.12353591160220995,
+        "recall_at_k": 0.09845015850651638,
+        "base_rate": 0.030500890370302725,
+        "n": 372317
+      },
+      "hgb": {
+        "pr_auc": 0.16157937114642013,
+        "brier": 0.027497963538665994,
+        "precision_at_k": 0.12066298342541436,
+        "recall_at_k": 0.0961606199365974,
+        "base_rate": 0.030500890370302725,
+        "n": 372317
+      }
+    },
+    "test_spatial": {
+      "baseline_hist_freq": {
+        "pr_auc": 0.056308827520912486,
+        "brier": 0.021917491987523605,
+        "precision_at_k": 0.07248618784530386,
+        "recall_at_k": 0.18186858885500415,
+        "base_rate": 0.02282723573376874,
+        "n": 158013
+      },
+      "baseline_freq_x_weather": {
+        "pr_auc": 0.07355860596434417,
+        "brier": 0.021749149263444414,
+        "precision_at_k": 0.07248618784530386,
+        "recall_at_k": 0.18186858885500415,
+        "base_rate": 0.02282723573376874,
+        "n": 158013
+      },
+      "baseline_logistic": {
+        "pr_auc": 0.13449117454580628,
+        "brier": 0.020988278087246837,
+        "precision_at_k": 0.07911602209944751,
+        "recall_at_k": 0.1985029110063765,
+        "base_rate": 0.02282723573376874,
+        "n": 158013
+      },
+      "hgb": {
+        "pr_auc": 0.13335264187607168,
+        "brier": 0.020967620444793347,
+        "precision_at_k": 0.07977900552486188,
+        "recall_at_k": 0.20016634322151372,
+        "base_rate": 0.02282723573376874,
+        "n": 158013
+      }
+    }
+  },
+  "gate": {
+    "test_chrono": {
+      "best_baseline": "baseline_logistic",
+      "pr_auc_diff": -0.003278998898586377,
+      "pr_auc_diff_ci95": [
+        -0.013747549823535177,
+        0.008028355805047255
+      ],
+      "best_baseline_brier": 0.027363861113448268,
+      "pass_margin": false,
+      "pass_ci": false,
+      "pass_brier": false,
+      "pass": false
+    },
+    "test_spatial": {
+      "best_baseline": "baseline_logistic",
+      "pr_auc_diff": -0.0011385326697345988,
+      "pr_auc_diff_ci95": [
+        -0.012700159263567608,
+        0.008569934747237828
+      ],
+      "best_baseline_brier": 0.020988278087246837,
+      "pass_margin": false,
+      "pass_ci": false,
+      "pass_brier": true,
+      "pass": false
+    }
+  },
+  "gate_pass": false,
+  "calibration": {
+    "test_chrono/hgb": [
+      {
+        "mean_pred": 9e-05,
+        "obs_rate": 0.0003,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.00039,
+        "obs_rate": 0.00043,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.00165,
+        "obs_rate": 0.00258,
+        "n": 37231
+      },
+      {
+        "mean_pred": 0.00351,
+        "obs_rate": 0.00424,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.00711,
+        "obs_rate": 0.0094,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.01415,
+        "obs_rate": 0.01362,
+        "n": 37231
+      },
+      {
+        "mean_pred": 0.02271,
+        "obs_rate": 0.02331,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.04182,
+        "obs_rate": 0.03865,
+        "n": 37231
+      },
+      {
+        "mean_pred": 0.06552,
+        "obs_rate": 0.06438,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.17985,
+        "obs_rate": 0.1481,
+        "n": 37232
+      }
+    ],
+    "test_chrono/baseline_freq_x_weather": [
+      {
+        "mean_pred": 0.0012,
+        "obs_rate": 0.00115,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.00316,
+        "obs_rate": 0.00279,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.00881,
+        "obs_rate": 0.00637,
+        "n": 37231
+      },
+      {
+        "mean_pred": 0.01556,
+        "obs_rate": 0.01437,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.02245,
+        "obs_rate": 0.02208,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.02711,
+        "obs_rate": 0.02154,
+        "n": 37231
+      },
+      {
+        "mean_pred": 0.03513,
+        "obs_rate": 0.02941,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.04288,
+        "obs_rate": 0.04757,
+        "n": 37231
+      },
+      {
+        "mean_pred": 0.05593,
+        "obs_rate": 0.0563,
+        "n": 37232
+      },
+      {
+        "mean_pred": 0.11132,
+        "obs_rate": 0.10343,
+        "n": 37232
+      }
+    ],
+    "test_spatial/hgb": [
+      {
+        "mean_pred": 7e-05,
+        "obs_rate": 6e-05,
+        "n": 15802
+      },
+      {
+        "mean_pred": 0.00033,
+        "obs_rate": 0.00051,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.00113,
+        "obs_rate": 0.00171,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.00298,
+        "obs_rate": 0.00367,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.00492,
+        "obs_rate": 0.00652,
+        "n": 15802
+      },
+      {
+        "mean_pred": 0.01017,
+        "obs_rate": 0.01196,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.01614,
+        "obs_rate": 0.01481,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.031,
+        "obs_rate": 0.02747,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.0512,
+        "obs_rate": 0.04595,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.13524,
+        "obs_rate": 0.11562,
+        "n": 15802
+      }
+    ],
+    "test_spatial/baseline_freq_x_weather": [
+      {
+        "mean_pred": 0.0012,
+        "obs_rate": 0.00076,
+        "n": 15802
+      },
+      {
+        "mean_pred": 0.00254,
+        "obs_rate": 0.00215,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.00613,
+        "obs_rate": 0.00405,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.01164,
+        "obs_rate": 0.01,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.01674,
+        "obs_rate": 0.01228,
+        "n": 15802
+      },
+      {
+        "mean_pred": 0.02325,
+        "obs_rate": 0.02418,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.02853,
+        "obs_rate": 0.01968,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.03704,
+        "obs_rate": 0.03158,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.04782,
+        "obs_rate": 0.0469,
+        "n": 15801
+      },
+      {
+        "mean_pred": 0.08111,
+        "obs_rate": 0.0767,
+        "n": 15802
+      }
+    ]
+  },
+  "per_borough": {
+    "test_chrono/hgb": [
+      {
+        "borough": "Ahuntsic-Cartierville",
+        "n": 39639,
+        "positives": 1267,
+        "obs_rate": 0.0319634703196347,
+        "mean_pred": 0.03600101714340481,
+        "brier": 0.029144875597388938,
+        "pr_auc": 0.1503797048057029
+      },
+      {
+        "borough": "Anjou",
+        "n": 362,
+        "positives": 11,
+        "obs_rate": 0.03038674033149171,
+        "mean_pred": 0.02656102598112987,
+        "brier": 0.027015346270310277,
+        "pr_auc": 0.24632476922705238
+      },
+      {
+        "borough": "C\u00f4te-des-Neiges-Notre-Dame-de-Gr\u00e2ce",
+        "n": 23711,
+        "positives": 537,
+        "obs_rate": 0.022647716249841847,
+        "mean_pred": 0.02701285843617037,
+        "brier": 0.02172522606390648,
+        "pr_auc": 0.0804620077926753
+      },
+      {
+        "borough": "L'\u00cele-Bizard-Sainte-Genevi\u00e8ve",
+        "n": 8145,
+        "positives": 82,
+        "obs_rate": 0.010067526089625536,
+        "mean_pred": 0.01316256302631014,
+        "brier": 0.009535836605612837,
+        "pr_auc": 0.09452087319937641
+      },
+      {
+        "borough": "LaSalle",
+        "n": 22263,
+        "positives": 717,
+        "obs_rate": 0.032205902169518935,
+        "mean_pred": 0.029207721902643556,
+        "brier": 0.028977193413664278,
+        "pr_auc": 0.15493687664979727
+      },
+      {
+        "borough": "Lachine",
+        "n": 25521,
+        "positives": 441,
+        "obs_rate": 0.017279887151757375,
+        "mean_pred": 0.019242361086777522,
+        "brier": 0.01585304466086156,
+        "pr_auc": 0.13795204910513936
+      },
+      {
+        "borough": "Le Plateau-Mont-Royal",
+        "n": 13032,
+        "positives": 994,
+        "obs_rate": 0.07627378759975445,
+        "mean_pred": 0.08546543799038242,
+        "brier": 0.06545858482566332,
+        "pr_auc": 0.22475694959912706
+      },
+      {
+        "borough": "Le Sud-Ouest",
+        "n": 3439,
+        "positives": 34,
+        "obs_rate": 0.009886594940389648,
+        "mean_pred": 0.015510709173683447,
+        "brier": 0.009649180696005562,
+        "pr_auc": 0.08433012860643348
+      },
+      {
+        "borough": "Mercier-Hochelaga-Maisonneuve",
+        "n": 32037,
+        "positives": 1321,
+        "obs_rate": 0.041233573680432,
+        "mean_pred": 0.044510769803182304,
+        "brier": 0.03696346198491149,
+        "pr_auc": 0.1653571563247449
+      },
+      {
+        "borough": "Montr\u00e9al-Nord",
+        "n": 13394,
+        "positives": 378,
+        "obs_rate": 0.02822159175750336,
+        "mean_pred": 0.0390671934443707,
+        "brier": 0.026146596185029083,
+        "pr_auc": 0.14872994673031428
+      },
+      {
+        "borough": "Outremont",
+        "n": 5430,
+        "positives": 368,
+        "obs_rate": 0.06777163904235728,
+        "mean_pred": 0.06138757121157184,
+        "brier": 0.05559232891210251,
+        "pr_auc": 0.2821723304400877
+      },
+      {
+        "borough": "Pierrefonds-Roxboro",
+        "n": 26245,
+        "positives": 409,
+        "obs_rate": 0.015583920746808916,
+        "mean_pred": 0.018275612466497806,
+        "brier": 0.0150028262022305,
+        "pr_auc": 0.06844292341941653
+      },
+      {
+        "borough": "Rivi\u00e8re-des-Prairies-Pointe-aux-Trembles",
+        "n": 12851,
+        "positives": 230,
+        "obs_rate": 0.017897439887946464,
+        "mean_pred": 0.018470801703593283,
+        "brier": 0.017287861988897008,
+        "pr_auc": 0.06501260998110137
+      },
+      {
+        "borough": "Rosemont-La Petite-Patrie",
+        "n": 22806,
+        "positives": 1464,
+        "obs_rate": 0.06419363325440673,
+        "mean_pred": 0.06258970234423013,
+        "brier": 0.0558366992455453,
+        "pr_auc": 0.19742914886020413
+      },
+      {
+        "borough": "Saint-Laurent",
+        "n": 56653,
+        "positives": 590,
+        "obs_rate": 0.01041427638430445,
+        "mean_pred": 0.01493256919211702,
+        "brier": 0.009900982335387758,
+        "pr_auc": 0.09071842377184094
+      },
+      {
+        "borough": "Saint-L\u00e9onard",
+        "n": 16290,
+        "positives": 399,
+        "obs_rate": 0.024493554327808472,
+        "mean_pred": 0.028034410530147984,
+        "brier": 0.023082729984551405,
+        "pr_auc": 0.09689021314938764
+      },
+      {
+        "borough": "Verdun",
+        "n": 2715,
+        "positives": 81,
+        "obs_rate": 0.02983425414364641,
+        "mean_pred": 0.02694448678036449,
+        "brier": 0.02712829882194617,
+        "pr_auc": 0.14741443112709685
+      },
+      {
+        "borough": "Ville-Marie",
+        "n": 22806,
+        "positives": 1102,
+        "obs_rate": 0.04832061738139086,
+        "mean_pred": 0.05113974820164844,
+        "brier": 0.0416627214876491,
+        "pr_auc": 0.22232130209814624
+      },
+      {
+        "borough": "Villeray-Saint-Michel-Parc-Extension",
+        "n": 24978,
+        "positives": 931,
+        "obs_rate": 0.037272800064056366,
+        "mean_pred": 0.04315664980676472,
+        "brier": 0.034342791594865384,
+        "pr_auc": 0.13069465122878318
+      }
+    ],
+    "test_chrono/baseline_freq_x_weather": [
+      {
+        "borough": "Ahuntsic-Cartierville",
+        "n": 39639,
+        "positives": 1267,
+        "obs_rate": 0.0319634703196347,
+        "mean_pred": 0.03515651952878112,
+        "brier": 0.03036375863976038,
+        "pr_auc": 0.07693765591421352
+      },
+      {
+        "borough": "Anjou",
+        "n": 362,
+        "positives": 11,
+        "obs_rate": 0.03038674033149171,
+        "mean_pred": 0.028892527628862012,
+        "brier": 0.02859812011358827,
+        "pr_auc": 0.11089711916087154
+      },
+      {
+        "borough": "C\u00f4te-des-Neiges-Notre-Dame-de-Gr\u00e2ce",
+        "n": 23711,
+        "positives": 537,
+        "obs_rate": 0.022647716249841847,
+        "mean_pred": 0.027961141560201134,
+        "brier": 0.022008853293422472,
+        "pr_auc": 0.057640069942976185
+      },
+      {
+        "borough": "L'\u00cele-Bizard-Sainte-Genevi\u00e8ve",
+        "n": 8145,
+        "positives": 82,
+        "obs_rate": 0.010067526089625536,
+        "mean_pred": 0.014571173170075172,
+        "brier": 0.009839990202549078,
+        "pr_auc": 0.04537412716438593
+      },
+      {
+        "borough": "LaSalle",
+        "n": 22263,
+        "positives": 717,
+        "obs_rate": 0.032205902169518935,
+        "mean_pred": 0.02954070655612935,
+        "brier": 0.030572974677621042,
+        "pr_auc": 0.07695091780642535
+      },
+      {
+        "borough": "Lachine",
+        "n": 25521,
+        "positives": 441,
+        "obs_rate": 0.017279887151757375,
+        "mean_pred": 0.01925063091226811,
+        "brier": 0.016556090504769125,
+        "pr_auc": 0.06426396773444167
+      },
+      {
+        "borough": "Le Plateau-Mont-Royal",
+        "n": 13032,
+        "positives": 994,
+        "obs_rate": 0.07627378759975445,
+        "mean_pred": 0.07399160110105957,
+        "brier": 0.06946989415098274,
+        "pr_auc": 0.1389117213640986
+      },
+      {
+        "borough": "Le Sud-Ouest",
+        "n": 3439,
+        "positives": 34,
+        "obs_rate": 0.009886594940389648,
+        "mean_pred": 0.014908231273816573,
+        "brier": 0.009639346878958727,
+        "pr_auc": 0.051255833430901385
+      },
+      {
+        "borough": "Mercier-Hochelaga-Maisonneuve",
+        "n": 32037,
+        "positives": 1321,
+        "obs_rate": 0.041233573680432,
+        "mean_pred": 0.04112253194557652,
+        "brier": 0.038783646553124725,
+        "pr_auc": 0.09227303449165042
+      },
+      {
+        "borough": "Montr\u00e9al-Nord",
+        "n": 13394,
+        "positives": 378,
+        "obs_rate": 0.02822159175750336,
+        "mean_pred": 0.042641305482210255,
+        "brier": 0.027620203245447845,
+        "pr_auc": 0.062128531410500724
+      },
+      {
+        "borough": "Outremont",
+        "n": 5430,
+        "positives": 368,
+        "obs_rate": 0.06777163904235728,
+        "mean_pred": 0.057733089724933885,
+        "brier": 0.061128880922176866,
+        "pr_auc": 0.16905774800511936
+      },
+      {
+        "borough": "Pierrefonds-Roxboro",
+        "n": 26245,
+        "positives": 409,
+        "obs_rate": 0.015583920746808916,
+        "mean_pred": 0.019987241761044067,
+        "brier": 0.015314541402994014,
+        "pr_auc": 0.02751791968116921
+      },
+      {
+        "borough": "Rivi\u00e8re-des-Prairies-Pointe-aux-Trembles",
+        "n": 12851,
+        "positives": 230,
+        "obs_rate": 0.017897439887946464,
+        "mean_pred": 0.02066065044051977,
+        "brier": 0.017303604815281762,
+        "pr_auc": 0.054282941467821026
+      },
+      {
+        "borough": "Rosemont-La Petite-Patrie",
+        "n": 22806,
+        "positives": 1464,
+        "obs_rate": 0.06419363325440673,
+        "mean_pred": 0.05863355022231683,
+        "brier": 0.058950177134207034,
+        "pr_auc": 0.1214552815735209
+      },
+      {
+        "borough": "Saint-Laurent",
+        "n": 56653,
+        "positives": 590,
+        "obs_rate": 0.01041427638430445,
+        "mean_pred": 0.012635429158899458,
+        "brier": 0.010185841353478092,
+        "pr_auc": 0.03748487308346386
+      },
+      {
+        "borough": "Saint-L\u00e9onard",
+        "n": 16290,
+        "positives": 399,
+        "obs_rate": 0.024493554327808472,
+        "mean_pred": 0.029081805183183918,
+        "brier": 0.023509991322615297,
+        "pr_auc": 0.0625517226521519
+      },
+      {
+        "borough": "Verdun",
+        "n": 2715,
+        "positives": 81,
+        "obs_rate": 0.02983425414364641,
+        "mean_pred": 0.028245410130001102,
+        "brier": 0.02827108839325299,
+        "pr_auc": 0.09384869168879756
+      },
+      {
+        "borough": "Ville-Marie",
+        "n": 22806,
+        "positives": 1102,
+        "obs_rate": 0.04832061738139086,
+        "mean_pred": 0.049254176606474395,
+        "brier": 0.04454645729496919,
+        "pr_auc": 0.12915446953412035
+      },
+      {
+        "borough": "Villeray-Saint-Michel-Parc-Extension",
+        "n": 24978,
+        "positives": 931,
+        "obs_rate": 0.037272800064056366,
+        "mean_pred": 0.03913734816806853,
+        "brier": 0.03530628954605305,
+        "pr_auc": 0.07858950602294487
+      }
+    ],
+    "test_spatial/hgb": [
+      {
+        "borough": "Anjou",
+        "n": 19005,
+        "positives": 279,
+        "obs_rate": 0.01468034727703236,
+        "mean_pred": 0.018276825718425843,
+        "brier": 0.014188599202504721,
+        "pr_auc": 0.06911461226198584
+      },
+      {
+        "borough": "C\u00f4te-des-Neiges-Notre-Dame-de-Gr\u00e2ce",
+        "n": 11222,
+        "positives": 327,
+        "obs_rate": 0.029139190875066834,
+        "mean_pred": 0.03210355583708785,
+        "brier": 0.02750537129384215,
+        "pr_auc": 0.09685302486343775
+      },
+      {
+        "borough": "L'\u00cele-Bizard-Sainte-Genevi\u00e8ve",
+        "n": 13937,
+        "positives": 123,
+        "obs_rate": 0.008825428714931477,
+        "mean_pred": 0.011696489492302328,
+        "brier": 0.008620392258285035,
+        "pr_auc": 0.04978711351231144
+      },
+      {
+        "borough": "LaSalle",
+        "n": 5068,
+        "positives": 121,
+        "obs_rate": 0.02387529597474349,
+        "mean_pred": 0.01975897946799749,
+        "brier": 0.021863748402152015,
+        "pr_auc": 0.1280283358640067
+      },
+      {
+        "borough": "Le Sud-Ouest",
+        "n": 19367,
+        "positives": 622,
+        "obs_rate": 0.032116486807455984,
+        "mean_pred": 0.03817916895643667,
+        "brier": 0.029163401881968854,
+        "pr_auc": 0.1495484967608639
+      },
+      {
+        "borough": "Mercier-Hochelaga-Maisonneuve",
+        "n": 5611,
+        "positives": 244,
+        "obs_rate": 0.04348600962395295,
+        "mean_pred": 0.037787633669016454,
+        "brier": 0.03725739873798618,
+        "pr_auc": 0.23198561217352193
+      },
+      {
+        "borough": "Montr\u00e9al-Nord",
+        "n": 6154,
+        "positives": 148,
+        "obs_rate": 0.024049398765030875,
+        "mean_pred": 0.028829898195792184,
+        "brier": 0.022578143683887063,
+        "pr_auc": 0.11149523951104737
+      },
+      {
+        "borough": "Pierrefonds-Roxboro",
+        "n": 13756,
+        "positives": 220,
+        "obs_rate": 0.0159930212271009,
+        "mean_pred": 0.01876867358423331,
+        "brier": 0.014821619256717008,
+        "pr_auc": 0.13141277327655893
+      },
+      {
+        "borough": "Rivi\u00e8re-des-Prairies-Pointe-aux-Trembles",
+        "n": 45612,
+        "positives": 801,
+        "obs_rate": 0.0175611681136543,
+        "mean_pred": 0.01935424782377444,
+        "brier": 0.016494887559272746,
+        "pr_auc": 0.1003425905510999
+      },
+      {
+        "borough": "Saint-L\u00e9onard",
+        "n": 3258,
+        "positives": 49,
+        "obs_rate": 0.015039901780233272,
+        "mean_pred": 0.015756622689664105,
+        "brier": 0.01460782325626509,
+        "pr_auc": 0.05380909540163231
+      },
+      {
+        "borough": "Verdun",
+        "n": 12851,
+        "positives": 508,
+        "obs_rate": 0.03952999766555132,
+        "mean_pred": 0.04302812472967103,
+        "brier": 0.034808957965311575,
+        "pr_auc": 0.18389499168656803
+      },
+      {
+        "borough": "Ville-Marie",
+        "n": 2172,
+        "positives": 165,
+        "obs_rate": 0.07596685082872928,
+        "mean_pred": 0.07159578579584101,
+        "brier": 0.06441581188147182,
+        "pr_auc": 0.24197573399443734
+      }
+    ],
+    "test_spatial/baseline_freq_x_weather": [
+      {
+        "borough": "Anjou",
+        "n": 19005,
+        "positives": 279,
+        "obs_rate": 0.01468034727703236,
+        "mean_pred": 0.020283942256711134,
+        "brier": 0.014200604576880807,
+        "pr_auc": 0.058796250747027656
+      },
+      {
+        "borough": "C\u00f4te-des-Neiges-Notre-Dame-de-Gr\u00e2ce",
+        "n": 11222,
+        "positives": 327,
+        "obs_rate": 0.029139190875066834,
+        "mean_pred": 0.030298868135892207,
+        "brier": 0.027890512376642338,
+        "pr_auc": 0.060882327445629644
+      },
+      {
+        "borough": "L'\u00cele-Bizard-Sainte-Genevi\u00e8ve",
+        "n": 13937,
+        "positives": 123,
+        "obs_rate": 0.008825428714931477,
+        "mean_pred": 0.013636981227236432,
+        "brier": 0.008691676660558428,
+        "pr_auc": 0.032439638879910825
+      },
+      {
+        "borough": "LaSalle",
+        "n": 5068,
+        "positives": 121,
+        "obs_rate": 0.02387529597474349,
+        "mean_pred": 0.020239321946163343,
+        "brier": 0.02284263300314268,
+        "pr_auc": 0.06326381781927368
+      },
+      {
+        "borough": "Le Sud-Ouest",
+        "n": 19367,
+        "positives": 622,
+        "obs_rate": 0.032116486807455984,
+        "mean_pred": 0.035728570304262214,
+        "brier": 0.030376258321223513,
+        "pr_auc": 0.08157182751547629
+      },
+      {
+        "borough": "Mercier-Hochelaga-Maisonneuve",
+        "n": 5611,
+        "positives": 244,
+        "obs_rate": 0.04348600962395295,
+        "mean_pred": 0.033459720308082835,
+        "brier": 0.04073121285111018,
+        "pr_auc": 0.10725185910430717
+      },
+      {
+        "borough": "Montr\u00e9al-Nord",
+        "n": 6154,
+        "positives": 148,
+        "obs_rate": 0.024049398765030875,
+        "mean_pred": 0.02839879088711119,
+        "brier": 0.02316451362569435,
+        "pr_auc": 0.06192866460027108
+      },
+      {
+        "borough": "Pierrefonds-Roxboro",
+        "n": 13756,
+        "positives": 220,
+        "obs_rate": 0.0159930212271009,
+        "mean_pred": 0.019728626137948468,
+        "brier": 0.015686508379624195,
+        "pr_auc": 0.03110373086172134
+      },
+      {
+        "borough": "Rivi\u00e8re-des-Prairies-Pointe-aux-Trembles",
+        "n": 45612,
+        "positives": 801,
+        "obs_rate": 0.0175611681136543,
+        "mean_pred": 0.02154566715783293,
+        "brier": 0.016845910050089744,
+        "pr_auc": 0.06695389018791416
+      },
+      {
+        "borough": "Saint-L\u00e9onard",
+        "n": 3258,
+        "positives": 49,
+        "obs_rate": 0.015039901780233272,
+        "mean_pred": 0.01770212055926738,
+        "brier": 0.014560143562312564,
+        "pr_auc": 0.05872199930009327
+      },
+      {
+        "borough": "Verdun",
+        "n": 12851,
+        "positives": 508,
+        "obs_rate": 0.03952999766555132,
+        "mean_pred": 0.040398474835141654,
+        "brier": 0.037192153677144145,
+        "pr_auc": 0.08777611547247498
+      },
+      {
+        "borough": "Ville-Marie",
+        "n": 2172,
+        "positives": 165,
+        "obs_rate": 0.07596685082872928,
+        "mean_pred": 0.06519558499003482,
+        "brier": 0.06810742211748479,
+        "pr_auc": 0.158190590881107
+      }
+    ]
+  }
+}

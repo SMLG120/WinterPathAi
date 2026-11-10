@@ -1,0 +1,15 @@
+{
+ "simulated": true,
+ "description": "SYNTHETIC toy grid for routing tests. Not real streets or conditions.",
+ "osm_snapshot": null,
+ "built_at": "2026-11-10T00:00:00Z",
+ "source_freshness": {
+  "synthetic": "2026-11-10T00:00:00Z"
+ },
+ "bbox": [
+  -73.578,
+  45.503,
+  -73.57000000000001,
+  45.5044
+ ]
+}
