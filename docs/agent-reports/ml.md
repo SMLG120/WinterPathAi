@@ -1,11 +1,54 @@
 # Agent report — ml
 
-- **Status:** READY FOR REVIEW
-- **Branch / SHA:** agent/ml @ bb74a7061474de3f7ab64912c5ccd2d1605aaa20 (code). This report is committed on top of it.
-- **Integration merges:** `integration/winterpath` merged twice with `git merge --no-edit` (56a9f96: contract v1.1.0 + platform; 3aae499: contract v1.2.0 + data). Both merges were clean.
+- **Status:** MERGED (fa8b4ea into `integration/winterpath`). Follow-up work since then: READY FOR REVIEW.
+- **Branch / SHA:** agent/ml @ dd191742b842369e5ef23e74d5a9c3b731b65360 (pre-registration). This report update is committed on top of it.
+- **Integration merges:** `integration/winterpath` merged three times with `git merge --no-edit`, all clean:
+  - 56a9f96: contract v1.1.0 + platform.
+  - 3aae499: contract v1.2.0 + data.
+  - fa8b4ea: contract v1.3.0 + routing + the ML merge; fast-forward.
 - **Date (UTC):** 2026-11-10
 
-## Summary
+## Update after merge (contract v1.3.0) — 2026-11-10
+
+### What was done
+- Merged `integration/winterpath` at fa8b4ea (contract v1.3.0). The merge was a fast-forward with no conflicts.
+- **Canonical source ids (v1.3):** ML already used `mtl-311` and `eccc-geomet` (`inference.SOURCE_IDS`), so no code change was needed.
+- **Pre-registered a new gate:** `models/gate-logreg-2026.md`, for "logistic regression as model", committed in dd19174 at 2026-11-10 16:46:50 −05:00. That is before the first test day of winter 2026-27.
+  - **Not evaluated:** no metric of the candidate on 2026-27 exists, and none can until the winter ends.
+  - The earliest allowed run is 2027-05-08.
+  - The 2025-26 result that motivated it is treated as hypothesis-generating only.
+- **Frozen by the gate document:**
+  - Labels: unchanged, ML's own aggregation, independent of CR-ML-1.
+  - Coverage: the v2 file, by sha256.
+  - Holdout: the same 5 res-6 blocks.
+  - Splits: train winters 2021–2024, isotonic calibration on 2025, test on 2026 (chrono + spatial).
+  - Candidate: `models.Logistic`, pinned via sha256 of 6 source files.
+  - Gating comparators: (a) and (b); HGB is report-only.
+- **Gate criteria:**
+  - ΔPR-AUC ≥ 0.010.
+  - Bootstrap CI lower bound > 0.
+  - Brier below both comparators.
+  - New: per-borough calibration ratio within [0.5, 2] for boroughs with ≥ 100 positives.
+- The document also lists the conditions that void a run, and what happens to the registry on pass or fail.
+- `models/registry.json` is **unchanged**: the active layer is still `heuristic`, and `model.enabled = false`.
+
+### Checks run on the merged tree
+```text
+$ grep -rn "vmtl-\|eccc-climate" services/ml/src services/ml/tests models/registry.json || echo "no stale source ids"
+no stale source ids
+$ cd services/ml && uv run pytest -q
+............................                                             [100%]
+28 passed in 1.66s
+$ uv run python -c "...FEATURES / coverage / holdout_blocks..."   # facts cited in the gate document
+24
+2930 5
+```
+
+### Open items
+- CR-ML-1 is pending a user decision. No Data-owned files were touched.
+- Running the new gate needs a runner script, which is not written yet, to avoid accidentally scoring test data. It must use the pinned files unchanged and is due after 2027-05-08.
+
+## Summary (original delivery)
 - **Gate decision: FAIL.** The model is disabled (`layers.model.enabled = false`). The active layer is `heuristic`: baseline (b), historical frequency × a fixed weather multiplier. It reports levels only, with `probability = null`.
 - HistGradientBoosting did **not** beat the strongest baseline, logistic regression (c), on either holdout. The PR-AUC difference vs that baseline was −0.0033 (most recent winter) and −0.0011 (held-out areas), with 95% CIs spanning 0.
 - The target is P(≥1 winter-related 311 report in an H3 res-9 cell during local day D). It measures **reporting behaviour, not sidewalk safety**.
