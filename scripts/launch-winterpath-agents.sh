@@ -24,7 +24,7 @@ for a in "${AGENTS[@]}"; do
   p="$(wt_path "$a")"
   prompt="Read docs/agents/$a.md and implement only your assigned work. Read docs/contracts and CLAUDE.md first."
   log "RUN tmux new-window -t $SESSION -n $a -c $p ; claude \"$prompt\""
-  tmux new-window -d -t "$SESSION" -n "$a" -c "$p"
+  tmux new-window -d -t "$SESSION:" -n "$a" -c "$p"
   tmux send-keys -t "$SESSION:$a" "claude $(printf '%q' "$prompt")" Enter
 done
 log "windows now: $(tmux list-windows -t "$SESSION" -F '#{window_name}' | tr '\n' ' ')"
