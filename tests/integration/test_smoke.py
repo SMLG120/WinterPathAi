@@ -59,3 +59,24 @@ def test_admin_requires_auth(client) -> None:
     r = client.get("/admin/reports")
     assert r.status_code == 401
     assert r.json()["code"] == "UNAUTHORIZED"
+
+
+ADMIN_REPORT = "/admin/reports/6f1c1f1e-8f4e-4d8a-9a51-0c1d2e3f4a5b/moderation"
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "kwargs"),
+    [
+        ("GET", "/admin/reports", {"params": {"status": "bogus"}}),
+        ("GET", "/admin/reports", {"params": {"limit": "0"}}),
+        ("POST", ADMIN_REPORT, {"json": {"decision": "delete-everything"}}),
+        ("POST", "/admin/reports/not-a-uuid/moderation", {"json": {"decision": "approve"}}),
+    ],
+)
+def test_admin_invalid_input_rejected_when_authorized(client, target, method, path, kwargs) -> None:
+    """Contract v1.1.0 (CR-PLAT-1): authorized but invalid admin input → declared 400/422."""
+    if not target.admin_token:
+        pytest.skip("API_ADMIN_TOKEN not set: cannot exercise authorized admin validation")
+    r = client.request(method, path, headers={"Authorization": f"Bearer {target.admin_token}"}, **kwargs)
+    assert r.status_code in (400, 422), r.text
+    assert r.json()["code"] == "VALIDATION_ERROR"

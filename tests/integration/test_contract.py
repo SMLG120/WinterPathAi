@@ -2,10 +2,9 @@
 
 * test_positive: schema-valid requests → every response must be declared by the contract,
   match its schema/content-type/headers, and never be a 5xx.
-* test_negative: schema-invalid requests must be rejected with a declared 4xx. Operations whose
-  contract declares no 4xx for invalid input are KNOWN CONTRACT GAPS (change request CR-PLAT-1
-  in docs/agent-reports/platform.md) and are xfailed with strict=True, so the xfail turns into a
-  failure as soon as the contract is fixed and the marker must be removed.
+* test_negative: schema-invalid requests must be rejected with a declared 4xx. Since contract
+  v1.1.0 (CR-PLAT-1) every operation that accepts input declares 400/422, so there are no
+  expected failures.
 """
 
 from __future__ import annotations
@@ -38,13 +37,6 @@ BASE_CHECKS = [
     response_schema_conformance,
     response_headers_conformance,
 ]
-# Operations that declare no 400/422 response, so invalid input has no conforming status.
-KNOWN_NEGATIVE_GAPS = {
-    "getWeatherForecast",  # invalid ?hours → no 4xx declared
-    "deleteOwnReport",  # bad uuid / missing X-Deletion-Token → only 204/404 declared
-    "listReportsForModeration",  # invalid ?status/?limit → only 200/401 declared
-    "moderateReport",  # invalid body / uuid → only 200/401/404 declared
-}
 
 
 def _schema(mode: GenerationMode) -> schemathesis.schemas.BaseSchema:
@@ -57,10 +49,13 @@ positive_schema = _schema(GenerationMode.POSITIVE)
 negative_schema = _schema(GenerationMode.NEGATIVE)
 
 
-def _call(case, target, checks) -> None:
+def _call(case, target, checks, *, inject_auth: bool) -> None:
     raw = case.operation.definition.raw
     headers = {}
-    if raw.get("security") and target.admin_token:  # exercise the 2xx path of admin routes
+    # Positive cases only: exercise the 2xx path of admin routes. Negative cases keep the
+    # generated headers untouched — re-adding the token would undo a "missing Authorization"
+    # mutation (authorized-but-invalid admin input is covered in test_smoke.py).
+    if inject_auth and raw.get("security") and target.admin_token:
         headers["Authorization"] = f"Bearer {target.admin_token}"
     if any(str(s).startswith("5") for s in raw.get("responses", {})):
         # A declared 5xx (e.g. 503 UPSTREAM_UNAVAILABLE) is a contract-conforming answer;
@@ -72,12 +67,10 @@ def _call(case, target, checks) -> None:
 @positive_schema.parametrize()
 @settings(deadline=None, suppress_health_check=list(HealthCheck), derandomize=True)
 def test_positive(case, target) -> None:
-    _call(case, target, BASE_CHECKS)
+    _call(case, target, BASE_CHECKS, inject_auth=True)
 
 
 @negative_schema.parametrize()
 @settings(deadline=None, suppress_health_check=list(HealthCheck), derandomize=True)
-def test_negative(case, target, request) -> None:
-    if case.operation.definition.raw.get("operationId") in KNOWN_NEGATIVE_GAPS:
-        request.applymarker(pytest.mark.xfail(reason="contract declares no 4xx (CR-PLAT-1)", strict=True))
-    _call(case, target, [*BASE_CHECKS, negative_data_rejection])
+def test_negative(case, target) -> None:
+    _call(case, target, [*BASE_CHECKS, negative_data_rejection], inject_auth=False)
