@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: WinterPath AI API
-  version: 1.0.0
-  summary: Montréal pedestrian winter-routing API (contract v1, frozen 2026-11-10).
+  version: 1.1.0
+  summary: Montréal pedestrian winter-routing API (contract v1.1.0; v1.0.0 frozen 2026-11-10, v1.1.0 adds declared 4xx responses per CR-PLAT-1).
   description: |
     All geometries are GeoJSON in EPSG:4326 with [longitude, latitude] ordering.
     Every risk/condition datum carries an `evidence` object; `unknown` is never zero risk.
@@ -77,6 +77,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WeatherForecast" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /hazards:
     get:
@@ -188,7 +190,10 @@ paths:
           schema: { type: string, minLength: 32, maxLength: 128 }
       responses:
         "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
   /admin/reports:
     get:
       tags: [admin]
@@ -213,7 +218,9 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/ReportAdminView" }
                   next_cursor: { type: [string, "null"] }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
   /admin/reports/{reportId}/moderation:
     post:
       tags: [admin]
@@ -237,8 +244,10 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReportAdminView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
   /pilot-requests:
     post:
       tags: [system]
@@ -251,6 +260,7 @@ paths:
             schema: { $ref: "#/components/schemas/PilotRequest" }
       responses:
         "201": { description: Received. }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "422": { $ref: "#/components/responses/Unprocessable" }
         "429": { $ref: "#/components/responses/RateLimited" }
 

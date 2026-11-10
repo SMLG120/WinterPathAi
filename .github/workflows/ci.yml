@@ -1,0 +1,307 @@
+# WinterPath CI — lint, unit, contract, security scans. No deploy jobs (deploys are
+# approval-gated and manual; see infra/RUNBOOK.md). Third-party actions are pinned to
+# commit SHAs (tag in trailing comment). Jobs for packages that do not exist yet on a
+# branch skip with an explicit message instead of failing.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, "integration/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.10.7"
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "24"
+  GITLEAKS_VERSION: "8.30.1"
+
+jobs:
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      web: ${{ steps.filter.outputs.web }}
+      contract: ${{ steps.filter.outputs.contract }}
+      compose: ${{ steps.filter.outputs.compose }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            python:
+              - 'services/**'
+              - 'models/registry.json'
+              - 'data/fixtures/**'
+              - 'db/**'
+              - '.github/workflows/ci.yml'
+            web:
+              - 'apps/web/**'
+              - 'docs/contracts/openapi.yaml'
+              - '.github/workflows/ci.yml'
+            contract:
+              - 'docs/contracts/**'
+              - 'services/api/**'
+              - 'services/routing/**'
+              - 'services/ml/**'
+              - 'tests/integration/**'
+              - '.github/workflows/ci.yml'
+            compose:
+              - 'docker-compose.yml'
+              - 'infra/**'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+            workflows:
+              - '.github/workflows/**'
+
+  python:
+    name: python (${{ matrix.package }})
+    needs: changes
+    if: needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [services/ingestion, services/routing, services/ml, services/api]
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: wp_ci
+          POSTGRES_PASSWORD: ci_${{ github.run_id }}
+          POSTGRES_DB: wp_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U wp_ci -d wp_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://wp_ci:ci_${{ github.run_id }}@localhost:5432/wp_ci
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: check package exists
+        id: present
+        working-directory: .
+        run: |
+          if [ -f "${{ matrix.package }}/pyproject.toml" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=SKIP ${{ matrix.package }}::no pyproject.toml on this branch — lint/test/audit skipped"
+          fi
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: steps.present.outputs.present == 'true'
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+      - name: install
+        if: steps.present.outputs.present == 'true'
+        run: uv sync --all-extras --dev
+      - name: ruff
+        if: steps.present.outputs.present == 'true'
+        run: |
+          uv run --with ruff ruff check .
+          uv run --with ruff ruff format --check .
+      - name: pytest
+        if: steps.present.outputs.present == 'true'
+        run: uv run pytest -q
+      - name: pip-audit
+        if: steps.present.outputs.present == 'true'
+        run: uv run --with pip-audit pip-audit --skip-editable --progress-spinner off
+
+  web:
+    name: web (lint, test, build, audit)
+    needs: changes
+    if: needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: check package exists
+        id: present
+        working-directory: .
+        run: |
+          if [ -f apps/web/package.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=SKIP web::apps/web/package.json not on this branch — web job skipped"
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.present.outputs.present == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - if: steps.present.outputs.present == 'true'
+        run: npm ci --no-fund
+      - if: steps.present.outputs.present == 'true'
+        run: npm run --if-present lint
+      - if: steps.present.outputs.present == 'true'
+        run: npm run --if-present typecheck
+      - if: steps.present.outputs.present == 'true'
+        run: npm run --if-present test -- --run
+      - if: steps.present.outputs.present == 'true'
+        run: npm run build
+      - name: npm audit (fail on high)
+        if: steps.present.outputs.present == 'true'
+        run: npm audit --audit-level=high --omit=dev
+
+  e2e:
+    name: playwright
+    needs: [changes, web]
+    if: needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: check playwright config exists
+        id: present
+        working-directory: .
+        run: |
+          if ls apps/web/playwright.config.* >/dev/null 2>&1; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=SKIP e2e::apps/web/playwright.config.* not on this branch — Playwright skipped"
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.present.outputs.present == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - if: steps.present.outputs.present == 'true'
+        run: npm ci --no-fund
+      - if: steps.present.outputs.present == 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.present.outputs.present == 'true'
+        run: npx playwright test
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure() && steps.present.outputs.present == 'true'
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+  openapi:
+    name: openapi validation
+    needs: changes
+    if: needs.changes.outputs.contract == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uvx --from 'openapi-spec-validator>=0.7' openapi-spec-validator docs/contracts/openapi.yaml
+
+  contract:
+    name: contract + integration (schemathesis)
+    needs: [changes, openapi]
+    if: needs.changes.outputs.contract == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/integration
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+      - run: uv sync --locked
+      - name: ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: tests against SCHEMA-ONLY STUB
+        run: uv run pytest -q
+      - name: tests against real API (when services/api exists)
+        working-directory: .
+        env:
+          API_APP: winterpath_api.main:app
+        run: |
+          if [ ! -f services/api/pyproject.toml ]; then
+            echo "::notice title=SKIP real-API contract::services/api not on this branch — ran against stub only"
+            exit 0
+          fi
+          (cd services/api && uv sync && uv run --with 'uvicorn>=0.30' uvicorn "$API_APP" \
+            --host 127.0.0.1 --port 8100 --no-access-log > "$RUNNER_TEMP/api.log" 2>&1 &)
+          infra/scripts/wait-for-http.sh http://127.0.0.1:8100/api/v1/health 60
+          cd tests/integration
+          API_BASE_URL=http://127.0.0.1:8100/api/v1 API_LOG_FILE="$RUNNER_TEMP/api.log" uv run pytest -q
+      - name: pip-audit (test deps)
+        run: uv run --with pip-audit pip-audit --progress-spinner off
+
+  compose:
+    name: docker compose (config + db boot)
+    needs: changes
+    if: needs.changes.outputs.compose == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_USER: wp_ci
+      POSTGRES_PASSWORD: ci_${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker compose config --quiet
+      - run: docker compose up -d --wait --wait-timeout 180 db
+      - name: verify databases, postgis and roles
+        run: |
+          for db in wp_data wp_routing wp_ml wp_platform wp_integration; do
+            docker compose exec -T db psql -U "$POSTGRES_USER" -d "$db" -tAc \
+              "select current_database(), postgis_lib_version()"
+          done
+          docker compose exec -T db psql -U "$POSTGRES_USER" -d postgres -tAc \
+            "select string_agg(rolname, ',' order by rolname) from pg_roles where rolname like 'wp\_%'" \
+            | tee /dev/stderr | grep -qx 'wp_ci,wp_migrator,wp_reader,wp_writer'
+      - name: shellcheck infra scripts
+        run: shellcheck -x -S warning infra/scripts/*.sh infra/db/init/*.sh
+      - if: always()
+        run: docker compose down -v
+
+  secrets:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: install gitleaks (checksum-verified)
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "$base/$tarball"
+          curl -fsSLO "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " ${tarball}\$" "gitleaks_${GITLEAKS_VERSION}_checksums.txt" | sha256sum -c -
+          tar -xzf "$tarball" gitleaks
+      - run: ./gitleaks git --redact --verbose --exit-code 1 .
+
+  workflow-lint:
+    name: actionlint
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12 -color

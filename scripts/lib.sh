@@ -29,3 +29,5 @@ ports() { # api web db
     frontend) echo "8104 5174 -" ;; platform) echo "8105 5175 wp_platform" ;; *) return 1 ;;
   esac
 }
+# Find a running agent pane anywhere in tmux (panes may be moved with join-pane).
+agent_pane() { tmux list-panes -a -F '#{@agent} #{pane_id}' 2>/dev/null | awk -v a="$1" '$1==a{print $2; exit}'; }
