@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     steps = (
-        ["osm", "fixture", "voirie", "entraves", "311", "eccc"]
+        ["osm", "voirie", "fixture", "entraves", "311", "eccc"]
         if args.pipeline == "all"
         else [args.pipeline]
     )
