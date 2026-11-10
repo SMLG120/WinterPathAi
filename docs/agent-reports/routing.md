@@ -1,7 +1,7 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW
-- **Branch / SHA:** `agent/routing` @ `3460fa1` (code; includes the merges of `integration/winterpath` at contract v1.1.0 → `aff27a6` and data-model v1.2.0 + pilot_mini → `9fb5fa5`). This report is committed on top.
+- **Status:** READY FOR REVIEW. Cycle 1–2 work was MERGED into `integration/winterpath` at `517a493`; this update adds the ECCC WeatherAdapter (cycle 3).
+- **Branch / SHA:** `agent/routing` @ `d179845` (code; fast-forwarded to `517a493`, then the weather commit). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -24,49 +24,21 @@ docs/agent-reports/routing.md
 ## Commands run and literal results
 Environment: Apple M4 (10 cores, 16 GB), macOS (Darwin 25.6.0), Python 3.12.13, uv 0.10.7. FastAPI 0.162.4, Starlette 1.10.0, Pydantic 2.14.3. PostGIS in the shared Docker container (:55432), DB `wp_routing`. **Shared machine: `uptime` load averages 32.41 / 37.81 / 39.25 during the final runs** (other agent sessions), so latency figures are noisy upper bounds.
 
-### 1. Full routing + API suites, PostGIS enabled (`DATABASE_URL` → `wp_routing`)
-`wp_routing` schema created by applying the Data agent's migration to my own DB (`alembic -c db/alembic.ini upgrade head` → `0001_wp_schema_v1 (head)`). The PostGIS tests load the real pilot_mini into `wp.node`/`wp.edge`, exercise every DB-backed path, and delete exactly the rows they created.
+### 1. Full routing + API suites, PostGIS enabled (`DATABASE_URL` → `wp_routing`) — cycle 3 run
+`wp_routing` schema was created by applying the Data agent's migration to my own DB (`alembic -c db/alembic.ini upgrade head` → `0001_wp_schema_v1 (head)`). The PostGIS tests load real pilot_mini / TEST- weather rows, exercise every DB-backed path, and delete exactly the rows they created.
 ```text
 $ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider   # DATABASE_URL=…/wp_routing
-============================= test session starts ==============================
-platform darwin -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0
-rootdir: /Users/smlgmac/Projects/Geography/winterpath-routing/services/routing
-configfile: pyproject.toml
-plugins: anyio-4.16.0
-collected 257 items
-services/routing/tests/test_routing_engine.py .......................... [ 10%]
-......                                                                   [ 12%]
 services/routing/tests/test_routing_latency.py 
-[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=9.1 ms p95=45.2 ms max=251.2 ms
-.
-[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=72.2 ms p95=294.5 ms max=467.6 ms
-.                        [ 13%]
-services/routing/tests/test_routing_pilot_mini.py .....
-[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.5 ms p95=3.8 ms max=6.1 ms (rejected >75 m from network: 48)
-.                 [ 15%]
-services/routing/tests/test_routing_providers.py ....................... [ 24%]
-........................................................................ [ 52%]
-................................................                         [ 71%]
-services/routing/tests/test_routing_search.py ......................     [ 79%]
-services/routing/tests/test_api_adapters.py ......
-[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=7.9 ms p95=35.1 ms max=71.7 ms
-.                      [ 82%]
-services/routing/tests/test_api_contract.py ............................ [ 93%]
-.....                                                                    [ 95%]
-services/routing/tests/test_api_pilot_mini.py ........
-[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=7.5 ms p95=20.4 ms max=65.3 ms
-.                  [ 98%]
-services/routing/tests/test_api_postgis.py ...                           [100%]
-=============================== warnings summary ===============================
-services/api/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
-======================= 257 passed, 1 warning in 28.62s ========================
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=3.8 ms p95=9.3 ms max=59.2 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=26.0 ms p95=56.9 ms max=111.4 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.1 ms p95=2.0 ms max=2.5 ms (rejected >75 m from network: 48)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=4.6 ms p95=19.6 ms max=128.2 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=5.7 ms p95=11.3 ms max=49.1 ms
+======================= 274 passed, 1 warning in 23.37s ========================
 $ row counts in wp_routing after run
-{'edge': 0, 'node': 0, 'community_report': 0, 'pilot_request': 0}
+{'edge': 0, 'node': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0}
 ```
-Notes:
-- 0 skipped.
-- The API test files print as `services/routing/tests/…` because pytest chooses `services/routing` as rootdir when given both directories; they live in `services/api/tests/`.
-- The one warning is Starlette's deprecation of `httpx` in TestClient.
+(The output above is filtered to latency lines and the summary. The cycle-2 run, unfiltered: `257 passed, 1 warning in 28.62s`, 0 skipped; the 17 new weather tests account for the difference. The single warning is Starlette's `httpx` TestClient deprecation.)
 
 ### 2. Lint and ownership gate
 ```text
@@ -75,7 +47,7 @@ All checks passed!
 20 files already formatted
 $ (cd services/api && uv run ruff check . && uv run ruff format --check .)
 All checks passed!
-27 files already formatted
+29 files already formatted
 $ scripts/check-ownership.sh routing
 ownership OK for agent/routing
 ```
@@ -93,9 +65,11 @@ History: the first run of this harness against my API (after the v1.1.0 merge) g
 ### 4. Latency on the REAL pilot_mini fixture (OSM, 200 directed edges, 88 nodes, ~340 m × 280 m)
 | Measurement | n | p50 | p95 | max |
 |---|---|---|---|---|
-| engine `compare()` (both variants), random points in fixture bbox | 100 routed (48 more rejected as > 75 m from network) | 1.5 ms | 3.8 ms | 6.1 ms |
+| engine `compare()` (both variants), random points in fixture bbox — cycle 3 | 100 routed (48 more rejected as > 75 m from network) | 1.1 ms | 2.0 ms | 2.5 ms |
+| same — cycle 2 | 100 | 1.5 ms | 3.8 ms | 6.1 ms |
 | same, earlier run under heavier load | 100 | 4.2 ms | 139.1 ms | 649.7 ms |
-| API via TestClient, random node-pair ODs | 100 | 7.5 ms | 20.4 ms | 65.3 ms |
+| API via TestClient, random node-pair ODs — cycle 3 | 100 | 5.7 ms | 11.3 ms | 49.1 ms |
+| same — cycle 2 | 100 | 7.5 ms | 20.4 ms | 65.3 ms |
 | same, earlier run | 100 | 8.4 ms | 56.1 ms | 109.8 ms |
 | live uvicorn :8102, curl `time_total`, sequential node-pair ODs | 30 | ≈4.8 ms | — | 19.2 ms |
 
@@ -112,13 +86,36 @@ Size proxies (SYNTHETIC grids over PILOT_BBOX, final run): 2 400 edges p50 9.1 /
 | Prohibited edges never used; closures excluded, not penalised | Yes | `test_prohibited_edges_never_used_random_pairs`, `test_confirmed_blocking_closure_is_excluded_not_penalised`, `test_confirmed_closure_excluded_end_to_end` |
 | Step-free hard; no route → 404 `NO_ROUTE`, no fallback | Yes | synthetic tests + `test_step_free_on_real_data_never_relaxed` (only 2 directed edges in pilot_mini are tagged step-free; requests fail or use only those) |
 | `/routes/compare` schema-valid vs openapi.yaml; 422 outside coverage; 400/422 on bad input | Yes | `test_api_contract.py`, `test_api_pilot_mini.py` (3 profiles × 2 locales on real graph); Platform harness 54 passed |
-| No fabricated weather/risk; unknown flows through | Yes | weather → 503; `unknown_share == 1.0`, `RISK_LAYER_UNAVAILABLE`; segments risk `unknown`; malformed or failing provider → unknown |
+| No fabricated weather/risk; unknown flows through | Yes | weather: observations served unaltered, 503 when stale/absent, forecast always 503 (`test_api_weather.py`); risk: `unknown_share == 1.0`, `RISK_LAYER_UNAVAILABLE`, segments `unknown`, malformed or failing provider → unknown |
+| Weather endpoints call an ECCC adapter interface | Yes | `ObservationWeatherAdapter` over `WeatherStore` (fake + PostGIS); PostGIS end-to-end test passes |
 | `PostgisGraphProvider` against data-model | Yes | `test_postgis_graph_provider_integration`: real pilot_mini loaded into `wp_routing`, read back identical to `FixtureGraphProvider` (ids, lengths, kinds, access, step_free) |
 | `/reports` + moderation + deletion, in-memory + PostGIS | Yes | in-memory lifecycle/expiry/purge tests; `test_api_postgis.py` runs the full lifecycle, hazards, sources and pilot requests on PostGIS |
 | Latency p50/p95, 100 pilot OD pairs | Yes (pilot_mini) | table above; full pilot graph pending |
 | `pytest services/routing services/api` green; ruff clean | Yes | 257 passed, 0 skipped; ruff output above |
 
-## Fixes made after integration (this cycle)
+## Cycle 3 — ECCC WeatherAdapter (`services/api/src/winterpath_api/weather.py`)
+Reads `wp.weather_obs` (migration 0001) and, when the table exists, `wp.weather_daily` (data-model v1.2; **no migration creates it yet**, so it is detected with `to_regclass` and treated as absent).
+
+| Endpoint / field | Behaviour |
+|---|---|
+| `/weather/current` | Latest observation for `WEATHER_STATION_IDS` (priority order; default = most recent across stations). Values are passed through **unaltered**. Evidence: `confirmed`, `source_ids: ["eccc-geomet"]`, `observed_at`, `retrieved_at` = the ingest run's `finished_at`. |
+| stale / absent | **503 `UPSTREAM_UNAVAILABLE`** when there is no row, the store errors, or the latest observation is older than `WEATHER_MAX_AGE_MINUTES` (default 180). Historical training-window rows are therefore never presented as current. |
+| `freeze_thaw_24h` | From hourly temperatures in the 24 h before the observation: `true` if min < 0 °C < max; `false` only with ≥ 18 distinct hours of temperature and no crossing; otherwise `null` (noted in evidence). Touching exactly 0 °C is not a crossing. |
+| `snow_depth_cm` | Hourly value. Only if that is null, falls back to `weather_daily.snow_on_ground_cm` for the observation's climate day (LST = UTC−5), and the evidence note says so. |
+| `precipitation_mm_1h` | `weather_obs.precip_mm` only. Daily totals are never presented as 1-hour precipitation. |
+| `/weather/forecast` | Always **503**: no forecast product is ingested, and observations are not a forecast. |
+| `/health` `checks.weather` | `disabled` (no adapter) / `ok` (fresh observation) / `degraded` (stale, absent or store error, with reason). |
+
+Enabled with `WEATHER_SOURCE=postgis` plus `DATABASE_URL`. Tests (`services/api/tests/test_api_weather.py`, 17):
+- fake-store unit tests: pass-through, staleness, store failure, 6 freeze-thaw cases, daily fallback and its labelling, hourly-wins, station priority, forecast;
+- API responses validated against openapi.yaml (fresh → 200; stale → 503 + health degraded);
+- a PostGIS end-to-end test on `wp_routing`: inserts 25 hourly rows for station `TEST-IT-ROUTING` and deletes them afterwards.
+
+Not done or not verifiable here:
+- `wp.weather_daily` is not exercised against PostGIS (the table doesn't exist in any migration).
+- I did not query the Data agent's `wp_data` (not my DB). If it holds only historical `climate-hourly` rows, `/weather/current` will correctly answer 503 (stale) in integration until a near-real-time `swob-realtime` ingest runs.
+
+## Fixes made after integration (cycle 2)
 1. **Privacy (found by Platform harness):** uvicorn's own access log wrote full query strings (precise bbox coordinates) and client IPs. It is now disabled from inside the app (`logs.py`), so this holds however uvicorn is launched; our middleware logs path/status/duration only. Log timestamps are now at millisecond precision.
 2. **Contract v1.1.0:** a malformed report id or deletion token now returns 422 on DELETE and moderation (declared in v1.1.0). A well-formed but wrong token still returns 404, so report existence is never revealed. `CONTRACT_VERSION` is 1.1.0.
 3. **PostGIS bug (found by the new DB tests):** the admin listing used `(:status IS NULL OR status = :status)`, which Postgres rejects as an untyped parameter. The filter is now built explicitly.
@@ -148,7 +145,8 @@ Size proxies (SYNTHETIC grids over PILOT_BBOX, final run): 2 400 edges p50 9.1 /
 | Full pilot graph (whole PILOT_BBOX) not built | Real-data latency known only for 200 edges; synthetic 14k-edge proxy given | Data agent; rerun `test_routing_latency` pattern on it (routing) |
 | Migration `0001` lacks v1.2 columns (`wp.edge.crossing_type/crossing_kerb/highway/osm_snapshot`, `wp.closure.attrs/backsidewalk_blocks_passage`, `wp.weather_daily`) | From PostGIS, crossing type/kerb come only from node tags until the v1.2 migration lands (handled; selected automatically once present) | Data agent: migration 0002 |
 | ML `RiskProvider` not landed | Only the `none` layer is exercised end-to-end | ML; then set `RISK_PROVIDER=winterpath_ml.inference:<factory>` |
-| No concrete ECCC weather adapter | `/weather/*` → 503 (correct, no invented values). `wp.weather_obs`/`weather_daily` exist in `wp_data` | Follow-up (routing): adapter reading `wp.weather_obs`/`weather_daily` |
+| No forecast source ingested | `/weather/forecast` is always 503 (by design) | Decision (coordinator/user): ingest ECCC `citypageweather-realtime` into a table, or approve a live adapter |
+| No near-real-time weather ingest confirmed | `/weather/current` answers 503 (stale) unless `weather_obs` has a row newer than 180 min | Data agent: schedule a `swob-realtime` ingest (scheduled jobs need approval) |
 | Report `purge()` not scheduled | Expiry is enforced on read; 30-day hard delete only when `purge()` is called | Platform/coordinator (scheduled jobs need approval) |
 
 ## Dependencies on other agents
@@ -164,14 +162,15 @@ Size proxies (SYNTHETIC grids over PILOT_BBOX, final run): 2 400 edges p50 9.1 /
 - `/data-sources` licence and attribution text is transcribed from `docs/data-sources-and-licenses.md`. Licence URLs for CC BY 4.0, ODbL 1.0 and the ECCC licence page come from my own knowledge, not re-fetched — please verify.
 - Integration tests write to `wp_routing` (my own DB) only and clean up after themselves.
 
-## Change requests (contracts) — still open
-1. `.env.example`: add `ROUTING_GRAPH_SOURCE`, `ROUTING_FIXTURE_DIR`, `API_STORE_BACKEND`, `RISK_PROVIDER`, `ROUTING_WORKERS`. `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
+## Change requests (contracts) — still open (pending coordinator/user decision; not implemented)
+1. `.env.example`: add `ROUTING_GRAPH_SOURCE`, `ROUTING_FIXTURE_DIR`, `API_STORE_BACKEND`, `RISK_PROVIDER`, `ROUTING_WORKERS`, and (cycle 3) `WEATHER_SOURCE`, `WEATHER_MAX_AGE_MINUTES`, `WEATHER_STATION_IDS`. `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
 2. openapi.yaml (additive): declare `503 Unavailable` on `/routes/compare`, `/map/segments`, `/hazards`, `/data-sources`. These return `503 UPSTREAM_UNAVAILABLE` when the graph or a store is down.
 3. openapi.yaml (clarify): a point > 75 m from the routable network returns `422 OUTSIDE_COVERAGE` with `details.which`/`max_snap_distance_m`. Consider a distinct code (e.g. `OFF_NETWORK`).
 4. data-model (additive): `wp.edge.name text null`. pilot_mini also has no `name`, so `steps[].street_name` is always null on real data and instructions carry no street names.
 5. data-model (additive): `wp.community_report.terminal_at timestamptz`. Hard delete currently approximates with `COALESCE(moderated_at, expires_at)`.
 6. data-model (clarify): `wp.closure.status` vocabulary (closures are currently filtered by validity window only).
 7. Confirm the evidence states chosen for explanation codes, and that both routes are returned when they are identical.
+9. data-model (clarify, cycle 3): the interval of `wp.weather_obs.precip_mm`. I serve it as `precipitation_mm_1h`, which is correct for `climate-hourly` and for SWOB's 1-hour amount. Please confirm the ingest stores the 1-hour value for `swob-realtime`. Also: `wp.weather_daily` needs a migration.
 8. **Platform (FYI, not a contract change):** `tests/integration/log_scan.py` flags fractional seconds of microsecond ISO timestamps (e.g. `…:40.010135Z`) as latitudes. I avoided this by logging milliseconds, but other services may trip it.
 
 (Withdrawn: the source-id CR is resolved by the Data agent's canonical ids. The `DELETE /reports` 404/422 question is resolved by v1.1.0.)
