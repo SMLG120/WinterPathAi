@@ -1,8 +1,89 @@
 # Agent report — platform
 
 - **Status:** READY FOR REVIEW (local DB boot and contract-vs-stub verified; CI never run on GitHub — repo has no remote and nothing was pushed)
-- **Branch / SHA:** agent/platform @ b6daddf (implementation). This report is in the following commit.
+- **Branch / SHA:** agent/platform @ 5ce5c9f (contract v1.1.0 adoption), on top of merge 11e525f of `integration/winterpath` f191fce. Original implementation: b6daddf. This report update is in the following commit.
+- **Contract:** v1.1.0 (CR-PLAT-1 and CR-PLAT-2 implemented by the coordinator)
 - **Date (UTC):** 2026-11-10
+
+## Update 2026-11-10 — contract v1.1.0 adopted
+The coordinator's instruction was: merge `integration/winterpath` (f191fce), remove the CR-PLAT-1 xfails, and re-verify.
+
+1. `git merge --no-edit integration/winterpath`: merge made by `ort`, merge commit 11e525f, no conflicts, no rebase or force. The merge brought in `docs/contracts/openapi.yaml` 1.1.0, `integration-rules.md` §7 changelog, `.env.example` test-harness names and `scripts/` changes. I reviewed the contract diff and it matches CR-PLAT-1 exactly. **`docs/contracts/` was not edited on this branch.**
+2. I removed the 4 strict xfail markers and the `KNOWN_NEGATIVE_GAPS` list from `tests/integration/test_contract.py`.
+3. **A defect surfaced and was fixed (test harness, not stub or contract).** With the xfail removed, `test_negative[GET /admin/reports]` failed with Schemathesis `ST201 Schema-violating request accepted`. The generated case had removed the `Authorization` header (`header: violates required (was Authorization)`), but `_call()` re-injected the admin bearer token, which undid the mutation. The stub then correctly answered 200. Literal excerpt from the failing run:
+   ```text
+   - ST201 Schema-violating request accepted
+       Invalid data should have been rejected
+       Invalid component:
+         - query: violates `additionalProperties`
+         - header: violates `required` (was Authorization)
+   [200] OK:
+       `{"items":[],"next_cursor":null}`
+   1 failed, 49 passed, 5 skipped in 25.31s
+   ```
+   Fix: the token is now injected only for positive cases (`inject_auth=True`). To keep validation behind auth covered, I added `test_smoke.py::test_admin_invalid_input_rejected_when_authorized`, with 4 cases: bad `status`, `limit=0`, bad `decision`, non-uuid id. Each expects 400/422 `VALIDATION_ERROR`.
+4. The stub needed no code change. It already returns 400 for malformed bodies wherever the operation declares 400, and `/pilot-requests` now declares it.
+
+Post-merge literal outputs:
+```text
+$ make test
+cd tests/integration && uv sync --locked --quiet && uv run pytest -q
+..............ssss...s.....................................              [100%]
+=========================== short test summary info ============================
+SKIPPED [5] .venv/lib/python3.12/site-packages/pluggy/_manager.py:183: Impossible to generate negative test cases
+54 passed, 5 skipped in 11.56s
+SKIP services/ingestion: no pyproject.toml on this branch
+SKIP services/routing: no pyproject.toml on this branch
+SKIP services/ml: no pyproject.toml on this branch
+SKIP services/api: no pyproject.toml on this branch
+SKIP apps/web: no package.json on this branch
+[exit 0]
+
+$ (contract only, larger budget) CONTRACT_MAX_EXAMPLES=150 uv run pytest -q -m contract
+SKIPPED [5] .venv/lib/python3.12/site-packages/pluggy/_manager.py:183: Impossible to generate negative test cases
+23 passed, 5 skipped, 31 deselected in 34.12s
+
+$ make lint
+cd tests/integration && uv sync --locked --quiet && uv run ruff check . && uv run ruff format --check .
+All checks passed!
+13 files already formatted
+SKIP services/ingestion: no pyproject.toml on this branch
+SKIP services/routing: no pyproject.toml on this branch
+SKIP services/ml: no pyproject.toml on this branch
+SKIP services/api: no pyproject.toml on this branch
+SKIP apps/web: no package.json on this branch
+actionlint
+shellcheck -x -S warning infra/scripts/*.sh infra/db/init/*.sh
+POSTGRES_USER=lint POSTGRES_PASSWORD=lint-placeholder docker compose config --quiet && echo "compose config OK"
+compose config OK
+[exit 0]
+
+$ actionlint --version && actionlint
+1.7.12
+[exit 0]
+
+$ make config
+docker compose --env-file .env.local config --quiet && echo "compose config OK"
+compose config OK
+[exit 0]
+
+$ grep -n "^  version" docs/contracts/openapi.yaml
+4:  version: 1.1.0
+$ grep -rn -E "xfail|KNOWN_NEGATIVE_GAPS" tests/integration/*.py
+[exit 1 — 1 = no matches]
+$ git diff --stat HEAD -- docs/contracts
+[no output = contracts untouched]
+
+$ scripts/check-ownership.sh platform
+ownership OK for agent/platform
+
+$ docker compose --env-file .env.local ps db
+NAME              IMAGE                    COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+winterpath-db-1   postgis/postgis:16-3.4   "docker-entrypoint.s…"   db        18 minutes ago   Up 18 minutes (healthy)   127.0.0.1:55432->5432/tcp
+```
+The negative contract tests that were xfail before now pass, as shown in a `-rA` run before the harness fix: `PASSED test_negative[GET /weather/forecast]`, `[DELETE /reports/{reportId}]`, `[POST /admin/reports/{reportId}/moderation]`, `[POST /pilot-requests]`. `[GET /admin/reports]` also passes after the fix.
+
+**The sections below are the original v1.0.0 report (commit b6daddf), kept for history.** Where they conflict with this update, this update wins.
 
 ## Files changed
 ```text
@@ -218,7 +299,7 @@ ownership OK for agent/platform
 | `docker compose config` valid | Yes | `make config` and `lint-infra` above; all 3 services resolve with profiles |
 | `docker compose up db` healthy (or BLOCKED) | Yes | `Container winterpath-db-1 Healthy`; 5 DBs with PostGIS 3.4.3; roles and privileges verified |
 | CI YAML passes `actionlint` locally | Yes | actionlint 1.7.12, exit 0, with shellcheck integration active |
-| Contract tests green against stub, ready for real API | Yes (stub) | 46 passed / 4 strict-xfail (contract gaps) / 5 skipped. Real API: `API_BASE_URL=… API_LOG_FILE=… make test`; CI job already wired |
+| Contract tests green against stub, ready for real API | Yes (stub) | v1.1.0: 54 passed / 5 skipped / 0 xfail (was 46 / 4 xfail / 5 under v1.0.0). Real API: `API_BASE_URL=… API_LOG_FILE=… make test`; CI job already wired |
 | gitleaks run on repo with literal output | Yes | History: no leaks (6 commits). Working tree: only the ignored `.env.local` |
 | No secrets committed; `.env.example` names only | Yes | gitleaks; `.env.example` untouched (coordinator-owned); env name additions requested in CR-PLAT-2 |
 | api/web services behind profiles, skipped with explicit message | Yes | `make up` prints SKIP lines; CI prints `::notice` SKIP |
@@ -230,7 +311,6 @@ ownership OK for agent/platform
 |---|---|---|
 | CI has never executed on GitHub (no remote; pushing is prohibited) | Workflow has only been checked statically (actionlint); runtime behaviour of the jobs is unverified | Coordinator/user decides when a remote exists |
 | Contract tests not yet run against the real API | Gap between stub and real behaviour unknown | After the Routing merge: `API_BASE_URL=http://127.0.0.1:8100/api/v1 API_LOG_FILE=<log> make test` |
-| CR-PLAT-1 contract gaps | 4 operations cannot answer invalid input with a declared status | Coordinator (see below) |
 
 ## Dependencies on other agents
 - **Routing/API**:
@@ -256,7 +336,7 @@ ownership OK for agent/platform
 - Render plan/region and Supabase features (`h3` availability, backup retention) are marked **unverified** in the drafts.
 
 ## Change requests (contracts)
-### CR-PLAT-1 — declare error responses for invalid input (additive, minor bump)
+### CR-PLAT-1 — declare error responses for invalid input (additive, minor bump) — **RESOLVED in v1.1.0 (f191fce)**
 Schemathesis negative testing shows that these operations declare no status for schema-invalid requests. Any conforming implementation, including FastAPI's default 422, therefore produces an undocumented status:
 
 | Operation | Invalid input example | Declared today | Proposed addition |
@@ -267,7 +347,7 @@ Schemathesis negative testing shows that these operations declare no status for 
 | `POST /admin/reports/{reportId}/moderation` | bad body / non-uuid id | 200, 401, 404 | `400`, `422` |
 | `POST /pilot-requests` | malformed JSON / missing body | 201, 422, 429 | `400` (the stub uses 422 here for now) |
 
-### CR-PLAT-2 — `.env.example` names (coordinator-owned)
+### CR-PLAT-2 — `.env.example` names (coordinator-owned) — **RESOLVED in v1.1.0 (f191fce)**
 Add names only, for the test harness: `API_BASE_URL`, `API_LOG_FILE`, `API_ADMIN_TOKEN` (plaintext, tests/local only), `API_APP`, `STUB_PORT`, `STUB_ADMIN_TOKEN`, `CORS_ALLOWED_ORIGIN`.
 
 ## Review readiness
