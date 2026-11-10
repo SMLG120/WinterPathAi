@@ -1,0 +1,68 @@
+{
+  "title": "Conditions hivernales",
+  "intro": "La météo et les alertes d'Environnement et Changement climatique Canada pour la zone pilote, et l'état de notre couche de risque.",
+  "current": {
+    "title": "Observation actuelle",
+    "temperature": "Température",
+    "precip": "Précipitations (1 h)",
+    "snowDepth": "Neige au sol",
+    "wind": "Vent",
+    "station": "Station",
+    "observed": "Observé {{time}}",
+    "noValue": "—"
+  },
+  "freezeThaw": {
+    "title": "Gel-dégel au cours des 24 dernières heures",
+    "yes": "Oui — la température a franchi 0 °C",
+    "no": "Aucun passage à 0 °C",
+    "unknown": "Inconnu",
+    "desc": "Dérivé des observations. Les cycles de gel-dégel rendent souvent les trottoirs glissants, mais cela ne renseigne pas sur l'état d'un trottoir en particulier."
+  },
+  "forecast": {
+    "title": "Prévisions",
+    "pop": "Probabilité de précipitations {{pct}} %",
+    "issued": "Émises {{time}}",
+    "empty": "Aucune période de prévision disponible."
+  },
+  "alerts": {
+    "title": "Alertes météo",
+    "none": "Aucune alerte en vigueur dans les données reçues.",
+    "unaltered": "Les alertes sont reproduites telles que publiées par Environnement et Changement climatique Canada, dans leur langue de publication.",
+    "issued": "Émise {{time}}",
+    "expires": "Expire {{time}}",
+    "severity": "Gravité : {{value}}"
+  },
+  "history": {
+    "title": "Historique des requêtes 311 hivernales",
+    "unavailable": "Pas encore disponible. L'API (contrat v1) n'offre aucun point d'accès pour l'historique agrégé des requêtes 311 ; nous n'affichons donc rien plutôt qu'un graphique inventé. Une demande de modification a été soumise."
+  },
+  "model": {
+    "title": "État du modèle de risque",
+    "enabled": "Activé",
+    "disabled": "Désactivé — pas encore validé",
+    "layer": {
+      "model": "Modèle validé",
+      "heuristic": "Heuristique identifiée",
+      "none": "Aucune couche de risque"
+    },
+    "target": "Ce qu'il prédit",
+    "targetNote": "Il s'agit d'un indicateur de l'activité de signalement, pas de la présence physique de glace.",
+    "trainedAt": "Entraîné",
+    "window": "Période d'entraînement",
+    "evaluation": "Évaluation mesurée",
+    "noEvaluation": "Aucune évaluation n'a été enregistrée.",
+    "metrics": {
+      "split": "Jeu de test",
+      "pr_auc": "PR-AUC",
+      "baseline_pr_auc": "PR-AUC de référence",
+      "brier": "Score de Brier",
+      "precision_at_k": "Précision@k",
+      "recall_at_k": "Rappel@k",
+      "n_test": "Échantillons de test"
+    },
+    "limitations": "Limites"
+  },
+  "refresh": {
+    "title": "Dernière mise à jour"
+  }
+}

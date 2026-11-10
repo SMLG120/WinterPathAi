@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="WinterPath AI — compare the shortest walk with a winter-aware route in Montréal's pilot area, with every datum labelled by evidence." />
+    <meta name="theme-color" content="#101B2C" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>WinterPath AI</title>
+    <script>
+      // Apply the stored theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var p = localStorage.getItem('wp-theme');
+          var d = p === 'dark' || (p !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (d) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

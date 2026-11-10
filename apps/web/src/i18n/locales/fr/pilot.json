@@ -1,0 +1,49 @@
+{
+  "title": "Projets pilotes",
+  "intro": "Nous cherchons des organisations montréalaises qui souhaitent tester une information transparente sur la marche hivernale avec leur communauté.",
+  "segments": {
+    "title": "À qui s'adresse un projet pilote",
+    "items": [
+      { "title": "Universités", "body": "La communauté étudiante et le personnel qui traversent un campus du centre-ville l'hiver." },
+      { "title": "Campus", "body": "Hôpitaux, cégeps et campus d'entreprise comptant de nombreuses entrées." },
+      { "title": "Municipalités", "body": "Les équipes de mobilité qui veulent un portrait agrégé des obstacles hivernaux pour les piétons." },
+      { "title": "Gestionnaires immobiliers", "body": "Les propriétaires et gestionnaires qui veulent voir les problèmes signalés autour de leurs immeubles." }
+    ]
+  },
+  "includes": {
+    "title": "Ce que comprend un projet pilote",
+    "items": [
+      "Une zone de couverture définie, dont le réseau piétonnier est construit et vérifié pour ses lacunes.",
+      "Le planificateur de trajets bilingue, configuré pour votre zone.",
+      "Un canal de signalements citoyens modéré pour vos usagers.",
+      "Un rapport écrit sur ce qui a fonctionné ou non, fondé uniquement sur des résultats mesurés."
+    ]
+  },
+  "analytics": {
+    "title": "Des statistiques respectueuses de la vie privée",
+    "body": "Les statistiques des projets pilotes sont uniquement agrégées : nombre de demandes d'itinéraire et de signalements par zone approximative et par jour. Aucun déplacement individuel, aucun suivi, et aucune donnée personnelle n'est communiquée aux partenaires."
+  },
+  "honesty": "Nous n'avons pas encore publié de résultats de projet pilote. Nous communiquerons des résultats mesurés, pas des projections.",
+  "form": {
+    "title": "Demander une discussion sur un projet pilote",
+    "organization": "Organisation",
+    "contactName": "Votre nom (facultatif)",
+    "email": "Courriel",
+    "segment": "Type d'organisation",
+    "segments": {
+      "university": "Université",
+      "campus": "Campus",
+      "municipality": "Municipalité",
+      "property_manager": "Gestionnaire immobilier",
+      "other": "Autre"
+    },
+    "message": "Message (facultatif)",
+    "consent": "J'accepte que WinterPath conserve ces renseignements pendant 12 mois pour répondre à cette demande.",
+    "submit": "Envoyer la demande",
+    "submitting": "Envoi…",
+    "success": "Merci — nous avons bien reçu votre demande.",
+    "required": "Ce champ est obligatoire.",
+    "invalidEmail": "Entrez une adresse courriel valide.",
+    "consentRequired": "Vous devez donner votre accord avant l'envoi."
+  }
+}

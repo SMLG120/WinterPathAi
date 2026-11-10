@@ -1,0 +1,22 @@
+{
+  "generic": "Un problème est survenu. Veuillez réessayer.",
+  "network": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.",
+  "retryAfter": "Réessayez dans {{seconds}} secondes.",
+  "codes": {
+    "VALIDATION_ERROR": "Certains renseignements envoyés ne sont pas valides.",
+    "OUTSIDE_COVERAGE": "Cet emplacement est hors de la zone pilote.",
+    "BBOX_TOO_LARGE": "La zone de la carte est trop grande. Zoomez.",
+    "NO_ROUTE": "Aucun trajet trouvé avec ces paramètres.",
+    "NOT_FOUND": "Introuvable.",
+    "UNAUTHORIZED": "Vous n'êtes pas autorisé à effectuer cette action.",
+    "RATE_LIMITED": "Trop de demandes. Veuillez patienter un instant.",
+    "UPSTREAM_UNAVAILABLE": "Une source de données est indisponible pour le moment.",
+    "INTERNAL": "Le serveur a rencontré un problème.",
+    "NETWORK": "Impossible de joindre le serveur.",
+    "UNKNOWN": "Réponse inattendue du serveur."
+  },
+  "boundary": {
+    "title": "Cette partie de la page n'a pas pu se charger",
+    "reload": "Recharger la page"
+  }
+}

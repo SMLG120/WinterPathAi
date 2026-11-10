@@ -1,0 +1,149 @@
+{
+  "title": "Plan a winter walk",
+  "intro": "Set a start and destination inside the pilot area, then compare routes.",
+  "points": {
+    "origin": "Start",
+    "destination": "Destination",
+    "notSet": "Not set",
+    "setOnMap": "Pick on map",
+    "picking": "Click the map to set the {{point}}",
+    "clear": "Clear",
+    "swap": "Swap start and destination"
+  },
+  "manual": {
+    "legend": "Enter coordinates",
+    "lat": "Latitude",
+    "lon": "Longitude",
+    "apply": "Set {{point}}",
+    "invalid": "Enter a latitude between −90 and 90 and a longitude between −180 and 180.",
+    "outsideHint": "This point is outside the pilot area; routing will be refused."
+  },
+  "search": {
+    "label": "Search an address",
+    "disabled": "Address search is off: no permitted geocoding provider is configured for this deployment. Pick a point on the map or enter coordinates instead."
+  },
+  "geo": {
+    "button": "Use my location",
+    "consentTitle": "Share your location?",
+    "consentBody": "Your browser will ask for permission. Your location is used once to set the start point, kept only in this page, and never stored or logged by WinterPath.",
+    "allow": "Continue",
+    "locating": "Locating…",
+    "denied": "Location permission was denied. You can still pick a point on the map or enter coordinates.",
+    "unavailable": "Your location isn't available right now. Pick a point on the map or enter coordinates.",
+    "unsupported": "This browser doesn't support location. Pick a point on the map or enter coordinates.",
+    "success": "Start set from your location."
+  },
+  "profile": {
+    "label": "Walking profile",
+    "standard": "Standard",
+    "step_free": "Step-free",
+    "reduced_mobility": "Reduced mobility",
+    "desc": {
+      "standard": "Typical walking speed.",
+      "step_free": "Only uses paths verified as step-free. Anything unverified is excluded, so a route may not exist.",
+      "reduced_mobility": "Slower walking speed for time estimates."
+    }
+  },
+  "avoidReports": {
+    "label": "Avoid unverified reports when possible",
+    "desc": "Penalises paths with 311 or community reports. They are reports, not confirmed obstacles."
+  },
+  "compare": "Compare routes",
+  "computing": "Computing routes…",
+  "needPoints": "Set both a start and a destination.",
+  "results": {
+    "title": "Route comparison",
+    "shortest": "Shortest",
+    "winter_aware": "Winter-aware",
+    "distance": "Distance",
+    "duration": "Walking time",
+    "unknownShare": "No condition data",
+    "unknownShareDesc": "{{pct}} of this route has unknown conditions — unknown is not zero risk.",
+    "explanation": "Why this route",
+    "freshness": "Data freshness",
+    "steps": "Step-by-step directions",
+    "identical": "Both routes are the same: no better winter-aware alternative was found.",
+    "riskLayer": {
+      "label": "Risk layer",
+      "model": "Validated model",
+      "heuristic": "Labelled heuristic",
+      "none": "None — risk is unknown"
+    },
+    "warnings": "Warnings",
+    "hazardsAvoided_one": "Avoids {{count}} known issue",
+    "hazardsAvoided_other": "Avoids {{count}} known issues",
+    "hazardsOnRoute_one": "{{count}} known issue on route",
+    "hazardsOnRoute_other": "{{count}} known issues on route",
+    "show": "Show on map",
+    "shown": "Shown on map",
+    "computedAt": "Computed {{time}}"
+  },
+  "errors": {
+    "NO_ROUTE": {
+      "title": "No route found",
+      "body": "There's no legal pedestrian path with these settings. With the step-free profile, any path not verified as step-free is excluded. Try the standard profile or different points."
+    },
+    "OUTSIDE_COVERAGE": {
+      "title": "Outside the pilot area",
+      "body": "Both points must be inside the McGill / Downtown pilot area (hatched outside). Move your start or destination inside it."
+    },
+    "RATE_LIMITED": {
+      "title": "Too many requests",
+      "body": "Please wait a moment before comparing again."
+    },
+    "generic": {
+      "title": "Couldn't compute routes",
+      "body": "The routing service didn't respond as expected."
+    }
+  },
+  "overlays": {
+    "title": "Map layers",
+    "segments": "Sidewalk conditions",
+    "hazards": "Closures & reports",
+    "zoomIn": "Zoom in to load map layers.",
+    "outsidePilot": "This view is outside the pilot area.",
+    "loading": "Loading layers…",
+    "error": "Couldn't load map layers.",
+    "inView": "Issues in view",
+    "none": "No closures or reports in this view."
+  },
+  "legend": {
+    "title": "Legend",
+    "risk": {
+      "low": "Low",
+      "moderate": "Moderate",
+      "elevated": "Elevated",
+      "high": "High",
+      "unknown": "Unknown (dashed)"
+    },
+    "riskTitle": "Sidewalk condition estimate",
+    "hazardTitle": "Closures & reports",
+    "routeTitle": "Routes",
+    "outside": "Outside pilot area (hatched)"
+  },
+  "hazard": {
+    "kind": {
+      "sidewalk_closure": "Sidewalk closure",
+      "construction_impact": "Construction impact",
+      "report_311_aggregate": "311 reports (aggregated)",
+      "community_report": "Community report"
+    },
+    "blocks": {
+      "true": "Passage blocked (stated by source)",
+      "false": "Passage not blocked (stated by source)",
+      "null": "Passage not stated"
+    },
+    "reportCount_one": "{{count}} report",
+    "reportCount_other": "{{count}} reports"
+  },
+  "map": {
+    "label": "Route planning map",
+    "fallback": "The interactive map can't be shown in this browser (WebGL unavailable). You can still enter coordinates and read the route as a list.",
+    "loadError": "The basemap couldn't load. You can still enter coordinates and read the route as a list.",
+    "hint": "Map is optional: every action is also available in the panel."
+  },
+  "sheet": {
+    "expand": "Expand panel",
+    "collapse": "Collapse panel"
+  }
+}

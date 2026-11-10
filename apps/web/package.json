@@ -1,0 +1,83 @@
+{
+  "name": "@winterpath/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite --port 5174 --strictPort",
+    "dev:mock": "VITE_USE_MOCKS=true vite --port 5174 --strictPort",
+    "gen:api": "openapi-typescript ../../docs/contracts/openapi.yaml --default-non-nullable=false -o src/api/schema.d.ts",
+    "build": "tsc -b && vite build",
+    "build:mock": "tsc -b && VITE_USE_MOCKS=true vite build",
+    "preview": "vite preview --port 5174 --strictPort",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "size": "node scripts/bundle-size.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource-variable/source-serif-4": "5.3.1",
+    "@hookform/resolvers": "5.9.2",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@react-three/fiber": "8.18.0",
+    "@tanstack/react-query": "5.107.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "i18next": "25.10.10",
+    "lucide-react": "^0.545.0",
+    "maplibre-gl": "^6.17.0",
+    "motion": "12.43.0",
+    "openapi-fetch": "0.14.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-hook-form": "7.91.0",
+    "react-i18next": "15.7.4",
+    "react-router": "7.18.5",
+    "tailwind-merge": "^3.3.1",
+    "three": "0.180.0",
+    "zod": "^4.6.7",
+    "zustand": "5.1.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "1.65.0",
+    "@tailwindcss/vite": "4.3.5",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@types/three": "0.180.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "2.1.1",
+    "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.4.0",
+    "jsdom": "26.1.0",
+    "msw": "2.15.0",
+    "openapi-typescript": "7.13.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "7.3.8",
+    "vitest": "^4.1.12",
+    "yaml": "2.9.1"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}
