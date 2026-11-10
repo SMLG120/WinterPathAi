@@ -123,7 +123,15 @@ def build_state(
         )
     if risk is None:
         try:
-            risk = load_risk_provider(settings.risk_provider)
+            edge_coords = None
+            if engine is not None:
+                edges = engine.graph.edges
+
+                def edge_coords(eid: str):
+                    e = edges.get(eid)
+                    return e.coords if e is not None else None
+
+            risk = load_risk_provider(settings.risk_provider, edge_coords)
         except (ImportError, AttributeError) as exc:
             log.warning("risk_provider_unavailable", error_type=type(exc).__name__)
             risk = NullRiskProvider()

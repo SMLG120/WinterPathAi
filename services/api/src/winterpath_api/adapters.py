@@ -1,8 +1,13 @@
 """External-provider adapters: risk (ML) and weather (ECCC).
 
-Risk: wraps any object implementing ``edge_risk(edge_ids, at)`` (integration-rules §2,
-``winterpath_ml.inference.RiskProvider``) and normalises results to routing ``RiskEstimate``;
-anything malformed becomes ``unknown``. Default is :class:`NullRiskProvider`.
+Risk: two provider shapes are accepted and normalised to routing ``RiskEstimate`` (anything
+malformed or raising becomes ``unknown``; default is :class:`NullRiskProvider`):
+
+* id-keyed — ``edge_risk(edge_ids, at) -> {edge_id: estimate}`` (:class:`NormalisingRiskProvider`);
+* coordinate-keyed — ``winterpath_ml.inference.RiskProvider`` (integration-rules §2):
+  ``edge_risk(coords, valid_from) -> estimate`` plus ``cell_risk`` and ``status()``
+  (:class:`CoordinateRiskAdapter`, which looks edge geometry up in the routing graph). Its layer
+  comes from ``status()["risk_layer"]``; a heuristic layer reports ``probability: null``.
 
 Weather: :class:`WeatherAdapter` protocol. No adapter is configured by default, so weather
 endpoints return 503 ``UPSTREAM_UNAVAILABLE`` — values are never invented.
@@ -11,9 +16,12 @@ endpoints return 503 ``UPSTREAM_UNAVAILABLE`` — values are never invented.
 from __future__ import annotations
 
 import importlib
-from collections.abc import Mapping, Sequence
+from collections import OrderedDict
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
+from threading import Lock
 from typing import Any, Protocol
+from zoneinfo import ZoneInfo
 
 import structlog
 from winterpath_routing import (
@@ -74,7 +82,7 @@ class NormalisingRiskProvider:
     def __init__(self, inner: Any) -> None:
         self.inner = inner
         layer = str(getattr(inner, "risk_layer", "heuristic"))
-        self.risk_layer = layer if layer in ("model", "heuristic", "none") else "heuristic"
+        self.risk_layer = _layer(layer)
 
     def edge_risk(self, edge_ids: Sequence[str], at: datetime) -> Mapping[str, RiskEstimate]:
         try:
@@ -89,19 +97,95 @@ class NormalisingRiskProvider:
         return fn() if callable(fn) else None
 
 
-def load_risk_provider(spec: str) -> RiskProvider:
-    """``none`` → NullRiskProvider; ``pkg.module:factory`` → factory() wrapped for normalisation."""
+EdgeCoords = Callable[[str], Sequence[Sequence[float]] | None]
+LOCAL_TZ = ZoneInfo("America/Montreal")  # ML score tables are keyed by Montréal local day
+
+
+def _layer(v: Any) -> str:
+    return v if v in ("model", "heuristic", "none") else "heuristic"
+
+
+def is_coordinate_provider(obj: Any) -> bool:
+    """``winterpath_ml.inference.RiskProvider`` shape (has ``cell_risk`` and ``status``)."""
+    return callable(getattr(obj, "cell_risk", None)) and callable(getattr(obj, "status", None))
+
+
+class CoordinateRiskAdapter:
+    """Adapts a coordinate-keyed ML provider to the routing ``RiskProvider`` protocol.
+
+    Results are cached per (edge id, Montréal local day): the ML layers are daily score tables,
+    so the estimate for an edge cannot change within a day for a loaded provider.
+    """
+
+    def __init__(self, inner: Any, edge_coords: EdgeCoords, cache_size: int = 200_000) -> None:
+        self.inner = inner
+        self.edge_coords = edge_coords
+        try:
+            status = inner.status() or {}
+        except Exception as exc:
+            log.warning("risk_status_failed", error_type=type(exc).__name__)
+            status = {}
+        self._status = dict(status)
+        self.risk_layer = _layer(self._status.get("risk_layer"))
+        self._cache: OrderedDict[tuple[str, Any], RiskEstimate] = OrderedDict()
+        self._cache_size = cache_size
+        self._lock = Lock()
+
+    def _one(self, eid: str, at: datetime) -> RiskEstimate:
+        coords = self.edge_coords(eid)
+        if not coords or len(coords) < 2:
+            return RiskEstimate.unknown("Segment geometry unavailable to the risk layer.")
+        try:
+            return normalise_estimate(self.inner.edge_risk(coords, at))
+        except Exception as exc:
+            log.warning("risk_provider_failed", error_type=type(exc).__name__)
+            return RiskEstimate.unknown("Risk provider failed for this segment.")
+
+    def edge_risk(self, edge_ids: Sequence[str], at: datetime) -> Mapping[str, RiskEstimate]:
+        if self.risk_layer == "none":
+            return NullRiskProvider().edge_risk(edge_ids, at)
+        day = at.astimezone(LOCAL_TZ).date()
+        out: dict[str, RiskEstimate] = {}
+        for eid in edge_ids:
+            key = (eid, day)
+            with self._lock:
+                hit = self._cache.get(key)
+            if hit is None:
+                hit = self._one(eid, at)
+                with self._lock:
+                    self._cache[key] = hit
+                    if len(self._cache) > self._cache_size:
+                        self._cache.popitem(last=False)
+            out[eid] = hit
+        return out
+
+    def model_status(self) -> dict[str, Any] | None:
+        return self._status or None
+
+
+def load_risk_provider(spec: str, edge_coords: EdgeCoords | None = None) -> RiskProvider:
+    """``none`` → NullRiskProvider; ``pkg.module:factory`` → factory() wrapped for normalisation.
+
+    A coordinate-keyed provider (``winterpath_ml.inference``) needs ``edge_coords``; without a
+    graph there is nothing to look up, so every edge is unknown (NullRiskProvider).
+    """
     if not spec or spec.lower() == "none":
         return NullRiskProvider()
     module_name, _, attr = spec.partition(":")
     factory = getattr(importlib.import_module(module_name), attr or "RiskProvider")
-    return NormalisingRiskProvider(factory() if callable(factory) else factory)
+    inner = factory() if callable(factory) else factory
+    if is_coordinate_provider(inner):
+        if edge_coords is None:
+            log.warning("risk_provider_without_graph")
+            return NullRiskProvider()
+        return CoordinateRiskAdapter(inner, edge_coords)
+    return NormalisingRiskProvider(inner)
 
 
 def default_model_status(provider: Any) -> dict[str, Any]:
     status_fn = getattr(provider, "model_status", None)
     status = status_fn() if callable(status_fn) else None
-    if status:
+    if status and (status.get("risk_layer") != "none" or status.get("limitations")):
         return {"target": ML_TARGET, **status}
     layer = getattr(provider, "risk_layer", "none")
     return {
