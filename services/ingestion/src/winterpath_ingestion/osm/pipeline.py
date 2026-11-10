@@ -40,9 +40,15 @@ def read_geojson(path: Path):
 
 
 def _geom(g) -> dict:
-    if g.geom_type == "Point":
-        return {"type": "Point", "coordinates": [round(g.x, 7), round(g.y, 7)]}
-    return {"type": g.geom_type, "coordinates": [[round(x, 7), round(y, 7)] for x, y in g.coords]}
+    from shapely.geometry import mapping
+
+    def rnd(c):
+        if isinstance(c, (int, float)):
+            return round(c, 7)
+        return [rnd(x) for x in c]
+
+    m = mapping(g)
+    return {"type": m["type"], "coordinates": rnd(m["coordinates"])}
 
 
 def _clean(v):

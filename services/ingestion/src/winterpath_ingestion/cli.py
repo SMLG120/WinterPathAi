@@ -12,13 +12,19 @@ from .config import get_settings
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="wp-ingest")
     ap.add_argument(
-        "pipeline", choices=["osm", "fixture", "voirie", "entraves", "311", "eccc", "all"]
+        "pipeline", choices=["osm", "fixture", "voirie", "entraves", "311", "eccc", "all", "load"]
     )
     ap.add_argument("--refresh", action="store_true", help="re-download raw inputs")
     ap.add_argument("--force", action="store_true", help="rebuild even if checksum unchanged")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     s = get_settings()
+    if args.pipeline == "load":
+        from .db_load import LOADERS, load
+
+        for r in load(s, list(LOADERS), force=args.force):
+            print(json.dumps(r, default=str))
+        return 0
 
     steps = (
         ["osm", "fixture", "voirie", "entraves", "311", "eccc"]

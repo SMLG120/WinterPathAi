@@ -37,6 +37,13 @@ fixture states that a sidewalk is cleared, ice-free, safe or wheelchair accessib
 `null` means unknown and must not be read as accessible.
 """
 
+VOIRIE_ATTRIBUTION = """
+- **Ville de Montréal — Voirie (trottoirs et îlots)**: Contient des données de la Ville de
+  Montréal, sous licence CC BY 4.0 — https://donnees.montreal.ca/dataset/voirie-trottoir-ilot.
+  Used only for `sidewalk_polygon_ids` (polygon ids matched to edges by spatial overlap).
+  Publisher warning: not necessarily up to date across the whole territory.
+"""
+
 
 def select_edges(
     edges: gpd.GeoDataFrame, nodes: gpd.GeoDataFrame, anchor=ANCHOR, max_edges: int = MAX_EDGES
@@ -98,6 +105,15 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
         raise RuntimeError("run `wp-ingest osm` first")
     edges = read_geojson(src / "edges.geojson")
     nodes = read_geojson(src / "nodes.geojson")
+    checksum = m["input_checksum"]
+    vm = read_manifest(settings.processed_dir / "voirie")
+    voirie_used = bool(vm and vm.get("osm_input_checksum") == m["input_checksum"])
+    if voirie_used:
+        mapping = json.loads(
+            (settings.processed_dir / "voirie" / "edge_sidewalk_polygons.json").read_text()
+        )
+        edges["sidewalk_polygon_ids"] = edges["edge_id"].map(lambda e: mapping.get(e, []))
+        checksum = f"{checksum}+{vm['input_checksum']}"
 
     def build(staging: Path, run_id: str) -> dict:
         sel = select_edges(edges, nodes)
@@ -105,13 +121,19 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
         sel_nodes = nodes[nodes["node_id"].isin(node_ids)].sort_values("node_id")
         write_geojson(sel, staging / "edges.geojson")
         write_geojson(sel_nodes, staging / "nodes.geojson")
-        (staging / "ATTRIBUTION.md").write_text(ATTRIBUTION)
+        (staging / "ATTRIBUTION.md").write_text(
+            ATTRIBUTION + (VOIRIE_ATTRIBUTION if voirie_used else "")
+        )
         b = sel.total_bounds
         meta = {
             "simulated": False,
             "description": "Real OSM pedestrian edges around McGill Roddick Gates (WinterPath "
             "pilot_mini fixture).",
-            "source_ids": ["osm"],
+            "source_ids": ["osm", "mtl-voirie"] if voirie_used else ["osm"],
+            "sidewalk_polygon_ids": "Voirie polygons matched by spatial overlap (enrichment "
+            "only; never connectivity)"
+            if voirie_used
+            else "not enriched (empty lists mean not computed)",
             "osm_snapshot": m["osm_snapshot"],
             "osm_raw_sha256": m["input_checksum"],
             "parent_bbox": m["bbox"],
@@ -133,4 +155,4 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
             }
         }
 
-    return run_atomic("pilot_mini", settings.fixtures_dir, m["input_checksum"], build, force=force)
+    return run_atomic("pilot_mini", settings.fixtures_dir, checksum, build, force=force)

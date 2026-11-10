@@ -43,4 +43,4 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["network: requires internet access", "postgis: requires a running PostGIS"]
-addopts = "-m 'not network and not postgis'"
+addopts = "-m 'not network'"
