@@ -1,6 +1,6 @@
 # Agent report — data
 
-- **Status:** READY FOR REVIEW (all 11 brief steps done; see open items and change requests)
+- **Status:** READY FOR REVIEW. v1 MERGED (bc6d6c5); contract v1.2.0 follow-up below
 - **Branch / SHA:** agent/data @ see `git log -1` (this report is committed in the final commit;
   code commits `bcf0c10` scaffold+graph+fixture, `10ca71b` pipelines+migrations+loader)
 - **Date (UTC):** 2026-11-10
@@ -265,6 +265,8 @@ report.
   automatic minutely; `snw_dpth=-1` is a sentinel and is stored as NULL.
 
 ## Change requests (contracts)
+> **Accepted as contract v1.2.0 (36b961b), implemented in migration 0002; see the last section.**
+
 1. **`wp.edge`: add `crossing_type text`, `crossing_kerb text`** (CrossingInfo enums). The API's
    `SegmentFeature.crossing` needs per-edge crossing info, which the builder already computes
    (it's in `edges.geojson`) but has no column for. Additive → minor bump.
@@ -337,3 +339,88 @@ Platform's default privileges for `wp_migrator` would grant `wp_reader` SELECT o
 Migration 0001 explicitly revokes `wp_reader` SELECT on `pilot_request` and `community_report`
 after creating them, so the PII tables stay unreadable by `wp_reader`.
 `scripts/check-ownership.sh data` → `ownership OK for agent/data`.
+
+## Contract v1.2.0 follow-up — 2026-11-10
+`git merge --no-edit integration/winterpath` fast-forwarded to `36b961b` (contract v1.2.0). No
+conflicts; nothing in `docs/contracts/` or platform-owned paths was edited.
+
+**Implemented**
+- `db/migrations/versions/0002_contract_v1_2_0.py`, purely additive:
+  - `wp.edge` gains `crossing_type` and `crossing_kerb` (CHECK on the CrossingInfo enums),
+    `highway`, and `osm_snapshot timestamptz`.
+  - `wp.closure` gains `backsidewalk_blocks_passage boolean` and
+    `attrs jsonb NOT NULL DEFAULT '{}'`.
+  - New table `wp.weather_daily`: PK(station_id, day), non-negative CHECKs on precip, snow and
+    snow on ground, and `source_collection` limited to `climate-daily`. Grants: reader SELECT,
+    writer DML, migrator ALL.
+  - Downgrade drops exactly these objects.
+- Loader:
+  - Edges load the new columns. Crossing type and kerb come from the builder's `crossing`
+    object, and non-crossing edges get NULL.
+  - Closures load `attrs` (permit id, reason, named impacts) and
+    `backsidewalk_blocks_passage`.
+  - `weather_daily` is upserted with no pruning, so history is kept.
+- ECCC pipeline: `climate-daily` is fetched for 7025251 and 702S006 (2022 onward) into
+  `weather_daily.csv`, in the same run as hourly. Missing values stay NULL;
+  `SNOW_ON_GROUND` is NULL outside winter upstream and is not filled with 0.
+- **Unchanged, as instructed:** the Overpass source and the highway include-list
+  (service/cycleway/corridor still excluded) are both pending a user decision.
+
+**Literal results**
+```text
+$ alembic upgrade head            (wp_data)
+$ alembic current
+0002_contract_v1_2_0 (head)
+$ alembic downgrade -1
+$ alembic current
+0001_wp_schema_v1
+$ alembic upgrade head
+$ alembic current
+0002_contract_v1_2_0 (head)
+
+$ uv run wp-ingest eccc   (daily section of stats)
+"daily": {"rows": 3550, "non_null": {"total_precip_mm": 3472, "total_snow_cm": 1766,
+  "snow_on_ground_cm": 1075, "min_temp_c": 3451, "max_temp_c": 3451},
+  "day_range": ["2022-01-01", "2026-11-10"]}
+
+$ load(["osm","entraves","eccc"], force=True)   → wp_data
+{'source_id': 'osm', 'noop': False, 'counts': {'node': 6987, 'edge': 16652}}
+{'source_id': 'mtl-entraves', 'noop': False, 'counts': {'closure': 167}}
+{'source_id': 'eccc-geomet', 'noop': False, 'counts': {'weather_obs': 84249, 'weather_daily': 3550}}
+crossing edges with crossing_type: [(5068, 5068)]
+non-crossing edges with crossing_type: [(0,)]
+crossing_type dist: [('unmarked', 'unknown', 2264), ('traffic_signals', 'unknown', 1440), ('traffic_signals', 'lowered', 438), ('marked', 'unknown', 408), ('unmarked', 'lowered', 224), ('marked', 'lowered', 98)]
+highway null / osm_snapshot distinct: [(0, [datetime.datetime(2026, 11, 10, 20, 43, 4, tzinfo=zoneinfo.ZoneInfo(key='Etc/UTC'))])]
+closure back/attrs: [(False, 134, 134), (True, 13, 13), (None, 20, 20)]
+weather_daily: [('7025251', 1775, datetime.date(2022, 1, 1), datetime.date(2026, 11, 10), 578, 1766), ('702S006', 1775, datetime.date(2022, 1, 1), datetime.date(2026, 11, 10), 497, 1706)]
+  (columns: station, rows, first day, last day, snow_on_ground non-null, total_precip non-null)
+
+$ uv run --with ruff ruff check .
+All checks passed!
+$ uv run --with ruff ruff format --check .
+26 files already formatted
+$ uv run pytest -v
+... (all 40 listed PASSED, including new/extended:)
+tests/test_postgis.py::test_migration_up_down_up PASSED        # head → 0001 → head → base → head; v1.2 columns/table present/absent
+tests/test_postgis.py::test_constraints_reject_bad_rows PASSED # + weather_daily negative snow rejected
+tests/test_postgis.py::test_loader_atomic_and_idempotent PASSED # + crossing_type on every crossing edge, none elsewhere, highway/osm_snapshot set
+tests/test_sources.py::test_climate_daily_row_keeps_nulls PASSED
+============================= 40 passed in 23.74s ==============================
+$ uv run --with pip-audit pip-audit --skip-editable --progress-spinner off
+No known vulnerabilities found
+```
+One test fix during this work: `test_constraints_reject_bad_rows` first failed with
+`InFailedSqlTransaction`, because the second violating INSERT ran in the transaction the first
+had aborted. The test now uses an autocommit connection; the schema was not the cause.
+
+**Notes for consumers**
+- **ML:** use `wp.weather_daily` for precip and snow. 7025251 has `snow_on_ground_cm` on 578
+  days (winter only), and 702S006 never reports `total_snow_cm`. `day` is the station-local
+  calendar day from `LOCAL_DATE`.
+- **Routing/API:** `wp.edge.crossing_type`/`crossing_kerb` map directly to
+  `SegmentFeature.crossing`. Kerb is `unknown` on 4 112 of 5 068 crossing edges, which is not
+  the same as step-free. `pilot_mini` already carried the same values in its `crossing`
+  property; its IDs are unchanged.
+- **Closures:** `backsidewalk_blocks_passage`: 13 true, 134 false, 20 null in the pilot bbox.
+  This counts differently from my earlier "None 10" figure for `blocks_passage`, because it
+  applies the back-sidewalk mapping (`Obstrué` → null).

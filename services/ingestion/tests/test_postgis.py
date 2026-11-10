@@ -59,7 +59,7 @@ def wp_tables(url):
         )
 
 
-EXPECTED = sorted(
+EXPECTED_0001 = sorted(
     [
         "source",
         "ingest_run",
@@ -74,6 +74,21 @@ EXPECTED = sorted(
         "pilot_request",
     ]
 )
+EXPECTED = sorted([*EXPECTED_0001, "weather_daily"])  # head = 0002 (contract v1.2.0)
+V12_EDGE_COLS = {"crossing_type", "crossing_kerb", "highway", "osm_snapshot"}
+V12_CLOSURE_COLS = {"attrs", "backsidewalk_blocks_passage"}
+
+
+def columns(url, table):
+    with psycopg.connect(url) as c:
+        return {
+            r[0]
+            for r in c.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema='wp' AND table_name=%s",
+                (table,),
+            )
+        }
 
 
 def test_migration_up_down_up(test_url):
@@ -96,6 +111,16 @@ def test_migration_up_down_up(test_url):
         }
         assert ("wp_reader", "edge") in grants
         assert ("wp_reader", "pilot_request") not in grants
+        assert ("wp_reader", "weather_daily") in grants
+    assert V12_EDGE_COLS <= columns(test_url, "edge")
+    assert V12_CLOSURE_COLS <= columns(test_url, "closure")
+    # one step down: back to exactly the v1 schema
+    alembic(test_url, "downgrade", "0001_wp_schema_v1")
+    assert wp_tables(test_url) == EXPECTED_0001
+    assert not V12_EDGE_COLS & columns(test_url, "edge")
+    assert not V12_CLOSURE_COLS & columns(test_url, "closure")
+    alembic(test_url, "upgrade", "head")
+    assert wp_tables(test_url) == EXPECTED
     alembic(test_url, "downgrade", "base")
     assert wp_tables(test_url) == []
     alembic(test_url, "upgrade", "head")
@@ -104,11 +129,16 @@ def test_migration_up_down_up(test_url):
 
 def test_constraints_reject_bad_rows(test_url):
     alembic(test_url, "upgrade", "head")
-    with psycopg.connect(test_url) as c:
+    with psycopg.connect(test_url, autocommit=True) as c:  # each statement independent
         with pytest.raises(psycopg.errors.CheckViolation):
             c.execute(
                 "INSERT INTO wp.edge_risk VALUES ('x', now(), null, 'safe', null, "
                 "'confirmed', null)"
+            )
+        with pytest.raises(psycopg.errors.CheckViolation):
+            c.execute(
+                "INSERT INTO wp.weather_daily (station_id, day, snow_on_ground_cm) "
+                "VALUES ('x', '2026-01-01', -1)"
             )
 
 
@@ -136,6 +166,14 @@ def test_loader_atomic_and_idempotent(test_url, tmp_path):
 
     r1 = db_load.load(s, ["osm"], url=test_url)
     assert r1[0]["counts"]["edge"] == 200
+    with psycopg.connect(test_url) as c:
+        n_cross, typed, foreign, no_hw = c.execute(
+            "SELECT count(*) FILTER (WHERE edge_kind='crossing'), "
+            "count(*) FILTER (WHERE edge_kind='crossing' AND crossing_type IS NOT NULL), "
+            "count(*) FILTER (WHERE edge_kind<>'crossing' AND crossing_type IS NOT NULL), "
+            "count(*) FILTER (WHERE highway IS NULL OR osm_snapshot IS NULL) FROM wp.edge"
+        ).fetchone()
+        assert n_cross > 0 and typed == n_cross and foreign == 0 and no_hw == 0
     assert db_load.load(s, ["osm"], url=test_url)[0]["noop"] is True
 
     # corrupt input → load fails, previous graph intact, failed run recorded

@@ -133,6 +133,23 @@ def test_climate_hourly_row():
     assert r["precip_mm"] is None and r["snow_depth_cm"] is None and r["wind_kmh"] == 12.0
 
 
+def test_climate_daily_row_keeps_nulls():
+    r = eccc.climate_daily_row(
+        {
+            "CLIMATE_IDENTIFIER": "7025251",
+            "LOCAL_DATE": "2025-01-01 00:00:00",
+            "TOTAL_PRECIPITATION": 6.8,
+            "TOTAL_SNOW": 5.6,
+            "SNOW_ON_GROUND": None,
+            "MIN_TEMPERATURE": 0.3,
+            "MAX_TEMPERATURE": 1.6,
+        }
+    )
+    assert r["day"] == "2025-01-01" and r["source_collection"] == "climate-daily"
+    assert r["snow_on_ground_cm"] is None  # missing stays NULL, never 0
+    assert r["total_precip_mm"] == 6.8 and r["total_snow_cm"] == 5.6
+
+
 def test_dedupe_prefers_climate_hourly():
     a = {"station_id": "s", "observed_at": "t", "source_collection": "swob-realtime"}
     b = {"station_id": "s", "observed_at": "t", "source_collection": "climate-hourly"}
