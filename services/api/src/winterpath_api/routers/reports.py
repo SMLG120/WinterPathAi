@@ -35,10 +35,11 @@ def _not_found() -> ApiError:
 
 
 def _parse_uuid(raw: str) -> uuid.UUID:
+    """Malformed id → 422 (declared since contract v1.1.0); reveals nothing about existence."""
     try:
         return uuid.UUID(raw)
     except ValueError as exc:
-        raise _not_found() from exc
+        raise ApiError(422, "VALIDATION_ERROR", "reportId must be a UUID.") from exc
 
 
 def admin_view(r: StoredReport) -> dict:
@@ -90,9 +91,12 @@ def delete_own_report(
 ) -> Response:
     rid = _parse_uuid(reportId)
     now = datetime.now(UTC)
-    # Missing/short token or wrong token → 404 (never reveal whether the report exists).
+    # Malformed token → 422 (syntactic, says nothing about the report). A well-formed but wrong
+    # token → 404, indistinguishable from a missing report.
     if not x_deletion_token or not 32 <= len(x_deletion_token) <= 128:
-        raise _not_found()
+        raise ApiError(
+            422, "VALIDATION_ERROR", "X-Deletion-Token header (32–128 chars) is required."
+        )
     r = state.reports.get(rid, now)
     if r is None or r.status == "deleted":
         raise _not_found()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -32,13 +33,28 @@ def scrub_privacy(_logger: Any, _method: str, event: dict[str, Any]) -> dict[str
     return event
 
 
+def add_timestamp(_logger: Any, _method: str, event: dict[str, Any]) -> dict[str, Any]:
+    """UTC ISO-8601 timestamp at millisecond precision.
+
+    Microsecond seconds fields (e.g. ``…:40.010135Z``) look like precise coordinates to log
+    privacy scanners; milliseconds are sufficient for request logs.
+    """
+    event["timestamp"] = datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    return event
+
+
 def configure_logging(level: str = "INFO") -> None:
     logging.basicConfig(format="%(message)s", level=getattr(logging, level.upper(), logging.INFO))
+    # Uvicorn's own access log writes full query strings (e.g. precise bbox coordinates) and
+    # client IPs. Our middleware logs path/status/duration only, so silence uvicorn's.
+    access = logging.getLogger("uvicorn.access")
+    access.disabled = True
+    access.propagate = False
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
-            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            add_timestamp,
             scrub_privacy,
             structlog.processors.JSONRenderer(),
         ],

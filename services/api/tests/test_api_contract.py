@@ -388,15 +388,18 @@ def test_report_lifecycle_and_moderation(client, admin) -> None:
     )
     validate_response(route, "/routes/compare", "post")
 
-    # deletion: wrong token / missing token / bad id → 404; right token → 204
+    # deletion: well-formed wrong token → 404 (no existence leak); malformed token or id → 422
+    # (declared since contract v1.1.0); right token → 204
     bad = client.delete(f"/api/v1/reports/{rid}", headers={"X-Deletion-Token": "x" * 40})
     assert bad.status_code == 404
     validate_response(bad, "/reports/{reportId}", "delete")
-    assert client.delete(f"/api/v1/reports/{rid}").status_code == 404
-    assert (
-        client.delete("/api/v1/reports/not-a-uuid", headers={"X-Deletion-Token": token}).status_code
-        == 404
-    )
+    for resp in (
+        client.delete(f"/api/v1/reports/{rid}"),
+        client.delete(f"/api/v1/reports/{rid}", headers={"X-Deletion-Token": "short"}),
+        client.delete("/api/v1/reports/not-a-uuid", headers={"X-Deletion-Token": token}),
+    ):
+        assert resp.status_code == 422
+        validate_response(resp, "/reports/{reportId}", "delete")
     ok = client.delete(f"/api/v1/reports/{rid}", headers={"X-Deletion-Token": token})
     assert ok.status_code == 204
     assert (
@@ -432,6 +435,11 @@ def test_admin_auth(client, admin) -> None:
         json={"decision": "approve"},
     )
     assert r.status_code == 404
+    validate_response(r, "/admin/reports/{reportId}/moderation", "post")
+    r = client.post(
+        "/api/v1/admin/reports/not-a-uuid/moderation", headers=admin, json={"decision": "approve"}
+    )
+    assert r.status_code == 422
     validate_response(r, "/admin/reports/{reportId}/moderation", "post")
 
 
@@ -482,6 +490,12 @@ def test_unknown_path_envelope(client) -> None:
     validate_schema(r.json(), "Error")
 
 
+def test_uvicorn_access_log_disabled(client) -> None:
+    import logging
+
+    assert logging.getLogger("uvicorn.access").disabled
+
+
 def test_logs_round_coordinates(client, capsys) -> None:
     capsys.readouterr()
     body = {
@@ -495,6 +509,10 @@ def test_logs_round_coordinates(client, capsys) -> None:
     for raw in ("73.5781", "45.5031", "73.5758", "45.5038", "73.5769", "45.5037"):
         assert raw not in out, raw
     assert "-73.578" in out
+    # timestamps use millisecond precision (no 6-digit fractions a scanner could mistake)
+    import re
+
+    assert not re.search(r"\d{2}\.\d{4,}Z", out)
     assert "secret text" not in out
 
 
