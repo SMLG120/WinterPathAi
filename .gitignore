@@ -1,0 +1,48 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# raw / derived data (never commit dumps)
+data/raw/
+data/interim/
+data/processed/
+data/cache/
+*.parquet
+!**/fixtures/**/*.parquet
+*.gpkg
+*.osm.pbf
+*.pmtiles
+models/artifacts/**
+!models/artifacts/.gitkeep
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# node
+node_modules/
+dist/
+.vite/
+coverage/
+playwright-report/
+test-results/
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/
+*.log
+logs/
+
+# local caches
+.cache/
+.env.local

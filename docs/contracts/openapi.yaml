@@ -1,0 +1,702 @@
+openapi: 3.1.0
+info:
+  title: WinterPath AI API
+  version: 1.0.0
+  summary: Montréal pedestrian winter-routing API (contract v1, frozen 2026-11-10).
+  description: |
+    All geometries are GeoJSON in EPSG:4326 with [longitude, latitude] ordering.
+    Every risk/condition datum carries an `evidence` object; `unknown` is never zero risk.
+    Coverage is limited to the pilot bbox (see /coverage). Routes outside it return 422 OUTSIDE_COVERAGE.
+  license:
+    name: Proprietary (data attributions in /data-sources)
+servers:
+  - url: /api/v1
+tags:
+  - name: system
+  - name: map
+  - name: routing
+  - name: weather
+  - name: reports
+  - name: models
+  - name: admin
+paths:
+  /health:
+    get:
+      tags: [system]
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service and dependency health.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+  /coverage:
+    get:
+      tags: [system]
+      operationId: getCoverage
+      responses:
+        "200":
+          description: Pilot coverage area and known gaps.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Coverage" }
+  /data-sources:
+    get:
+      tags: [system]
+      operationId: listDataSources
+      responses:
+        "200":
+          description: Source inventory with licence, attribution and freshness.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DataSource" }
+  /weather/current:
+    get:
+      tags: [weather]
+      operationId: getCurrentWeather
+      responses:
+        "200":
+          description: Latest ECCC observation for the pilot area.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WeatherCurrent" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /weather/forecast:
+    get:
+      tags: [weather]
+      operationId: getWeatherForecast
+      parameters:
+        - name: hours
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 48, default: 24 }
+      responses:
+        "200":
+          description: ECCC forecast periods and active alerts (alerts unaltered).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WeatherForecast" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /hazards:
+    get:
+      tags: [map]
+      operationId: listHazards
+      description: Closures (confirmed), aggregated 311 reports (unverified_report), approved community reports.
+      parameters:
+        - $ref: "#/components/parameters/Bbox"
+        - name: kind
+          in: query
+          schema:
+            type: array
+            items: { $ref: "#/components/schemas/HazardKind" }
+          style: form
+          explode: false
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: GeoJSON FeatureCollection of hazards.
+          content:
+            application/geo+json:
+              schema: { $ref: "#/components/schemas/HazardCollection" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+  /map/segments:
+    get:
+      tags: [map]
+      operationId: listSegments
+      parameters:
+        - $ref: "#/components/parameters/Bbox"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Pedestrian edges in bbox with condition evidence.
+          content:
+            application/geo+json:
+              schema: { $ref: "#/components/schemas/SegmentCollection" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+  /models/status:
+    get:
+      tags: [models]
+      operationId: getModelStatus
+      responses:
+        "200":
+          description: Active risk layer, its evaluation metrics (measured only) and whether it is enabled.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModelStatus" }
+  /routes/compare:
+    post:
+      tags: [routing]
+      operationId: compareRoutes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteCompareRequest" }
+            example:
+              origin: { lon: -73.5772, lat: 45.5048 }
+              destination: { lon: -73.5698, lat: 45.5017 }
+              profile: standard
+              locale: en
+      responses:
+        "200":
+          description: Shortest and winter-aware routes with explanations.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteCompareResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: No legal pedestrian path under the requested constraints (code NO_ROUTE).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /reports:
+    post:
+      tags: [reports]
+      operationId: createReport
+      description: Community report. Stored as `pending`; never shown as guidance until approved. Expires automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReportCreate" }
+      responses:
+        "201":
+          description: Accepted for moderation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportReceipt" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /reports/{reportId}:
+    delete:
+      tags: [reports]
+      operationId: deleteOwnReport
+      description: Reporter deletes own report with the deletion token from the receipt.
+      parameters:
+        - $ref: "#/components/parameters/ReportId"
+        - name: X-Deletion-Token
+          in: header
+          required: true
+          schema: { type: string, minLength: 32, maxLength: 128 }
+      responses:
+        "204": { description: Deleted. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /admin/reports:
+    get:
+      tags: [admin]
+      operationId: listReportsForModeration
+      security: [{ adminBearer: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/ModerationStatus" }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Reports awaiting or past moderation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/ReportAdminView" }
+                  next_cursor: { type: [string, "null"] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /admin/reports/{reportId}/moderation:
+    post:
+      tags: [admin]
+      operationId: moderateReport
+      security: [{ adminBearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ReportId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approve, reject, expire] }
+                note: { type: string, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated report.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportAdminView" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /pilot-requests:
+    post:
+      tags: [system]
+      operationId: createPilotRequest
+      description: Business/pilot enquiry form. Minimal personal data; retention 12 months.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PilotRequest" }
+      responses:
+        "201": { description: Received. }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+components:
+  securitySchemes:
+    adminBearer:
+      type: http
+      scheme: bearer
+  parameters:
+    Bbox:
+      name: bbox
+      in: query
+      required: true
+      description: "minLon,minLat,maxLon,maxLat (EPSG:4326). Max area 0.0025 deg² (~5 km²); larger → 422 BBOX_TOO_LARGE."
+      schema: { type: string, pattern: '^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$' }
+      example: "-73.5800,45.5000,-73.5700,45.5060"
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 1000, default: 500 }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    BadRequest:
+      description: Malformed request.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unprocessable:
+      description: Valid syntax but rejected (OUTSIDE_COVERAGE, BBOX_TOO_LARGE, VALIDATION_ERROR).
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: Not found.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: Missing/invalid admin token.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    RateLimited:
+      description: Too many requests.
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unavailable:
+      description: Upstream source unavailable; body explains which.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [VALIDATION_ERROR, OUTSIDE_COVERAGE, BBOX_TOO_LARGE, NO_ROUTE, NOT_FOUND, UNAUTHORIZED, RATE_LIMITED, UPSTREAM_UNAVAILABLE, INTERNAL]
+        message: { type: string }
+        details: { type: object, additionalProperties: true }
+        request_id: { type: string }
+
+    EvidenceState:
+      type: string
+      enum: [confirmed, unverified_report, model_estimate, unknown, simulated]
+      description: "confirmed = official/verified observation; unverified_report = 311 or community report; model_estimate = validated model or labeled heuristic; unknown = no data; simulated = demo only, must be shown with SIMULATED badge."
+    Evidence:
+      type: object
+      required: [state, source_ids, observed_at]
+      properties:
+        state: { $ref: "#/components/schemas/EvidenceState" }
+        source_ids:
+          type: array
+          items: { type: string }
+        observed_at: { type: [string, "null"], format: date-time, description: "Time of underlying observation; null when unknown." }
+        retrieved_at: { type: [string, "null"], format: date-time }
+        confidence: { type: [number, "null"], minimum: 0, maximum: 1, description: "Only for model_estimate with calibrated output; else null." }
+        note: { type: [string, "null"] }
+
+    LonLat:
+      type: object
+      required: [lon, lat]
+      properties:
+        lon: { type: number, minimum: -180, maximum: 180 }
+        lat: { type: number, minimum: -90, maximum: 90 }
+    Position:
+      type: array
+      minItems: 2
+      maxItems: 2
+      items: { type: number }
+      description: "[longitude, latitude]"
+    LineString:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type: { const: LineString }
+        coordinates:
+          type: array
+          minItems: 2
+          items: { $ref: "#/components/schemas/Position" }
+    Point:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type: { const: Point }
+        coordinates: { $ref: "#/components/schemas/Position" }
+    Polygon:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type: { const: Polygon }
+        coordinates:
+          type: array
+          items:
+            type: array
+            items: { $ref: "#/components/schemas/Position" }
+
+    Health:
+      type: object
+      required: [status, version, checks]
+      properties:
+        status: { type: string, enum: [ok, degraded, down] }
+        version: { type: string }
+        checks:
+          type: object
+          additionalProperties:
+            type: object
+            required: [status]
+            properties:
+              status: { type: string, enum: [ok, degraded, down, disabled] }
+              detail: { type: string }
+
+    Coverage:
+      type: object
+      required: [pilot_name, bbox, area, graph, known_gaps]
+      properties:
+        pilot_name: { type: string, example: "McGill / Downtown pilot" }
+        bbox:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items: { type: number }
+          example: [-73.588, 45.496, -73.562, 45.513]
+        area: { $ref: "#/components/schemas/Polygon" }
+        graph:
+          type: object
+          required: [node_count, edge_count, built_at, osm_snapshot]
+          properties:
+            node_count: { type: integer }
+            edge_count: { type: integer }
+            largest_component_share: { type: number, minimum: 0, maximum: 1 }
+            built_at: { type: [string, "null"], format: date-time }
+            osm_snapshot: { type: [string, "null"] }
+        known_gaps:
+          type: array
+          items:
+            type: object
+            required: [description]
+            properties:
+              description: { type: string }
+              geometry: { oneOf: [ { $ref: "#/components/schemas/Polygon" }, { $ref: "#/components/schemas/Point" }, { type: "null" } ] }
+
+    DataSource:
+      type: object
+      required: [id, name, publisher, license, license_url, commercial_use, attribution, url, status]
+      properties:
+        id: { type: string, example: "mtl-311" }
+        name: { type: string }
+        publisher: { type: string }
+        license: { type: string }
+        license_url: { type: string, format: uri }
+        commercial_use: { type: string, enum: [allowed, allowed_with_conditions, not_allowed, unverified] }
+        attribution: { type: string }
+        url: { type: string, format: uri }
+        status: { type: string, enum: [active, stale, disabled, requires_credentials, error] }
+        last_success_at: { type: [string, "null"], format: date-time }
+        record_count: { type: [integer, "null"] }
+        notes: { type: [string, "null"] }
+
+    WeatherCurrent:
+      type: object
+      required: [station_id, observed_at, evidence]
+      properties:
+        station_id: { type: string }
+        station_name: { type: string }
+        observed_at: { type: string, format: date-time }
+        temperature_c: { type: [number, "null"] }
+        precipitation_mm_1h: { type: [number, "null"] }
+        snow_depth_cm: { type: [number, "null"] }
+        wind_speed_kmh: { type: [number, "null"] }
+        freeze_thaw_24h: { type: [boolean, "null"], description: "Temperature crossed 0 °C in the last 24 h (derived from observations)." }
+        evidence: { $ref: "#/components/schemas/Evidence" }
+    WeatherForecast:
+      type: object
+      required: [issued_at, periods, alerts, evidence]
+      properties:
+        issued_at: { type: string, format: date-time }
+        periods:
+          type: array
+          items:
+            type: object
+            required: [start, end, summary_en, summary_fr]
+            properties:
+              start: { type: string, format: date-time }
+              end: { type: string, format: date-time }
+              summary_en: { type: string }
+              summary_fr: { type: string }
+              temperature_c: { type: [number, "null"] }
+              pop_percent: { type: [integer, "null"] }
+        alerts:
+          type: array
+          items:
+            type: object
+            required: [id, headline, text, language, issued_at]
+            description: Reproduced unaltered from ECCC.
+            properties:
+              id: { type: string }
+              headline: { type: string }
+              text: { type: string }
+              language: { type: string, enum: [en, fr] }
+              severity: { type: [string, "null"] }
+              issued_at: { type: string, format: date-time }
+              expires_at: { type: [string, "null"], format: date-time }
+        evidence: { $ref: "#/components/schemas/Evidence" }
+
+    HazardKind:
+      type: string
+      enum: [sidewalk_closure, construction_impact, report_311_aggregate, community_report]
+    HazardFeature:
+      type: object
+      required: [type, id, geometry, properties]
+      properties:
+        type: { const: Feature }
+        id: { type: string }
+        geometry: { oneOf: [ { $ref: "#/components/schemas/Point" }, { $ref: "#/components/schemas/LineString" }, { $ref: "#/components/schemas/Polygon" } ] }
+        properties:
+          type: object
+          required: [kind, evidence, blocks_passage]
+          properties:
+            kind: { $ref: "#/components/schemas/HazardKind" }
+            evidence: { $ref: "#/components/schemas/Evidence" }
+            blocks_passage: { type: [boolean, "null"], description: "true only when source explicitly states pedestrian passage is blocked; null = not stated." }
+            title_en: { type: string }
+            title_fr: { type: string }
+            valid_from: { type: [string, "null"], format: date-time }
+            valid_to: { type: [string, "null"], format: date-time }
+            report_count: { type: [integer, "null"], description: "For 311 aggregates (H3 cell)." }
+    HazardCollection:
+      type: object
+      required: [type, features, next_cursor]
+      properties:
+        type: { const: FeatureCollection }
+        features:
+          type: array
+          items: { $ref: "#/components/schemas/HazardFeature" }
+        next_cursor: { type: [string, "null"] }
+
+    SegmentFeature:
+      type: object
+      required: [type, id, geometry, properties]
+      properties:
+        type: { const: Feature }
+        id: { type: string, description: "Stable edge_id (see data-model.md)." }
+        geometry: { $ref: "#/components/schemas/LineString" }
+        properties:
+          type: object
+          required: [length_m, edge_kind, connectivity_confidence, accessibility, risk, sources]
+          properties:
+            length_m: { type: number, minimum: 0 }
+            edge_kind: { type: string, enum: [sidewalk, footway, path, pedestrian_street, crossing, shared_street, steps, other] }
+            crossing: { $ref: "#/components/schemas/CrossingInfo" }
+            connectivity_confidence: { type: string, enum: [high, medium, low] }
+            accessibility: { $ref: "#/components/schemas/Accessibility" }
+            risk: { $ref: "#/components/schemas/RiskEstimate" }
+            sources: { type: array, items: { type: string } }
+            updated_at: { type: [string, "null"], format: date-time }
+    SegmentCollection:
+      type: object
+      required: [type, features, next_cursor]
+      properties:
+        type: { const: FeatureCollection }
+        features:
+          type: array
+          items: { $ref: "#/components/schemas/SegmentFeature" }
+        next_cursor: { type: [string, "null"] }
+    CrossingInfo:
+      type: [object, "null"]
+      properties:
+        type: { type: string, enum: [marked, traffic_signals, unmarked, uncontrolled, unknown] }
+        kerb: { type: string, enum: [lowered, flush, raised, unknown] }
+    Accessibility:
+      type: object
+      required: [step_free]
+      properties:
+        step_free: { type: [boolean, "null"], description: "null = unknown; only true when verified by source tag." }
+        incline_percent: { type: [number, "null"] }
+        width_m: { type: [number, "null"] }
+        surface: { type: [string, "null"] }
+    RiskEstimate:
+      type: object
+      required: [level, evidence]
+      properties:
+        level: { type: string, enum: [low, moderate, elevated, high, unknown] }
+        probability: { type: [number, "null"], minimum: 0, maximum: 1, description: "Calibrated P(winter 311 report in cell, next 24h). Null unless model enabled." }
+        evidence: { $ref: "#/components/schemas/Evidence" }
+
+    RouteProfile:
+      type: string
+      enum: [standard, step_free, reduced_mobility]
+      description: "step_free is a HARD constraint: edges with step_free != true are excluded."
+    RouteCompareRequest:
+      type: object
+      required: [origin, destination]
+      additionalProperties: false
+      properties:
+        origin: { $ref: "#/components/schemas/LonLat" }
+        destination: { $ref: "#/components/schemas/LonLat" }
+        profile: { $ref: "#/components/schemas/RouteProfile" }
+        departure_time: { type: string, format: date-time }
+        avoid_unverified_reports: { type: boolean, default: true }
+        locale: { type: string, enum: [en, fr], default: en }
+    RouteVariant:
+      type: string
+      enum: [shortest, winter_aware]
+    Route:
+      type: object
+      required: [variant, geometry, distance_m, duration_s, edge_ids, explanation, data_freshness, unknown_share]
+      properties:
+        variant: { $ref: "#/components/schemas/RouteVariant" }
+        geometry: { $ref: "#/components/schemas/LineString" }
+        distance_m: { type: number, minimum: 0 }
+        duration_s: { type: number, minimum: 0 }
+        generalized_cost_s: { type: number, minimum: 0 }
+        edge_ids: { type: array, items: { type: string } }
+        unknown_share: { type: number, minimum: 0, maximum: 1, description: "Fraction of route length with risk.level = unknown." }
+        hazards_avoided: { type: array, items: { type: string } }
+        hazards_on_route: { type: array, items: { type: string } }
+        explanation:
+          type: array
+          items:
+            type: object
+            required: [code, text, evidence_state]
+            properties:
+              code: { type: string, example: "AVOIDS_CONFIRMED_CLOSURE" }
+              text: { type: string, description: "Localized per request locale." }
+              evidence_state: { $ref: "#/components/schemas/EvidenceState" }
+        steps:
+          type: array
+          description: List-based accessible directions.
+          items:
+            type: object
+            required: [instruction, distance_m]
+            properties:
+              instruction: { type: string }
+              distance_m: { type: number }
+              street_name: { type: [string, "null"] }
+        data_freshness:
+          type: object
+          additionalProperties: { type: [string, "null"], format: date-time }
+          description: source_id → last successful refresh.
+    RouteCompareResponse:
+      type: object
+      required: [request_id, routes, computed_at, risk_layer]
+      properties:
+        request_id: { type: string }
+        routes:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items: { $ref: "#/components/schemas/Route" }
+        identical: { type: boolean, description: "true when winter_aware equals shortest." }
+        risk_layer: { type: string, enum: [model, heuristic, none] }
+        computed_at: { type: string, format: date-time }
+        warnings: { type: array, items: { type: string } }
+
+    ReportCategory:
+      type: string
+      enum: [snow, ice, obstructed_ramp, construction, other]
+    ModerationStatus:
+      type: string
+      enum: [pending, approved, rejected, expired, deleted]
+    ReportCreate:
+      type: object
+      required: [category, location, location_consent]
+      additionalProperties: false
+      properties:
+        category: { $ref: "#/components/schemas/ReportCategory" }
+        location: { $ref: "#/components/schemas/LonLat" }
+        location_consent: { type: boolean, const: true, description: "Explicit consent to submit this exact location." }
+        description: { type: string, maxLength: 280 }
+        locale: { type: string, enum: [en, fr] }
+    ReportReceipt:
+      type: object
+      required: [id, status, expires_at, deletion_token]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/ModerationStatus" }
+        expires_at: { type: string, format: date-time }
+        deletion_token: { type: string, description: "Shown once; only a hash is stored." }
+    ReportAdminView:
+      type: object
+      required: [id, category, location, status, created_at, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/ReportCategory" }
+        location: { $ref: "#/components/schemas/LonLat" }
+        description: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/ModerationStatus" }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        moderated_at: { type: [string, "null"], format: date-time }
+        moderation_note: { type: [string, "null"] }
+
+    ModelStatus:
+      type: object
+      required: [risk_layer, enabled, target, evaluation]
+      properties:
+        risk_layer: { type: string, enum: [model, heuristic, none] }
+        enabled: { type: boolean }
+        model_id: { type: [string, "null"] }
+        target: { type: string, example: "P(>=1 winter-related 311 report in H3 res-9 cell within next 24h)" }
+        trained_at: { type: [string, "null"], format: date-time }
+        training_window: { type: [string, "null"] }
+        evaluation:
+          type: [object, "null"]
+          description: Measured metrics only; null if not evaluated.
+          properties:
+            split: { type: string, example: "chronological 2024-11..2025-03 holdout + spatial block holdout" }
+            pr_auc: { type: number }
+            brier: { type: number }
+            precision_at_k: { type: number }
+            recall_at_k: { type: number }
+            baseline_pr_auc: { type: number }
+            n_test: { type: integer }
+        limitations: { type: array, items: { type: string } }
+
+    PilotRequest:
+      type: object
+      required: [organization, contact_email, segment, consent]
+      additionalProperties: false
+      properties:
+        organization: { type: string, maxLength: 120 }
+        contact_name: { type: string, maxLength: 120 }
+        contact_email: { type: string, format: email }
+        segment: { type: string, enum: [university, campus, municipality, property_manager, other] }
+        message: { type: string, maxLength: 1000 }
+        consent: { type: boolean, const: true }
+        locale: { type: string, enum: [en, fr] }
