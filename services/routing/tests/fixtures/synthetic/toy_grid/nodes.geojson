@@ -1,0 +1,215 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "syn:r0c0",
+   "properties": {
+    "node_id": "syn:r0c0",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.578,
+     45.503
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c1",
+   "properties": {
+    "node_id": "syn:r0c1",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.577,
+     45.503
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c2",
+   "properties": {
+    "node_id": "syn:r0c2",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.576,
+     45.503
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c3",
+   "properties": {
+    "node_id": "syn:r0c3",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.575,
+     45.503
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c0",
+   "properties": {
+    "node_id": "syn:r1c0",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.578,
+     45.5037
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c1",
+   "properties": {
+    "node_id": "syn:r1c1",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.577,
+     45.5037
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c2",
+   "properties": {
+    "node_id": "syn:r1c2",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.576,
+     45.5037
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c3",
+   "properties": {
+    "node_id": "syn:r1c3",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.575,
+     45.5037
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c0",
+   "properties": {
+    "node_id": "syn:r2c0",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.578,
+     45.5044
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c1",
+   "properties": {
+    "node_id": "syn:r2c1",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.577,
+     45.5044
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c2",
+   "properties": {
+    "node_id": "syn:r2c2",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.576,
+     45.5044
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c3",
+   "properties": {
+    "node_id": "syn:r2c3",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.575,
+     45.5044
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:iso1",
+   "properties": {
+    "node_id": "syn:iso1",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.571,
+     45.503
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:iso2",
+   "properties": {
+    "node_id": "syn:iso2",
+    "kind": "synthetic"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -73.57,
+     45.503
+    ]
+   }
+  }
+ ]
+}
