@@ -52,11 +52,13 @@ def get_health(state: AppState = Depends(get_state)) -> Health:
         if layer == "none"
         else {"status": "ok", "detail": f"risk_layer={layer}"}
     )
-    checks["weather"] = (
-        {"status": "disabled", "detail": "No ECCC adapter configured."}
-        if state.weather is None
-        else {"status": "ok"}
-    )
+    if state.weather is None:
+        checks["weather"] = {"status": "disabled", "detail": "No ECCC adapter configured."}
+    elif callable(getattr(state.weather, "status", None)):
+        st, detail = state.weather.status()
+        checks["weather"] = {"status": st, "detail": detail}
+    else:
+        checks["weather"] = {"status": "ok"}
     statuses = {c["status"] for c in checks.values()}
     overall = "ok" if statuses <= {"ok", "disabled"} else "degraded"
     return Health.model_validate(

@@ -128,6 +128,20 @@ def build_state(
             log.warning("risk_provider_unavailable", error_type=type(exc).__name__)
             risk = NullRiskProvider()
 
+    if weather is None and settings.weather_source == "postgis" and settings.database_url:
+        from datetime import timedelta
+
+        from sqlalchemy import create_engine
+
+        from .weather import ObservationWeatherAdapter, PostgisWeatherStore
+
+        weather_engine = db_engine or create_engine(settings.database_url, pool_pre_ping=True)
+        weather = ObservationWeatherAdapter(
+            PostgisWeatherStore(weather_engine),
+            max_age=timedelta(minutes=settings.weather_max_age_minutes),
+            station_ids=settings.weather_station_ids,
+        )
+
     compute = ComputePool(settings.routing_workers)
     compute.warm()
     return AppState(
