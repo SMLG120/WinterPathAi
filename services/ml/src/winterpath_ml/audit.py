@@ -242,7 +242,7 @@ Decimal places of `LOC_LONG` (winter reports):
 
 Share of geolocated winter reports whose exact coordinate (7 dp) is shared with ≥1 other winter report: **{dup_share:.3f}**.
 
-Interpretation: coordinates are published with many decimal places, but they are geocoded to an **address, intersection or street segment**, and repeated identical coordinates show snapping to a common point. Published precision is therefore *not* positional accuracy. Whether the City deliberately obfuscates locations was **not confirmed** from the data alone (the methodology page is the Data agent's item). Either way the pipeline aggregates immediately to H3 res-9 (~0.1 km²) and never stores or displays individual points.
+Interpretation: coordinates are published with many decimal places, but the publisher's methodology (verified by the Data agent, 2026-11-10; see `docs/data-sources-and-licenses.md`) states that address/installation locations are **relocated to the middle of the nearest street segment longer than 45 m** ("Position obfusquée"). That explains the high share of repeated identical coordinates. Published precision is therefore *not* positional accuracy: effective resolution is a street segment (≥45 m), comfortably below the ~0.1 km² H3 res-9 cell but enough to place a report in a neighbouring cell near cell edges. `LOC_ERREUR_GDT = 1` means "located at the borough office" and those rows are excluded. The `DDS_DATE_CREATION` timezone is not stated by the publisher; this pipeline assumes local time (America/Montréal), which matters only for reports filed near midnight. Either way the pipeline aggregates immediately to H3 res-9 (~0.1 km²) and never stores or displays individual points.
 
 ## 7. Conclusions for modelling
 
