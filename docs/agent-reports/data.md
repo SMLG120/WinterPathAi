@@ -424,3 +424,60 @@ had aborted. The test now uses an autocommit connection; the schema was not the 
 - **Closures:** `backsidewalk_blocks_passage`: 13 true, 134 false, 20 null in the pilot bbox.
   This counts differently from my earlier "None 10" figure for `blocks_passage`, because it
   applies the back-sidewalk mapping (`Obstrué` → null).
+
+## Contract v1.3.0 follow-up — 2026-11-10
+Merged `integration/winterpath` (51f808c + ML/routing merges) → `7246a24`, no conflicts.
+Migration **0003** was added instead of folding into 0002, because 0002 was already applied to
+`wp_data`.
+- `0003_contract_v1_3_0`: adds `wp.edge.name text` and `wp.community_report.terminal_at
+  timestamptz`, plus a partial index on `terminal_at` for the 30-day hard-delete job.
+  Backfill uses only existing timestamps (`moderated_at`, or `expires_at` for expired rows),
+  never invented ones. There is no CHECK tying `terminal_at` to status, because the API owns
+  that write path.
+- The graph builder emits `name` (OSM `name` tag), and the loader writes it. The rebuilt
+  `pilot_mini` has identical edge and node ids; only `name` and `ingest_run_id` changed. 20 of
+  200 fixture edges are named.
+- `wp.source` gains `mtl-planif-neige` with status `requires_credentials`. It is **not
+  ingested**: no token, and CKAN id `deneigement` was verified as cc-by. Canonical ids are
+  unchanged.
+- Closures: `attrs.currentstatus` (raw) and `attrs.weekly_schedule` were added (see the
+  proposal below).
+
+```text
+$ alembic upgrade head → 0003_contract_v1_3_0 (head)
+$ alembic downgrade -1 → 0002_contract_v1_2_0
+$ alembic upgrade head → 0003_contract_v1_3_0 (head)
+load osm/entraves (force): {'node': 6987, 'edge': 16652}, {'closure': 167}
+edges with name: [(7444, 16652)]   (all 1382 road edges named)
+sources: eccc-geomet active, mtl-311 active, mtl-entraves active,
+         mtl-planif-neige requires_credentials, mtl-voirie active, osm active
+$ ruff check . → All checks passed!   $ ruff format --check . → 26 files already formatted
+$ uv run pytest -q → 40 passed in 15.56s
+```
+**Test gap:** the existing up/down test runs head → 0001 → head → base → head, so it does
+exercise 0003, but it does not yet assert the `name` and `terminal_at` columns explicitly.
+That assertion still needs adding.
+
+## Proposal — CR-ROUTING-7: `wp.closure.status` vocabulary
+Evidence from the 2026-11-10 Entraves file (1 974 permits): `currentstatus` has a single value,
+`Permis émis` (1 974), and `permitcategory` is always `Travaux`. Against
+2026-11-10T21:00Z, 1 547 permits are inside their date window, **347 have already ended** and 80
+haven't started, even though the file is titled "en cours". Also, **942 permits are active only
+part of the day** on some weekday, and 1 101 are inactive on at least one weekday.
+1. `status` = **publisher lifecycle only**, normalised: `permit_issued` (from `Permis émis`) ·
+   `cancelled` · `completed` · `unknown`. Any unmapped value becomes `unknown`, with the raw value
+   kept in `attrs.currentstatus` and added to the mapping table once observed. Only
+   `Permis émis` has been observed; `cancelled` and `completed` are reserved and nothing maps
+   to them yet.
+2. **Do not store time-derived states** (active, scheduled, ended) in `status`; they go stale
+   between ingests. Instead, the consumer computes `active_at(t)` =
+   `status='permit_issued' AND valid_from <= t AND (valid_to IS NULL OR t < valid_to) AND
+   attrs.weekly_schedule[weekday(t local America/Montreal)]` permits `t`. Here `active` must be
+   `true`; if `all_day` is false, `t` must fall between `start` and `end`; a `null` flag means
+   unknown and is never treated as active-safe.
+3. Routing applies closures only when `active_at(now)` is true **and** `blocks_passage` is true.
+   For unknown activity it should take the conservative branch already defined for unknowns
+   (penalise or flag, never treat as clear).
+4. If accepted, the Data agent will add migration 0004:
+   `CHECK (status IN ('permit_issued','cancelled','completed','unknown'))`, mapping at ingest,
+   and optionally a SQL function `wp.closure_active_at(timestamptz)`.

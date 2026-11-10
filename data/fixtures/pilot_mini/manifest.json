@@ -1,6 +1,6 @@
 {
-  "finished_at": "2026-11-10T21:01:47+00:00",
-  "ingest_run_id": "f3d63d0f-96c2-47ae-af32-ced24d1b7065",
+  "finished_at": "2026-11-10T21:47:22+00:00",
+  "ingest_run_id": "1f415e57-e03e-42a7-bbea-7fc905c52289",
   "input_checksum": "a7ee9f8c1af78a1756c7500fdeac37ebc82b0afdd309dd18ac38a0e8e4f02e2a+37835930f4d4a3d9c2121fe241aa4162284449928fa4f7e63801b5fbbe1d3f99",
   "name": "pilot_mini",
   "stats": {

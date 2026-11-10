@@ -48,6 +48,24 @@ BACKSIDEWALK_BLOCKS_PASSAGE: dict[str, bool | None] = {
 }
 
 
+DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def weekly_schedule(m: dict) -> dict:
+    """Publisher's per-weekday activity, verbatim semantics: active (t/f), all_day (t/f),
+    start/end local times ('' → None). Unknown flag values → None (never assumed active)."""
+    flag = {"t": True, "f": False}
+    out = {}
+    for d in DAYS:
+        out[d] = {
+            "active": flag.get(m.get(f"duration_days_{d}_active", "")),
+            "all_day": flag.get(m.get(f"duration_days_{d}_all_day_round", "")),
+            "start": m.get(f"duration_days_{d}_start_time") or None,
+            "end": m.get(f"duration_days_{d}_end_time") or None,
+        }
+    return out
+
+
 def map_blocked(value: str | None, table: dict[str, bool | None]) -> bool | None:
     if value is None:
         return None
@@ -105,6 +123,9 @@ def build_closures(main_rows: list[dict], impact_rows: list[dict], bbox=PILOT_BB
                 "attrs": {
                     "permit_id": m.get("permit_permit_id"),
                     "reason_category": m.get("reason_category"),
+                    # raw publisher status, kept verbatim (CR-ROUTING-7 proposal)
+                    "currentstatus": m.get("currentstatus"),
+                    "weekly_schedule": weekly_schedule(m),
                     "impacts": [
                         {
                             k: x.get(k)
