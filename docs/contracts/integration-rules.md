@@ -52,3 +52,9 @@ Never: `--force`, `reset --hard`, `push`, deploy.
 
 ## 6. Status vocabulary
 `NOT STARTED`, `WORKING`, `BLOCKED`, `TESTING`, `READY FOR REVIEW`, `MERGED` — derived from commits, reports and test output only.
+
+## 7. Contract changelog
+| Version | Date | Change | Source |
+|---|---|---|---|
+| 1.0.0 | 2026-11-10 | Initial frozen contract (tag `baseline-v1`) | coordinator |
+| 1.1.0 | 2026-11-10 | Additive: declared 400/422 (and 429 on report deletion) for invalid input on `/weather/forecast`, `DELETE /reports/{id}`, `GET /admin/reports`, moderation, `/pilot-requests`. `.env.example` test-harness names. No breaking changes. | CR-PLAT-1, CR-PLAT-2 |
