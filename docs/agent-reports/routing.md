@@ -1,179 +1,188 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW (with blockers below: no real pilot graph yet, PostGIS schema not migrated, ML provider not landed)
-- **Branch / SHA:** `agent/routing` @ `dbef3dc` (code). This report is committed on top of it.
+- **Status:** READY FOR REVIEW
+- **Branch / SHA:** `agent/routing` @ `3460fa1` (code; includes the merges of `integration/winterpath` at contract v1.1.0 → `aff27a6` and data-model v1.2.0 + pilot_mini → `9fb5fa5`). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
-`git diff --stat $(git merge-base integration/winterpath HEAD) HEAD` → `51 files changed, 8632 insertions(+)` (code commit; ~3.1k of those lines are the two `uv.lock` files and the generated synthetic fixture GeoJSON).
+`git diff --stat $(git merge-base integration/winterpath HEAD) HEAD -- services docs/agent-reports/routing.md`. Only owned paths are touched; `scripts/check-ownership.sh routing` → `ownership OK for agent/routing`.
 
 ```
-services/routing/                         winterpath_routing (pure Python; no FastAPI imports)
-  src/winterpath_routing/models.py        value types mirroring contract (Evidence, RiskEstimate, Edge, Hazard…)
-  src/winterpath_routing/geo.py           EPSG:4326 ⇄ EPSG:32188, haversine, bearings, per-thread warm-up
-  src/winterpath_routing/providers.py     GraphProvider protocol, FixtureGraphProvider, PostgisGraphProvider
-  src/winterpath_routing/graph.py         NetworkX MultiDiGraph + STRtree, components, gap reporting
-  src/winterpath_routing/filters.py       hard exclusions
-  src/winterpath_routing/costs.py         cost model (seconds, ≥ 0), CostConfig
-  src/winterpath_routing/search.py        Dijkstra / A* (label-setting, rejects negative weights)
-  src/winterpath_routing/engine.py        snapping, context, compare(), route assembly, explanations
-  src/winterpath_routing/steps.py         EN/FR list directions
-  src/winterpath_routing/explain.py       explanation-code catalog (EN/FR, evidence state per code)
-  src/winterpath_routing/risk.py          RiskProvider protocol + NullRiskProvider
-  tests/…                                 search, engine, providers/costs, latency
-  tests/fixtures/synthetic/toy_grid/      SYNTHETIC fixture, metadata "simulated": true (+ generator script)
-services/api/                             winterpath_api (FastAPI)
-  src/winterpath_api/main.py              app factory, request-id + access-log middleware, CORS
-  src/winterpath_api/schemas.py           Pydantic v2 models hand-written from openapi.yaml
-  src/winterpath_api/routers/*.py         system, map, routing, reports/admin
-  src/winterpath_api/repositories/*.py    reports, hazards, sources, pilot requests (memory + PostGIS)
-  src/winterpath_api/adapters.py          risk adapter (normalising), WeatherAdapter protocol
-  src/winterpath_api/compute.py           pre-warmed route-compute thread pool
-  src/winterpath_api/{errors,logs,params,security,settings,state,deps}.py
-  tests/…                                 contract validation against docs/contracts/openapi.yaml, adapters
+services/routing/   winterpath_routing — pure Python (NetworkX, Shapely, pyproj); no web framework
+  src/…/models.py, geo.py, providers.py (Fixture + PostGIS GraphProvider), graph.py, filters.py,
+  costs.py, search.py (Dijkstra/A*), engine.py, steps.py, explain.py, risk.py
+  tests/  test_routing_{search,engine,providers,latency,pilot_mini}.py, routing_testlib.py,
+          fixtures/synthetic/toy_grid/ (SYNTHETIC, metadata "simulated": true, + generator)
+services/api/       winterpath_api — FastAPI
+  src/…/main.py, schemas.py, routers/{system,map,routing,reports}.py,
+  repositories/{reports,hazards,sources}.py (in-memory + PostGIS), adapters.py (risk/weather),
+  compute.py (pre-warmed route pool), errors.py, logs.py, params.py, security.py, settings.py, state.py
+  tests/  test_api_{contract,adapters,pilot_mini,postgis}.py, api_testlib.py
+docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-Environment: Apple M4 (10 cores, 16 GB), macOS (Darwin 25.6.0), Python 3.12.13, uv 0.10.7. FastAPI 0.162.4, Starlette 1.10.0, Pydantic 2.14.3. **The machine was shared with other agent sessions; `uptime` load averages were 31.83 / 49.18 / 40.49**, so latency numbers are noisy upper bounds.
+Environment: Apple M4 (10 cores, 16 GB), macOS (Darwin 25.6.0), Python 3.12.13, uv 0.10.7. FastAPI 0.162.4, Starlette 1.10.0, Pydantic 2.14.3. PostGIS in the shared Docker container (:55432), DB `wp_routing`. **Shared machine: `uptime` load averages 32.41 / 37.81 / 39.25 during the final runs** (other agent sessions), so latency figures are noisy upper bounds.
 
+### 1. Full routing + API suites, PostGIS enabled (`DATABASE_URL` → `wp_routing`)
+`wp_routing` schema created by applying the Data agent's migration to my own DB (`alembic -c db/alembic.ini upgrade head` → `0001_wp_schema_v1 (head)`). The PostGIS tests load the real pilot_mini into `wp.node`/`wp.edge`, exercise every DB-backed path, and delete exactly the rows they created.
 ```text
-$ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider
+$ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider   # DATABASE_URL=…/wp_routing
 ============================= test session starts ==============================
 platform darwin -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0
 rootdir: /Users/smlgmac/Projects/Geography/winterpath-routing/services/routing
 configfile: pyproject.toml
 plugins: anyio-4.16.0
-collected 238 items
+collected 257 items
 services/routing/tests/test_routing_engine.py .......................... [ 10%]
-......                                                                   [ 13%]
+......                                                                   [ 12%]
 services/routing/tests/test_routing_latency.py 
-[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=16.9 ms p95=77.8 ms max=245.0 ms
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=9.1 ms p95=45.2 ms max=251.2 ms
 .
-[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=70.5 ms p95=265.2 ms max=1000.0 ms
-.                        [ 14%]
-services/routing/tests/test_routing_providers.py ....................... [ 23%]
-........................................................................ [ 54%]
-...............................................s                         [ 74%]
-services/routing/tests/test_routing_search.py ......................     [ 83%]
-services/routing/tests/test_api_adapters.py .....s
-[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=7.6 ms p95=21.7 ms max=42.1 ms
-.                      [ 86%]
-services/routing/tests/test_api_contract.py ............................ [ 98%]
-....                                                                     [100%]
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=72.2 ms p95=294.5 ms max=467.6 ms
+.                        [ 13%]
+services/routing/tests/test_routing_pilot_mini.py .....
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.5 ms p95=3.8 ms max=6.1 ms (rejected >75 m from network: 48)
+.                 [ 15%]
+services/routing/tests/test_routing_providers.py ....................... [ 24%]
+........................................................................ [ 52%]
+................................................                         [ 71%]
+services/routing/tests/test_routing_search.py ......................     [ 79%]
+services/routing/tests/test_api_adapters.py ......
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=7.9 ms p95=35.1 ms max=71.7 ms
+.                      [ 82%]
+services/routing/tests/test_api_contract.py ............................ [ 93%]
+.....                                                                    [ 95%]
+services/routing/tests/test_api_pilot_mini.py ........
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=7.5 ms p95=20.4 ms max=65.3 ms
+.                  [ 98%]
+services/routing/tests/test_api_postgis.py ...                           [100%]
 =============================== warnings summary ===============================
 services/api/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
-=========================== short test summary info ============================
-SKIPPED [1] services/routing/tests/test_routing_providers.py:142: DATABASE_URL not set
-SKIPPED [1] services/api/tests/test_api_adapters.py:105: DATABASE_URL not set
-================== 236 passed, 2 skipped, 1 warning in 23.71s ==================
+======================= 257 passed, 1 warning in 28.62s ========================
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'community_report': 0, 'pilot_request': 0}
 ```
-(The API test files print as `services/routing/tests/test_api_*.py` because pytest picks `services/routing` as rootdir when both directories are passed. They live in `services/api/tests/`. The single warning is Starlette's deprecation of `httpx` in its TestClient.)
+Notes:
+- 0 skipped.
+- The API test files print as `services/routing/tests/…` because pytest chooses `services/routing` as rootdir when given both directories; they live in `services/api/tests/`.
+- The one warning is Starlette's deprecation of `httpx` in TestClient.
 
-DB integration tests with this worktree's `.env.local` loaded (`DATABASE_URL` → `wp_routing` on :55432; Docker was up by then):
-```text
-SKIPPED [1] services/routing/tests/test_routing_providers.py:142: wp.edge table absent (Data agent migrations not applied)
-SKIPPED [1] services/api/tests/test_api_adapters.py:105: wp.community_report absent (Data agent migrations not applied)
-```
-
-Lint and ownership gate:
+### 2. Lint and ownership gate
 ```text
 $ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
 All checks passed!
-19 files already formatted
+20 files already formatted
 $ (cd services/api && uv run ruff check . && uv run ruff format --check .)
 All checks passed!
-25 files already formatted
+27 files already formatted
 $ scripts/check-ownership.sh routing
 ownership OK for agent/routing
 ```
 
-Live smoke test (`ROUTING_FIXTURE_DIR=../routing/tests/fixtures/synthetic/toy_grid uv run uvicorn winterpath_api.main:app --port 8102`):
+### 3. Platform's integration harness against the real API (live uvicorn :8102, default fixture dir = real pilot_mini)
 ```text
-GET /api/v1/health → {"status":"degraded",…,"graph":{"status":"degraded","detail":"SIMULATED fixture graph loaded."},"database":{"status":"disabled",…},"risk":{"status":"disabled",…},"weather":{"status":"disabled",…}}
-POST /routes/compare (locale fr) → risk_layer none, identical True, warnings ['SIMULÉ : données de démonstration synthétiques.', 'Aucune couche de risque : risque inconnu sur tout le trajet.']
-  winter_aware 390.0 m 300.0 s unknown_share 1.0; codes ['SIMULATED_DATA','WINTER_AWARE_COST','IDENTICAL_TO_SHORTEST','RISK_LAYER_UNAVAILABLE']
-  steps ['Partez en direction du nord sur Synthetic Lane 0', 'Tournez à droite sur Synthetic Street C', 'Vous êtes à destination']
-GET /weather/current → {"code":"UPSTREAM_UNAVAILABLE","message":"ECCC current observation (no adapter configured) is unavailable; no weather values are returned.",…}
-20 sequential POST /routes/compare, curl time_total (s), sorted:
-0.003035 0.003050 0.003143 0.003292 0.003420 0.003533 0.003536 0.003587 0.003667 0.003804 0.004293 0.005362 0.005663 0.006200 0.007791 0.008321 0.008937 0.010974 0.011762 0.018164
+$ curl /coverage (default fixture dir)
+{'node_count': 88, 'edge_count': 200, 'largest_component_share': 1.0, 'built_at': '2026-11-10T21:01:47Z', 'osm_snapshot': '2026-11-10T20:43:04Z'} []
+$ (cd tests/integration && API_BASE_URL=http://127.0.0.1:8102/api/v1 API_LOG_FILE=<api log> API_ADMIN_TOKEN=<test token> CORS_ALLOWED_ORIGIN=http://localhost:5173 uv run pytest -q -rfs)
+SKIPPED [5] .venv/lib/python3.12/site-packages/pluggy/_manager.py:183: Impossible to generate negative test cases
+54 passed, 5 skipped in 14.32s
 ```
+History: the first run of this harness against my API (after the v1.1.0 merge) gave **3 failed / 51 passed**, and those failures led to the fixes below. The run above is after the fixes.
 
-### Latency measurements (all on SYNTHETIC graphs — no real pilot graph exists yet)
-| Run | Graph | n | p50 | p95 | max |
-|---|---|---|---|---|---|
-| engine `compare()` (run A) | 25×25 grid over PILOT_BBOX, 2 400 directed edges | 100 random OD | 8.8 ms | 18.2 ms | 34.0 ms |
-| engine `compare()` (run B, final) | same | 100 | 16.9 ms | 77.8 ms | 245.0 ms |
-| engine `compare()` (run A) | 60×60 grid, 14 160 directed edges | 100 | 53.7 ms | 189.3 ms | 305.6 ms |
-| engine `compare()` (run B, final) | same | 100 | 70.5 ms | 265.2 ms | 1000.0 ms |
-| API via TestClient (run A) | toy grid, 38 edges | 100 | 6.3 ms | 22.3 ms | 59.2 ms |
-| API via TestClient (run B, final) | same | 100 | 7.6 ms | 21.7 ms | 42.1 ms |
-| live uvicorn :8102, curl | toy grid | 20 sequential | ≈4.0 ms (median of 20) | — | 18.2 ms |
+### 4. Latency on the REAL pilot_mini fixture (OSM, 200 directed edges, 88 nodes, ~340 m × 280 m)
+| Measurement | n | p50 | p95 | max |
+|---|---|---|---|---|
+| engine `compare()` (both variants), random points in fixture bbox | 100 routed (48 more rejected as > 75 m from network) | 1.5 ms | 3.8 ms | 6.1 ms |
+| same, earlier run under heavier load | 100 | 4.2 ms | 139.1 ms | 649.7 ms |
+| API via TestClient, random node-pair ODs | 100 | 7.5 ms | 20.4 ms | 65.3 ms |
+| same, earlier run | 100 | 8.4 ms | 56.1 ms | 109.8 ms |
+| live uvicorn :8102, curl `time_total`, sequential node-pair ODs | 30 | ≈4.8 ms | — | 19.2 ms |
 
-"compare()" computes both variants (Dijkstra shortest-distance + A* winter-aware), including snapping, exclusions, risk lookup and step generation. The 60×60 grid is a size proxy for the ~2 km × 1.9 km pilot, not its topology. **p95 < 2 s was met on synthetic graphs only; it has not been measured on the real pilot graph.**
+Live raw samples (s, sorted): `0.002906 0.003306 0.003402 0.003497 0.003518 0.003586 0.003710 0.003833 0.004220 0.004253 0.004360 0.004376 0.004482 0.004651 0.004703 0.004915 0.004984 0.005216 0.005281 0.005362 0.006905 0.007028 0.007944 0.008397 0.008534 0.009681 0.009937 0.011749 0.012517 0.019160`
 
-Performance fix found during measurement: before `compute.py`, live requests took 0.10–0.35 s on the 38-edge graph. Cause (measured): pyproj builds its transformer per thread on first use, costing 17–94 ms per transformer, so requests landing on fresh FastAPI threadpool threads paid that cost. Route computation now runs on a dedicated pool whose workers warm their transformers at startup (`ROUTING_WORKERS`, default 4).
+Size proxies (SYNTHETIC grids over PILOT_BBOX, final run): 2 400 edges p50 9.1 / p95 45.2 ms; 14 160 edges p50 72.2 / p95 294.5 ms. Earlier runs under heavier load measured up to p95 771 ms and max 2.16 s on the 14 160-edge grid, so p95 < 2 s holds there but max did not always. **The full ~2 km × 1.9 km pilot graph has not been built yet; its latency is unmeasured.**
 
 ## Acceptance criteria
 | Criterion (docs/agents/routing.md) | Met? | Evidence |
 |---|---|---|
-| Shortest path correct on hand-checked toy graphs | Yes | `test_shortest_hand_checked_and_never_uses_prohibited_shortcut`, `test_step_free_is_hard_constraint` (perimeter length checked), `test_snap_within_limit_and_partial_edges`, `test_same_edge_forward_and_reverse`; search checked against `networkx.dijkstra_path_length` on 20 random graphs |
-| Dijkstra = A* cost | Yes | `test_dijkstra_equals_astar_generalized_cost` (5 seeds × 15 OD pairs, generalized and time weights, random risk + hazards) |
-| Prohibited edges never used | Yes | `test_prohibited_edges_never_used_random_pairs` (100 random pairs); `foot_access=no` diagonal shortcut never chosen |
-| Closures excluded (not penalised) | Yes | `test_confirmed_blocking_closure_is_excluded_not_penalised`, `test_confirmed_closure_excluded_end_to_end`; unconfirmed "blocking" reports are not hard-excluded (`test_unconfirmed_blocking_report_is_not_a_hard_exclusion`) |
-| Step-free hard; no route → 404 `NO_ROUTE`, no fallback | Yes | `test_step_free_no_route_is_404_not_fallback`, `test_step_free_no_route_returns_404` |
-| `/routes/compare` responses validate against openapi.yaml | Yes | `test_compare_routes_schema_valid` (3 profiles × 2 locales), validated with jsonschema Draft 2020-12 + FormatChecker against the contract file itself |
-| 422 outside coverage; 400/422 on bad input | Yes | `test_compare_routes_error_cases` (outside bbox, >75 m from network, malformed JSON → 400, missing/extra field, lat 91, bad profile, same point) |
-| No fabricated weather/risk; unknown flows through as `unknown` | Yes | weather → 503 (`test_weather_unavailable_is_503_not_invented`); `unknown_share == 1.0` + `RISK_LAYER_UNAVAILABLE`; segments `risk.level/evidence.state == unknown`; malformed/failing provider output → unknown (`test_api_adapters.py`) |
-| `pytest services/routing services/api` green | Yes | 236 passed, 2 skipped (DB tests, reasons above) |
-| ruff clean | Yes | output above |
-| Every v1 endpoint implemented | Yes | `test_all_contract_operations_are_implemented` compares contract paths with the app's generated OpenAPI |
-| Error envelope, bbox limit, pagination, CORS, rate limiting, admin hash auth, logs rounded to 3 dp | Yes | `test_hazards_bbox_validation`, `test_segments_pagination_and_unknown_risk`, `test_admin_pagination`, `test_cors_allow_list`, `test_rate_limit`, `test_admin_auth`, `test_logs_round_coordinates` (asserts 4-dp coordinates and report descriptions never appear in logs) |
-| `/reports` + moderation + deletion, in-memory + PostGIS repos | Partly | In-memory fully tested (`test_report_lifecycle_and_moderation`, expiry/purge). PostGIS repositories are written but **untested**: the `wp` schema is absent |
-| `PostgisGraphProvider` coded against data-model.md | Partly | Written; integration test skipped (schema absent) |
-| Latency p50/p95 for 100 pilot OD pairs | Partly | Measured on synthetic graphs only (table above); real pilot graph unavailable |
+| Shortest path correct on hand-checked toy graphs | Yes | `test_routing_engine.py` (hand-computed lengths, partial edges, same-edge forward/reverse); search vs `networkx.dijkstra_path_length` on 20 random graphs |
+| …and on real data | Yes | `test_shortest_matches_networkx_oracle_on_node_pairs`: engine distance = NetworkX oracle (±0.05 m) on ≥ 50 real pilot_mini node pairs |
+| Dijkstra = A* cost | Yes | synthetic (5 seeds × 15 pairs, random risk + hazards) and real pilot_mini (≥ 100 random pairs) |
+| Prohibited edges never used; closures excluded, not penalised | Yes | `test_prohibited_edges_never_used_random_pairs`, `test_confirmed_blocking_closure_is_excluded_not_penalised`, `test_confirmed_closure_excluded_end_to_end` |
+| Step-free hard; no route → 404 `NO_ROUTE`, no fallback | Yes | synthetic tests + `test_step_free_on_real_data_never_relaxed` (only 2 directed edges in pilot_mini are tagged step-free; requests fail or use only those) |
+| `/routes/compare` schema-valid vs openapi.yaml; 422 outside coverage; 400/422 on bad input | Yes | `test_api_contract.py`, `test_api_pilot_mini.py` (3 profiles × 2 locales on real graph); Platform harness 54 passed |
+| No fabricated weather/risk; unknown flows through | Yes | weather → 503; `unknown_share == 1.0`, `RISK_LAYER_UNAVAILABLE`; segments risk `unknown`; malformed or failing provider → unknown |
+| `PostgisGraphProvider` against data-model | Yes | `test_postgis_graph_provider_integration`: real pilot_mini loaded into `wp_routing`, read back identical to `FixtureGraphProvider` (ids, lengths, kinds, access, step_free) |
+| `/reports` + moderation + deletion, in-memory + PostGIS | Yes | in-memory lifecycle/expiry/purge tests; `test_api_postgis.py` runs the full lifecycle, hazards, sources and pilot requests on PostGIS |
+| Latency p50/p95, 100 pilot OD pairs | Yes (pilot_mini) | table above; full pilot graph pending |
+| `pytest services/routing services/api` green; ruff clean | Yes | 257 passed, 0 skipped; ruff output above |
 
-## Design notes (for review)
-- **Cost model** (`costs.py`, all seconds): `base = length_m / speed` (1.3 m/s; 0.9 m/s for `reduced_mobility`). `+45 s` per edge with a confirmed, passable disruption. `+20 s` per edge with unverified reports, only when `avoid_unverified_reports`. Risk penalty = base × {low 0, moderate 0.15, elevated 0.40, high 1.0}, applied only for `model_estimate`/`simulated` evidence. **`unknown_penalty_s_per_100m = 3.0`** (≈ +3.9 % at 1.3 m/s, must be > 0, counted in `unknown_share`). Risk with any other evidence state is treated as unknown. Unlit edges +5 %. `reduced_mobility`: +300 s on steps / `step_free=false`, +10 % when step_free is unknown (soft; only `step_free` is hard).
-- **Hard exclusions:** `foot_access ∈ {no, private}`; confirmed hazards with `blocks_passage = true` that are active at `departure_time` (matched to edges within 5 m in EPSG:32188); `step_free is not True` under the `step_free` profile; edges outside the largest connected component (other components are listed as `/coverage` gaps, never bridged).
-- **Snapping:** nearest allowed edge ≤ 75 m (EPSG:32188), with partial-edge virtual start and end nodes, so the shared graph is never mutated. The A* heuristic uses distance to the *snapped* point × 0.999 / speed. An earlier version measured to the raw click point and was inadmissible; the Dijkstra = A* test caught it.
-- **Routes:** always returns both `shortest` (Dijkstra on distance) and `winter_aware` (A* on generalized cost), with `identical` set when they match.
-- **Explanation evidence states:** `SHORTEST_DISTANCE`/`WINTER_AWARE_COST` → `unknown` (they state conditions are not verified). `STEP_FREE_TAGGED_ONLY`/`INCLUDES_STEPS` → `unverified_report` (community-mapped OSM tags). Closures/disruptions → `confirmed`. Reports → `unverified_report`. `LOWER_MODELED_RISK` → `model_estimate`. Synthetic graph → `SIMULATED_DATA` (`simulated`) plus a warning. A test checks the catalog never says safe / cleared / ice-free / wheelchair accessible (EN/FR).
-- **Privacy:** access logs record path, status and duration only (no query string, body or IP). A structlog processor rounds coordinate-like fields to 3 dp and redacts email/description/token fields. Rate-limit keys are an HMAC of the client IP with a per-process secret, rotated daily. Validation errors never echo input values. The deletion token is shown once; only its SHA-256 is stored; wrong or missing tokens get 404.
-- **`/data-sources`** without a DB lists the 6 API data sources from `docs/data-sources-and-licenses.md` with `status: disabled` (`requires_credentials` for Planif-Neige), `last_success_at`/`record_count: null` and a note "Not ingested by this API instance". With PostGIS, `wp.source` is authoritative. Basemap rows (OpenFreeMap, Protomaps) are omitted as frontend concerns.
+## Fixes made after integration (this cycle)
+1. **Privacy (found by Platform harness):** uvicorn's own access log wrote full query strings (precise bbox coordinates) and client IPs. It is now disabled from inside the app (`logs.py`), so this holds however uvicorn is launched; our middleware logs path/status/duration only. Log timestamps are now at millisecond precision.
+2. **Contract v1.1.0:** a malformed report id or deletion token now returns 422 on DELETE and moderation (declared in v1.1.0). A well-formed but wrong token still returns 404, so report existence is never revealed. `CONTRACT_VERSION` is 1.1.0.
+3. **PostGIS bug (found by the new DB tests):** the admin listing used `(:status IS NULL OR status = :status)`, which Postgres rejects as an untyped parameter. The filter is now built explicitly.
+4. **pilot_mini / data-model v1.2:**
+   - Crossing metadata is read from nested `crossing: {type, kerb}` (fixture) or flat `crossing_type`/`crossing_kerb` (v1.2 columns).
+   - v1.2 edge columns are selected only when the applied migration has them: migration `0001` does not yet create `crossing_type`/`crossing_kerb`.
+   - `built_at` falls back to `manifest.json` `finished_at`.
+   - Source id `mtl-voirie-trottoir` → `mtl-voirie`, the Data agent's canonical id.
+5. **Earlier (cycle 1):** inadmissible A* heuristic (measured to the raw click instead of the snapped point; caught by the Dijkstra = A* test). Per-thread pyproj initialisation of 17–94 ms is now absorbed by a pre-warmed compute pool.
+
+## Design notes (unchanged from cycle 1)
+- **Cost (s, ≥ 0):** `length_m / speed` (1.3 m/s; 0.9 m/s for `reduced_mobility`) plus:
+  - confirmed passable disruption +45 s per edge;
+  - unverified reports +20 s per edge, only when `avoid_unverified_reports`;
+  - risk penalty × {0, 0.15, 0.40, 1.0}, only for `model_estimate`/`simulated` evidence;
+  - **unknown risk +3.0 s per 100 m** (must be > 0; counted in `unknown_share`);
+  - unlit +5 %;
+  - `reduced_mobility` soft penalties for steps (+300 s) and unknown step_free (+10 %).
+- **Hard exclusions:** foot_access no/private; confirmed `blocks_passage = true` hazards active at departure time (≤ 5 m in EPSG:32188); `step_free is not True` under the `step_free` profile; edges outside the largest component (other components are reported as gaps, never bridged).
+- **Snapping:** ≤ 75 m via virtual partial-edge nodes, so the shared graph is never mutated.
+- **Responses:** both variants are always returned, with `identical`.
+- **Wording:** a test guarantees the explanation catalog never says safe / cleared / ice-free / wheelchair accessible.
 
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|
-| `data/fixtures/pilot_mini/` not on `integration/winterpath` | All tests and latency figures use synthetic graphs; real-graph correctness and latency are unmeasured | Data agent publishes the fixture; then run `ROUTING_FIXTURE_DIR=… pytest` + latency on it (routing) |
-| `wp.*` schema not migrated in `wp_routing` | `PostgisGraphProvider` and PostGIS report/hazard/source/pilot repos untested (2 tests skipped) | Data agent migrations; apply to `wp_routing`; rerun with `.env.local` loaded |
-| ML `RiskProvider` not landed | Only `none` risk layer exercised end-to-end (plus test doubles) | ML agent; set `RISK_PROVIDER=winterpath_ml.inference:<factory>` |
-| No concrete ECCC weather adapter | `/weather/*` always 503 (correct per brief, but no live weather) | Follow-up: implement `WeatherAdapter` over GeoMet `swob-realtime` / `citypageweather` or read `wp.weather_obs` |
-| Report purge not scheduled | `purge()` exists (expiry, 30-day hard delete) but nothing calls it periodically | Platform / coordinator decide on cron (architecture §10 requires approval) |
+| Full pilot graph (whole PILOT_BBOX) not built | Real-data latency known only for 200 edges; synthetic 14k-edge proxy given | Data agent; rerun `test_routing_latency` pattern on it (routing) |
+| Migration `0001` lacks v1.2 columns (`wp.edge.crossing_type/crossing_kerb/highway/osm_snapshot`, `wp.closure.attrs/backsidewalk_blocks_passage`, `wp.weather_daily`) | From PostGIS, crossing type/kerb come only from node tags until the v1.2 migration lands (handled; selected automatically once present) | Data agent: migration 0002 |
+| ML `RiskProvider` not landed | Only the `none` layer is exercised end-to-end | ML; then set `RISK_PROVIDER=winterpath_ml.inference:<factory>` |
+| No concrete ECCC weather adapter | `/weather/*` → 503 (correct, no invented values). `wp.weather_obs`/`weather_daily` exist in `wp_data` | Follow-up (routing): adapter reading `wp.weather_obs`/`weather_daily` |
+| Report `purge()` not scheduled | Expiry is enforced on read; 30-day hard delete only when `purge()` is called | Platform/coordinator (scheduled jobs need approval) |
 
 ## Dependencies on other agents
-- **Data:** fixture layout assumed = `edges.geojson` (feature `id` = `edge_id`; properties per `wp.edge` columns), `nodes.geojson`, `metadata.json` with **explicit** `"simulated"` (the loader refuses a fixture without it), optional `osm_snapshot`, `built_at`, `source_freshness`.
-- **ML:** provider must expose `edge_risk(edge_ids, at)`. The adapter also reads an optional `risk_layer` attribute (`model|heuristic|none`) and an optional `model_status()` dict for `/models/status`.
-- **Frontend:** both routes are always returned; `explanation[].evidence_state` drives badges; `warnings` are localized strings.
+- **Data:** fixture layout as delivered (`edges/nodes.geojson`, `metadata.json` with explicit `simulated`, `manifest.json`). `wp.source` ids are canonical.
+- **ML:** `edge_risk(edge_ids, at)`, plus optional `risk_layer` attribute and `model_status()` dict.
+- **Platform:** harness passes against this API.
+- **Frontend:** both routes are always returned; `explanation[].evidence_state` drives badges; `warnings` are localized.
 
 ## Licensing / data notes
-No external data was downloaded or committed. The only graph committed is the synthetic toy grid (40 KB, metadata `"simulated": true`, `source_ids: ["synthetic"]`). `/data-sources` licence and attribution strings are transcribed from `docs/data-sources-and-licenses.md`. Licence URLs not given there (CC BY 4.0, ODbL 1.0, ECCC licence page) were filled from my knowledge, not re-fetched — please verify.
+- No external data was downloaded or committed by this agent.
+- Real data used: the Data agent's `data/fixtures/pilot_mini` (OSM, ODbL; see its `ATTRIBUTION.md`).
+- Synthetic data: `services/routing/tests/fixtures/synthetic/toy_grid` (`simulated: true`), used only in tests.
+- `/data-sources` licence and attribution text is transcribed from `docs/data-sources-and-licenses.md`. Licence URLs for CC BY 4.0, ODbL 1.0 and the ECCC licence page come from my own knowledge, not re-fetched — please verify.
+- Integration tests write to `wp_routing` (my own DB) only and clean up after themselves.
 
-## Change requests (contracts)
-1. **`.env.example` (coordinator):** add `ROUTING_GRAPH_SOURCE` (`fixture|postgis|none`), `ROUTING_FIXTURE_DIR`, `API_STORE_BACKEND` (`memory|postgis`), `RISK_PROVIDER` (`none` | `module:factory`), `ROUTING_WORKERS`. `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
-2. **openapi.yaml (additive):** declare `503 Unavailable` on `/routes/compare`, `/map/segments`, `/hazards`, `/data-sources`. The implementation returns `503 UPSTREAM_UNAVAILABLE` when the graph or a store is unavailable rather than inventing data; the contract currently lists 503 only for weather.
-3. **openapi.yaml (clarify):** a point inside the pilot bbox but > 75 m from the routable network currently returns `422 OUTSIDE_COVERAGE` with `details.which` and `details.max_snap_distance_m`. Consider a dedicated code (e.g. `OFF_NETWORK`).
-4. **openapi.yaml (clarify):** `DELETE /reports/{id}` with a missing, short or invalid `X-Deletion-Token` (or non-UUID id) returns 404 to avoid revealing whether a report exists. The contract marks the header required and declares no 422; please confirm.
-5. **data-model.md (additive):** `wp.edge.name text null`. Without it, PostGIS-backed `steps[].street_name` is always null.
-6. **data-model.md (additive):** `wp.community_report.terminal_at timestamptz`. The 30-day hard delete currently approximates with `COALESCE(moderated_at, expires_at)`; a reporter's deletion time is not recorded.
-7. **data-model.md (clarify):** `wp.closure.status` vocabulary. Closures are filtered by validity window only; cancelled or finished statuses may need excluding.
-8. **Source ids:** I used `osm`, `mtl-voirie-trottoir`, `mtl-311`, `mtl-entraves`, `mtl-planif-neige`, `eccc-geomet`. Only `mtl-311` appears in the contract; the Data agent's `wp.source` ids should be canonical.
-9. **Semantics to confirm:** the evidence states chosen for explanation codes (see Design notes), and always returning two routes when they are identical.
+## Change requests (contracts) — still open
+1. `.env.example`: add `ROUTING_GRAPH_SOURCE`, `ROUTING_FIXTURE_DIR`, `API_STORE_BACKEND`, `RISK_PROVIDER`, `ROUTING_WORKERS`. `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
+2. openapi.yaml (additive): declare `503 Unavailable` on `/routes/compare`, `/map/segments`, `/hazards`, `/data-sources`. These return `503 UPSTREAM_UNAVAILABLE` when the graph or a store is down.
+3. openapi.yaml (clarify): a point > 75 m from the routable network returns `422 OUTSIDE_COVERAGE` with `details.which`/`max_snap_distance_m`. Consider a distinct code (e.g. `OFF_NETWORK`).
+4. data-model (additive): `wp.edge.name text null`. pilot_mini also has no `name`, so `steps[].street_name` is always null on real data and instructions carry no street names.
+5. data-model (additive): `wp.community_report.terminal_at timestamptz`. Hard delete currently approximates with `COALESCE(moderated_at, expires_at)`.
+6. data-model (clarify): `wp.closure.status` vocabulary (closures are currently filtered by validity window only).
+7. Confirm the evidence states chosen for explanation codes, and that both routes are returned when they are identical.
+8. **Platform (FYI, not a contract change):** `tests/integration/log_scan.py` flags fractional seconds of microsecond ISO timestamps (e.g. `…:40.010135Z`) as latitudes. I avoided this by logging milliseconds, but other services may trip it.
+
+(Withdrawn: the source-id CR is resolved by the Data agent's canonical ids. The `DELETE /reports` 404/422 question is resolved by v1.1.0.)
 
 ## Review readiness
-Ready for code review of `services/routing` and `services/api`. It is **not** ready to claim real-graph correctness or latency, or to claim the PostGIS paths work, until the blockers above clear. Suggested coordinator re-run:
+READY FOR REVIEW. The worktree is clean after this commit. Coordinator re-run:
 ```bash
 cd ../winterpath-routing
+set -a; source .env.local; set +a          # DATABASE_URL → wp_routing (schema: alembic -c db/alembic.ini upgrade head)
 uv run --project services/api pytest services/routing services/api -rs
 (cd services/routing && uv run ruff check . && uv run ruff format --check .)
 (cd services/api && uv run ruff check . && uv run ruff format --check .)
+scripts/check-ownership.sh routing
 ```
