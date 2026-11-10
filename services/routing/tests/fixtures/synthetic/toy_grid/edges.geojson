@@ -1,0 +1,1259 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "syn:r0c0>syn:r0c1:0",
+   "properties": {
+    "edge_id": "syn:r0c0>syn:r0c1:0",
+    "from_node_id": "syn:r0c0",
+    "to_node_id": "syn:r0c1",
+    "length_m": 78.146,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street A",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.578,
+      45.503
+     ],
+     [
+      -73.577,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c1>syn:r0c0:0",
+   "properties": {
+    "edge_id": "syn:r0c1>syn:r0c0:0",
+    "from_node_id": "syn:r0c1",
+    "to_node_id": "syn:r0c0",
+    "length_m": 78.146,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street A",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.503
+     ],
+     [
+      -73.578,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c1>syn:r0c2:0",
+   "properties": {
+    "edge_id": "syn:r0c1>syn:r0c2:0",
+    "from_node_id": "syn:r0c1",
+    "to_node_id": "syn:r0c2",
+    "length_m": 78.146,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street A",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.503
+     ],
+     [
+      -73.576,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c2>syn:r0c1:0",
+   "properties": {
+    "edge_id": "syn:r0c2>syn:r0c1:0",
+    "from_node_id": "syn:r0c2",
+    "to_node_id": "syn:r0c1",
+    "length_m": 78.146,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street A",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.503
+     ],
+     [
+      -73.577,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c2>syn:r0c3:0",
+   "properties": {
+    "edge_id": "syn:r0c2>syn:r0c3:0",
+    "from_node_id": "syn:r0c2",
+    "to_node_id": "syn:r0c3",
+    "length_m": 78.146,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street A",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.503
+     ],
+     [
+      -73.575,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c3>syn:r0c2:0",
+   "properties": {
+    "edge_id": "syn:r0c3>syn:r0c2:0",
+    "from_node_id": "syn:r0c3",
+    "to_node_id": "syn:r0c2",
+    "length_m": 78.146,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street A",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.575,
+      45.503
+     ],
+     [
+      -73.576,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c0>syn:r1c1:0",
+   "properties": {
+    "edge_id": "syn:r1c0>syn:r1c1:0",
+    "from_node_id": "syn:r1c0",
+    "to_node_id": "syn:r1c1",
+    "length_m": 78.145,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": null,
+    "name": "Synthetic Street B",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.578,
+      45.5037
+     ],
+     [
+      -73.577,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c1>syn:r1c0:0",
+   "properties": {
+    "edge_id": "syn:r1c1>syn:r1c0:0",
+    "from_node_id": "syn:r1c1",
+    "to_node_id": "syn:r1c0",
+    "length_m": 78.145,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": null,
+    "name": "Synthetic Street B",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.5037
+     ],
+     [
+      -73.578,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c1>syn:r1c2:0",
+   "properties": {
+    "edge_id": "syn:r1c1>syn:r1c2:0",
+    "from_node_id": "syn:r1c1",
+    "to_node_id": "syn:r1c2",
+    "length_m": 78.145,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": null,
+    "name": "Synthetic Street B",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.5037
+     ],
+     [
+      -73.576,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c2>syn:r1c1:0",
+   "properties": {
+    "edge_id": "syn:r1c2>syn:r1c1:0",
+    "from_node_id": "syn:r1c2",
+    "to_node_id": "syn:r1c1",
+    "length_m": 78.145,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": null,
+    "name": "Synthetic Street B",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.5037
+     ],
+     [
+      -73.577,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c2>syn:r1c3:0",
+   "properties": {
+    "edge_id": "syn:r1c2>syn:r1c3:0",
+    "from_node_id": "syn:r1c2",
+    "to_node_id": "syn:r1c3",
+    "length_m": 78.145,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": null,
+    "name": "Synthetic Street B",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.5037
+     ],
+     [
+      -73.575,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c3>syn:r1c2:0",
+   "properties": {
+    "edge_id": "syn:r1c3>syn:r1c2:0",
+    "from_node_id": "syn:r1c3",
+    "to_node_id": "syn:r1c2",
+    "length_m": 78.145,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": null,
+    "name": "Synthetic Street B",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.575,
+      45.5037
+     ],
+     [
+      -73.576,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c0>syn:r2c1:0",
+   "properties": {
+    "edge_id": "syn:r2c0>syn:r2c1:0",
+    "from_node_id": "syn:r2c0",
+    "to_node_id": "syn:r2c1",
+    "length_m": 78.144,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street C",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.578,
+      45.5044
+     ],
+     [
+      -73.577,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c1>syn:r2c0:0",
+   "properties": {
+    "edge_id": "syn:r2c1>syn:r2c0:0",
+    "from_node_id": "syn:r2c1",
+    "to_node_id": "syn:r2c0",
+    "length_m": 78.144,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street C",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.5044
+     ],
+     [
+      -73.578,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c1>syn:r2c2:0",
+   "properties": {
+    "edge_id": "syn:r2c1>syn:r2c2:0",
+    "from_node_id": "syn:r2c1",
+    "to_node_id": "syn:r2c2",
+    "length_m": 78.144,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street C",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.5044
+     ],
+     [
+      -73.576,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c2>syn:r2c1:0",
+   "properties": {
+    "edge_id": "syn:r2c2>syn:r2c1:0",
+    "from_node_id": "syn:r2c2",
+    "to_node_id": "syn:r2c1",
+    "length_m": 78.144,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street C",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.5044
+     ],
+     [
+      -73.577,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c2>syn:r2c3:0",
+   "properties": {
+    "edge_id": "syn:r2c2>syn:r2c3:0",
+    "from_node_id": "syn:r2c2",
+    "to_node_id": "syn:r2c3",
+    "length_m": 78.144,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street C",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.5044
+     ],
+     [
+      -73.575,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c3>syn:r2c2:0",
+   "properties": {
+    "edge_id": "syn:r2c3>syn:r2c2:0",
+    "from_node_id": "syn:r2c3",
+    "to_node_id": "syn:r2c2",
+    "length_m": 78.144,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "sidewalk",
+    "step_free": true,
+    "name": "Synthetic Street C",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.575,
+      45.5044
+     ],
+     [
+      -73.576,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c0>syn:r1c0:0",
+   "properties": {
+    "edge_id": "syn:r0c0>syn:r1c0:0",
+    "from_node_id": "syn:r0c0",
+    "to_node_id": "syn:r1c0",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": null,
+    "name": "Synthetic Lane 0",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.578,
+      45.503
+     ],
+     [
+      -73.578,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c0>syn:r0c0:0",
+   "properties": {
+    "edge_id": "syn:r1c0>syn:r0c0:0",
+    "from_node_id": "syn:r1c0",
+    "to_node_id": "syn:r0c0",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": null,
+    "name": "Synthetic Lane 0",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.578,
+      45.5037
+     ],
+     [
+      -73.578,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c1>syn:r1c1:0",
+   "properties": {
+    "edge_id": "syn:r0c1>syn:r1c1:0",
+    "from_node_id": "syn:r0c1",
+    "to_node_id": "syn:r1c1",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": null,
+    "name": "Synthetic Lane 1",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.503
+     ],
+     [
+      -73.577,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c1>syn:r0c1:0",
+   "properties": {
+    "edge_id": "syn:r1c1>syn:r0c1:0",
+    "from_node_id": "syn:r1c1",
+    "to_node_id": "syn:r0c1",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": null,
+    "name": "Synthetic Lane 1",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.5037
+     ],
+     [
+      -73.577,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c2>syn:r1c2:0",
+   "properties": {
+    "edge_id": "syn:r0c2>syn:r1c2:0",
+    "from_node_id": "syn:r0c2",
+    "to_node_id": "syn:r1c2",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "crossing",
+    "step_free": null,
+    "name": null,
+    "foot_access": "yes",
+    "lit": false,
+    "crossing_type": "marked",
+    "kerb": "lowered"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.503
+     ],
+     [
+      -73.576,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c2>syn:r0c2:0",
+   "properties": {
+    "edge_id": "syn:r1c2>syn:r0c2:0",
+    "from_node_id": "syn:r1c2",
+    "to_node_id": "syn:r0c2",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "crossing",
+    "step_free": null,
+    "name": null,
+    "foot_access": "yes",
+    "lit": false,
+    "crossing_type": "marked",
+    "kerb": "lowered"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.5037
+     ],
+     [
+      -73.576,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c3>syn:r1c3:0",
+   "properties": {
+    "edge_id": "syn:r0c3>syn:r1c3:0",
+    "from_node_id": "syn:r0c3",
+    "to_node_id": "syn:r1c3",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": true,
+    "name": "Synthetic Lane 3",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.575,
+      45.503
+     ],
+     [
+      -73.575,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c3>syn:r0c3:0",
+   "properties": {
+    "edge_id": "syn:r1c3>syn:r0c3:0",
+    "from_node_id": "syn:r1c3",
+    "to_node_id": "syn:r0c3",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": true,
+    "name": "Synthetic Lane 3",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.575,
+      45.5037
+     ],
+     [
+      -73.575,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c0>syn:r2c0:0",
+   "properties": {
+    "edge_id": "syn:r1c0>syn:r2c0:0",
+    "from_node_id": "syn:r1c0",
+    "to_node_id": "syn:r2c0",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": null,
+    "name": "Synthetic Lane 0",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.578,
+      45.5037
+     ],
+     [
+      -73.578,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c0>syn:r1c0:0",
+   "properties": {
+    "edge_id": "syn:r2c0>syn:r1c0:0",
+    "from_node_id": "syn:r2c0",
+    "to_node_id": "syn:r1c0",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": null,
+    "name": "Synthetic Lane 0",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.578,
+      45.5044
+     ],
+     [
+      -73.578,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c1>syn:r2c1:0",
+   "properties": {
+    "edge_id": "syn:r1c1>syn:r2c1:0",
+    "from_node_id": "syn:r1c1",
+    "to_node_id": "syn:r2c1",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "steps",
+    "step_free": false,
+    "name": "Synthetic Steps",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.5037
+     ],
+     [
+      -73.577,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c1>syn:r1c1:0",
+   "properties": {
+    "edge_id": "syn:r2c1>syn:r1c1:0",
+    "from_node_id": "syn:r2c1",
+    "to_node_id": "syn:r1c1",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "steps",
+    "step_free": false,
+    "name": "Synthetic Steps",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.5044
+     ],
+     [
+      -73.577,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c2>syn:r2c2:0",
+   "properties": {
+    "edge_id": "syn:r1c2>syn:r2c2:0",
+    "from_node_id": "syn:r1c2",
+    "to_node_id": "syn:r2c2",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": null,
+    "name": "Synthetic Lane 2",
+    "foot_access": "yes",
+    "lit": false
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.5037
+     ],
+     [
+      -73.576,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c2>syn:r1c2:0",
+   "properties": {
+    "edge_id": "syn:r2c2>syn:r1c2:0",
+    "from_node_id": "syn:r2c2",
+    "to_node_id": "syn:r1c2",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": null,
+    "name": "Synthetic Lane 2",
+    "foot_access": "yes",
+    "lit": false
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.576,
+      45.5044
+     ],
+     [
+      -73.576,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c3>syn:r2c3:0",
+   "properties": {
+    "edge_id": "syn:r1c3>syn:r2c3:0",
+    "from_node_id": "syn:r1c3",
+    "to_node_id": "syn:r2c3",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": true,
+    "name": "Synthetic Lane 3",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.575,
+      45.5037
+     ],
+     [
+      -73.575,
+      45.5044
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r2c3>syn:r1c3:0",
+   "properties": {
+    "edge_id": "syn:r2c3>syn:r1c3:0",
+    "from_node_id": "syn:r2c3",
+    "to_node_id": "syn:r1c3",
+    "length_m": 77.791,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "step_free": true,
+    "name": "Synthetic Lane 3",
+    "foot_access": "yes",
+    "lit": true
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.575,
+      45.5044
+     ],
+     [
+      -73.575,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r0c0>syn:r1c1:0",
+   "properties": {
+    "edge_id": "syn:r0c0>syn:r1c1:0",
+    "from_node_id": "syn:r0c0",
+    "to_node_id": "syn:r1c1",
+    "length_m": 110.264,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "foot_access": "no",
+    "step_free": true,
+    "name": "Private Shortcut"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.578,
+      45.503
+     ],
+     [
+      -73.577,
+      45.5037
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:r1c1>syn:r0c0:0",
+   "properties": {
+    "edge_id": "syn:r1c1>syn:r0c0:0",
+    "from_node_id": "syn:r1c1",
+    "to_node_id": "syn:r0c0",
+    "length_m": 110.264,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "foot_access": "no",
+    "step_free": true,
+    "name": "Private Shortcut"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.577,
+      45.5037
+     ],
+     [
+      -73.578,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:iso1>syn:iso2:0",
+   "properties": {
+    "edge_id": "syn:iso1>syn:iso2:0",
+    "from_node_id": "syn:iso1",
+    "to_node_id": "syn:iso2",
+    "length_m": 78.146,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "foot_access": "yes",
+    "step_free": null,
+    "name": "Isolated Path"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.571,
+      45.503
+     ],
+     [
+      -73.57,
+      45.503
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "syn:iso2>syn:iso1:0",
+   "properties": {
+    "edge_id": "syn:iso2>syn:iso1:0",
+    "from_node_id": "syn:iso2",
+    "to_node_id": "syn:iso1",
+    "length_m": 78.146,
+    "connectivity_confidence": "high",
+    "source_ids": [
+     "synthetic"
+    ],
+    "surface": "concrete",
+    "edge_kind": "footway",
+    "foot_access": "yes",
+    "step_free": null,
+    "name": "Isolated Path"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.57,
+      45.503
+     ],
+     [
+      -73.571,
+      45.503
+     ]
+    ]
+   }
+  }
+ ]
+}
