@@ -78,9 +78,18 @@ def is_season(days: pd.DatetimeIndex) -> np.ndarray:
     return np.isin(days.month, config.SEASON_MONTHS)
 
 
+def modal_borough(all_cells: pd.DataFrame, before: pd.Timestamp) -> pd.Series:
+    """h3 -> borough with the most geolocated requests before `before` (names normalised)."""
+    a = all_cells[all_cells["day"] < before].assign(borough=lambda d: d["borough"].map(config.normalise_borough))
+    g = a.groupby(["h3", "borough"])["n"].sum().reset_index().sort_values(["h3", "n", "borough"], ascending=[True, False, True])
+    return g.drop_duplicates("h3").set_index("h3")["borough"]
+
+
 def select_universe(all_cells: pd.DataFrame, before: pd.Timestamp) -> list[str]:
-    """Covered cells = any geolocated 311 request (any category) before `before` (training data only)."""
-    return sorted(all_cells.loc[all_cells["day"] < before, "h3"].unique().tolist())
+    """Covered cells = >=1 geolocated 311 request (any category) before `before` (training data only)
+    AND modal borough is one of the City of Montréal's 19 boroughs served by this 311 dataset."""
+    b = modal_borough(all_cells, before)
+    return sorted(b[b.isin(config.CITY_BOROUGHS)].index.tolist())
 
 
 def neighbour_matrix(cells: list[str]) -> sparse.csr_matrix:
@@ -175,7 +184,7 @@ def build_panel(
     hol = set()
     for y in range(tdays.min().year, tdays.max().year + 1):
         hol |= quebec_holidays_in_season(y)
-    out["dow"] = np.repeat(tdays.dayofweek.to_numpy(), C)
+    out["dow"] = np.repeat(tdays.day_of_week.to_numpy(), C)
     out["is_weekend"] = (out["dow"] >= 5).astype(np.int8)
     out["holiday"] = np.repeat(np.array([d.date() in hol for d in tdays], dtype=np.int8), C)
     sd = np.array([(d - pd.Timestamp(d.year if d.month >= 11 else d.year - 1, 11, 1)).days for d in tdays])

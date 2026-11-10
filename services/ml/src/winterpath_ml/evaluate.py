@@ -32,6 +32,9 @@ WEATHER_END = date(2026, 11, 9)
 GATE_PR_AUC_MARGIN = 0.010
 HEURISTIC_ID = "winter311-heuristic-v1"
 MODEL_ID = "winter311-hgb-v1"
+# v1 = first run (coverage incl. demerged municipalities; superseded, kept in models/evaluation/ for the record)
+# v2 = coverage restricted to the 19 City boroughs (label-audit finding). Gate procedure unchanged.
+RUN_VERSION = "v2"
 
 
 def sha256(path: Path) -> str:
@@ -64,12 +67,6 @@ def load_inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, str]:
     ac = pd.read_parquet(config.INTERIM_DIR / "all_requests_cell.parquet")
     w = weather.load_weather(WEATHER_START, WEATHER_END)
     return rc, ac, w, raw_sha
-
-
-def cell_borough(all_cells: pd.DataFrame, before: pd.Timestamp) -> pd.Series:
-    a = all_cells[all_cells["day"] < before]
-    g = a.groupby(["h3", "borough"])["n"].sum().reset_index().sort_values(["h3", "n"], ascending=[True, False])
-    return g.drop_duplicates("h3").set_index("h3")["borough"]
 
 
 def fmt_table(rows: list[dict], cols: list[str]) -> str:
@@ -144,7 +141,7 @@ def run(no_test: bool = False) -> dict:
     gate_pass = all(g["pass"] for g in gate.values())
 
     # ---- calibration + per-borough (candidate and shipped heuristic) ----
-    boro = cell_borough(ac, VALID_START)
+    boro = features.modal_borough(ac, VALID_START)
     calib, per_borough = {}, {}
     for split in ("test_chrono", "test_spatial"):
         d = parts[split]
@@ -214,7 +211,7 @@ def _file_entry(path: Path) -> dict:
 
 
 def write_artifacts(out, table, panel, cells, fitted, w, rc, ac) -> None:
-    run_id = f"v1-{out['source_311_sha256'][:8]}"
+    run_id = f"{RUN_VERSION}-{out['source_311_sha256'][:8]}"
     adir = config.ARTIFACT_DIR / run_id
     adir.mkdir(parents=True, exist_ok=True)
 
@@ -241,7 +238,7 @@ def write_artifacts(out, table, panel, cells, fitted, w, rc, ac) -> None:
         "Reports reflect who reports and where (reporting bias); low predicted values do not mean a sidewalk is cleared or safe.",
         "Weather features use observed values from the previous days at one airport station (ECCC 7025251/702S006); same-day forecasts are not used.",
         "Trained on winters 2021-22 (partial) to 2023-24; evaluated on 2025-26. Behaviour under new city operations or reporting channels is untested.",
-        "Cells with no 311 activity before 2024-11-01 are outside coverage and return unknown.",
+        "Coverage = cells in the City of Montréal's 19 boroughs with 311 activity before 2024-11-01; demerged municipalities (e.g. Westmount, Mont-Royal) are not in this 311 dataset and return unknown.",
     ]
     registry = {
         "schema_version": 1,
@@ -329,7 +326,7 @@ def write_card(out, table, registry, limitations) -> None:
 - **Target:** {out['target']}. This is reporting behaviour, **not** ice, snow depth or sidewalk safety.
 - **Data:** Ville de Montréal 311 requests (CC BY 4.0), file sha256 `{out['source_311_sha256']}`; ECCC climate-daily stations {config.STATION_PRIMARY} + {config.STATION_FALLBACK}.
 - **Window:** panel {out['data_window']['panel_start']} … {out['data_window']['panel_end']} (Nov–Apr only). Train winters {out['data_window']['train_winters']} · calibration winter {out['data_window']['valid_winter']} · test winter {out['data_window']['test_winter']}.
-- **Coverage:** {out['n_cells']} H3 res-9 cells (any geolocated 311 request before 2024-11-01). Spatial holdout: {out['n_holdout_blocks']} H3 res-6 blocks.
+- **Coverage:** {out['n_cells']} H3 res-9 cells (City of Montréal boroughs; any geolocated 311 request before 2024-11-01). Spatial holdout: {out['n_holdout_blocks']} H3 res-6 blocks.
 - **Rows:** {out['rows']} · positives {out['positives']}.
 - **Algorithm:** sklearn HistGradientBoostingClassifier (fixed hyper-parameters) + isotonic calibration on the validation winter.
 - **Precision/recall@k:** top {out['k_per_day']} cells per day, pooled over test days. PR-AUC on uncalibrated scores; Brier on calibrated probabilities.

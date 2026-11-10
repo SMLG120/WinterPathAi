@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-10T21:21:50+00:00",
+  "target": "P(>=1 winter-related 311 report in H3 res-9 cell within next 24h)",
+  "run_id": "v2-8d19aa86",
+  "active_layer": "heuristic",
+  "season_months": [
+    11,
+    12,
+    1,
+    2,
+    3,
+    4
+  ],
+  "h3_resolution": 9,
+  "levels": {
+    "thresholds": {
+      "moderate": 0.028491849687228895,
+      "elevated": 0.05698369937445779,
+      "high": 0.11396739874891558
+    },
+    "basis": "calibrated probability p vs validation-winter positive rate r: low<r<=moderate<2r<=elevated<4r<=high"
+  },
+  "coverage": {
+    "path": "models/artifacts/v2-8d19aa86/coverage_cells.parquet",
+    "bytes": 19883,
+    "sha256": "f7519df54d64d5d8734add8b4c3aa0631093007ffdd29de62432b729f8dc12cd"
+  },
+  "features": {
+    "path": "models/artifacts/v2-8d19aa86/features.parquet",
+    "bytes": 14150376,
+    "sha256": "ad63e3f0e36897c6255a85b57d7f51aab169ff3aa6a5df111d39ddefdea1fcc5"
+  },
+  "evaluation": {
+    "path": "models/artifacts/v2-8d19aa86/metrics.json",
+    "bytes": 24557,
+    "sha256": "17ef10c37da435a7a3ba453660f6c25e339787902e4e99a63ecf85cc68466f4b"
+  },
+  "training_window": "2022-02-01..2024-04-30 (train), 2024-11-01..2025-04-30 (calibration)",
+  "layers": {
+    "heuristic": {
+      "id": "winter311-heuristic-v1",
+      "enabled": true,
+      "evidence_state": "model_estimate",
+      "expose_probability": false,
+      "artifact": {
+        "path": "models/artifacts/v2-8d19aa86/winter311-heuristic-v1.joblib",
+        "bytes": 2953,
+        "sha256": "4c9163461c21042c44a5ce80b57759e08c4bbc066fc3f35f223cb6b58de86546"
+      },
+      "description": "hist_rate × (1 + snow_3d/5 + 0.5·freeze_thaw_3d + 0.5·[precip_1d>0 ∧ tmin_1d<0]); isotonic-mapped for levels only"
+    },
+    "model": {
+      "id": "winter311-hgb-v1",
+      "enabled": false,
+      "evidence_state": "model_estimate",
+      "expose_probability": false,
+      "artifact": {
+        "path": "models/artifacts/v2-8d19aa86/winter311-hgb-v1.joblib",
+        "bytes": 1110930,
+        "sha256": "24cb290d8f0c2f3abd05e2e586c53b99bc623d3de3984cc807c2b0f28d9d9baf"
+      },
+      "card": "models/cards/winter311-hgb-v1.md",
+      "evaluation": {
+        "split": "chronological 2025-11..2026-04 holdout + spatial block holdout (H3 res-6)",
+        "pr_auc": 0.16157937114642013,
+        "brier": 0.027497963538665994,
+        "precision_at_k": 0.12066298342541436,
+        "recall_at_k": 0.0961606199365974,
+        "baseline_pr_auc": 0.1648583700450065,
+        "n_test": 372317,
+        "spatial_pr_auc": 0.13335264187607168,
+        "spatial_baseline_pr_auc": 0.13449117454580628,
+        "spatial_n_test": 158013
+      },
+      "gate": {
+        "test_chrono": {
+          "best_baseline": "baseline_logistic",
+          "pr_auc_diff": -0.003278998898586377,
+          "pr_auc_diff_ci95": [
+            -0.013747549823535177,
+            0.008028355805047255
+          ],
+          "best_baseline_brier": 0.027363861113448268,
+          "pass_margin": false,
+          "pass_ci": false,
+          "pass_brier": false,
+          "pass": false
+        },
+        "test_spatial": {
+          "best_baseline": "baseline_logistic",
+          "pr_auc_diff": -0.0011385326697345988,
+          "pr_auc_diff_ci95": [
+            -0.012700159263567608,
+            0.008569934747237828
+          ],
+          "best_baseline_brier": 0.020988278087246837,
+          "pass_margin": false,
+          "pass_ci": false,
+          "pass_brier": true,
+          "pass": false
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Predicts whether a winter-related 311 REPORT will be filed in a ~0.1 km² H3 cell on a day; it does not measure ice, snow or sidewalk safety.",
+    "Reports reflect who reports and where (reporting bias); low predicted values do not mean a sidewalk is cleared or safe.",
+    "Weather features use observed values from the previous days at one airport station (ECCC 7025251/702S006); same-day forecasts are not used.",
+    "Trained on winters 2021-22 (partial) to 2023-24; evaluated on 2025-26. Behaviour under new city operations or reporting channels is untested.",
+    "Coverage = cells in the City of Montréal's 19 boroughs with 311 activity before 2024-11-01; demerged municipalities (e.g. Westmount, Mont-Royal) are not in this 311 dataset and return unknown."
+  ]
+}

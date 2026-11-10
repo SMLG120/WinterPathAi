@@ -36,6 +36,38 @@ WINTER_CATEGORIES: dict[str, str] = {
 }
 REPORT_NATURES = ("Requete", "Plainte")  # 'Information' and 'Commentaire' are not reports of a condition
 
+# The 311 file covers only the 19 boroughs of the City of Montréal. Demerged municipalities
+# (Westmount, Mont-Royal, Côte-Saint-Luc, ...) run their own services and have ~no rows, so
+# their cells are OUT of coverage (unknown), never "low".
+CITY_BOROUGHS = frozenset(
+    {
+        "Ahuntsic-Cartierville",
+        "Anjou",
+        "Côte-des-Neiges-Notre-Dame-de-Grâce",
+        "Lachine",
+        "LaSalle",
+        "Le Plateau-Mont-Royal",
+        "Le Sud-Ouest",
+        "L'Île-Bizard-Sainte-Geneviève",
+        "Mercier-Hochelaga-Maisonneuve",
+        "Montréal-Nord",
+        "Outremont",
+        "Pierrefonds-Roxboro",
+        "Rivière-des-Prairies-Pointe-aux-Trembles",
+        "Rosemont-La Petite-Patrie",
+        "Saint-Laurent",
+        "Saint-Léonard",
+        "Verdun",
+        "Ville-Marie",
+        "Villeray-Saint-Michel-Parc-Extension",
+    }
+)
+
+
+def normalise_borough(name: str) -> str:
+    return name.replace(" - ", "-").strip()
+
+
 H3_RES = 9
 SPATIAL_BLOCK_RES = 6
 SPATIAL_HOLDOUT_FRACTION = 0.2

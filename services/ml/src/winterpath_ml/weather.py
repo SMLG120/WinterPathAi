@@ -95,7 +95,7 @@ def build_daily_weather(primary: pd.DataFrame, fallback: pd.DataFrame | None = N
 
 def weather_features(daily: pd.DataFrame, days: pd.DatetimeIndex) -> pd.DataFrame:
     """Features for target day D using only observations from days strictly before D."""
-    d = daily.copy()
+    d = daily.reindex(daily.index.union(days)).sort_index()
     d["freeze_thaw"] = np.where(
         d["tmax"].notna() & d["tmin"].notna(), ((d["tmax"] > 0) & (d["tmin"] < 0)).astype(float), np.nan
     )
