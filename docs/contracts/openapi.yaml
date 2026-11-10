@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: WinterPath AI API
-  version: 1.1.0
-  summary: Montréal pedestrian winter-routing API (contract v1.1.0; v1.0.0 frozen 2026-11-10, v1.1.0 adds declared 4xx responses per CR-PLAT-1).
+  version: 1.3.0
+  summary: Montréal pedestrian winter-routing API (contract v1.3.0; v1.0.0 frozen 2026-11-10; v1.1.0 declared 4xx per CR-PLAT-1; v1.3.0 adds 503 on data-backed endpoints and OFF_NETWORK per CR-ROUTING-2/3).
   description: |
     All geometries are GeoJSON in EPSG:4326 with [longitude, latitude] ordering.
     Every risk/condition datum carries an `evidence` object; `unknown` is never zero risk.
@@ -52,6 +52,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/DataSource" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /weather/current:
     get:
       tags: [weather]
@@ -104,6 +105,7 @@ paths:
               schema: { $ref: "#/components/schemas/HazardCollection" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "422": { $ref: "#/components/responses/Unprocessable" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /map/segments:
     get:
       tags: [map]
@@ -120,6 +122,7 @@ paths:
               schema: { $ref: "#/components/schemas/SegmentCollection" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "422": { $ref: "#/components/responses/Unprocessable" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /models/status:
     get:
       tags: [models]
@@ -158,6 +161,7 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "422": { $ref: "#/components/responses/Unprocessable" }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /reports:
     post:
       tags: [reports]
@@ -295,7 +299,7 @@ components:
       description: Malformed request.
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     Unprocessable:
-      description: Valid syntax but rejected (OUTSIDE_COVERAGE, BBOX_TOO_LARGE, VALIDATION_ERROR).
+      description: "Valid syntax but rejected: OUTSIDE_COVERAGE (point outside pilot bbox), OFF_NETWORK (v1.3: inside bbox but > 75 m from the routable network; details.which and details.max_snap_distance_m), BBOX_TOO_LARGE, VALIDATION_ERROR."
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     NotFound:
       description: Not found.
@@ -319,7 +323,7 @@ components:
       properties:
         code:
           type: string
-          enum: [VALIDATION_ERROR, OUTSIDE_COVERAGE, BBOX_TOO_LARGE, NO_ROUTE, NOT_FOUND, UNAUTHORIZED, RATE_LIMITED, UPSTREAM_UNAVAILABLE, INTERNAL]
+          enum: [VALIDATION_ERROR, OUTSIDE_COVERAGE, OFF_NETWORK, BBOX_TOO_LARGE, NO_ROUTE, NOT_FOUND, UNAUTHORIZED, RATE_LIMITED, UPSTREAM_UNAVAILABLE, INTERNAL]
         message: { type: string }
         details: { type: object, additionalProperties: true }
         request_id: { type: string }
