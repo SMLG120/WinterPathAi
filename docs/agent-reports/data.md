@@ -17,8 +17,8 @@
  42 files changed, 7275 insertions(+)
 ```
 `scripts/check-ownership.sh data` → `ownership OK for agent/data`.
-No raw data committed (`data/raw/`, `data/processed/` are git-ignored). Largest committed file:
-`edges.geojson` of pilot_mini, 145 KB.
+No raw data committed (`data/raw/`, `data/processed/` are git-ignored). Largest tracked files:
+`services/ingestion/uv.lock` 218 KB, `data/fixtures/pilot_mini/edges.geojson` 153 KB (all < 5 MB).
 
 ## Commands run and literal results
 ```text
