@@ -7,3 +7,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+declare module '*.geojson?raw' {
+  const content: string;
+  export default content;
+}

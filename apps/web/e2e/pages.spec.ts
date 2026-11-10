@@ -23,6 +23,17 @@ for (const lang of ['en', 'fr'] as const) {
         // Wait for mock data to settle (skeletons gone).
         await expect(page.locator('[role="status"][aria-live="polite"] .skeleton')).toHaveCount(0);
 
+        // Reveal every whileInView section and let fades finish so axe audits final, visible content.
+        await page.evaluate(async () => {
+          for (let y = 0; y < document.body.scrollHeight; y += window.innerHeight / 2) {
+            window.scrollTo(0, y);
+            await new Promise((r) => setTimeout(r, 60));
+          }
+          window.scrollTo(0, 0);
+        });
+        await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
+        await page.waitForTimeout(300);
+
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(overflow, 'horizontal overflow (px)').toBeLessThanOrEqual(0);
 
@@ -97,6 +108,15 @@ test('admin moderation: token-gated, not linked from navigation', async ({ page 
   await page.getByLabel('Admin token').fill('demo-admin-token');
   await page.getByRole('button', { name: 'Load reports' }).click();
   await expect(page.getByText('No reports with this status.')).toBeVisible();
+});
+
+test('reduced motion: sections render without fade (opacity 1 immediately)', async ({ browser }) => {
+  const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  await page.goto('http://localhost:5174/en');
+  const op = await page.locator('#faq').evaluate((el) => getComputedStyle(el).opacity);
+  expect(op).toBe('1');
+  await ctx.close();
 });
 
 test('reduced motion → static poster, no 3D canvas', async ({ browser }) => {

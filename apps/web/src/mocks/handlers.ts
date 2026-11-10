@@ -4,6 +4,7 @@ import { isInPilot } from '@/lib/geo';
 import * as fx from './fixtures';
 import { geomIntersectsBbox, type Pos } from './geo-mock';
 import { mockCompare } from './routes';
+import { pilotMiniSegments } from './pilotMini';
 
 const BASE = '*/api/v1';
 const LATENCY = 250;
@@ -83,7 +84,7 @@ export const handlers = [
     const b = parseBbox(new URL(request.url).searchParams.get('bbox'));
     if (b === 'bad') return err(400, 'VALIDATION_ERROR', 'Invalid bbox');
     if (b === 'large') return err(422, 'BBOX_TOO_LARGE', 'Bbox exceeds 0.0025 deg²');
-    const features = fx.segments(new Date()).filter((f) => geomIntersectsBbox(f.geometry.coordinates as Pos[], b));
+    const features = pilotMiniSegments().filter((f) => geomIntersectsBbox(f.geometry.coordinates as Pos[], b));
     return HttpResponse.json({ type: 'FeatureCollection', features, next_cursor: null });
   }),
   http.post(`${BASE}/routes/compare`, async ({ request }) => {

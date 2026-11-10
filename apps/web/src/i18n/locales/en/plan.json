@@ -105,7 +105,8 @@
     "loading": "Loading layers…",
     "error": "Couldn't load map layers.",
     "inView": "Issues in view",
-    "none": "No closures or reports in this view."
+    "none": "No closures or reports in this view.",
+    "demoNote": "Closures & reports are simulated. Sidewalk lines are real OpenStreetMap data (pilot_mini fixture, a few blocks around McGill) with unknown conditions — no risk layer is active."
   },
   "legend": {
     "title": "Legend",

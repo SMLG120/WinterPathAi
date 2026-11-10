@@ -1,4 +1,4 @@
-import { m } from 'motion/react';
+import { m, useReducedMotion } from 'motion/react';
 import { cn } from '@/lib/utils';
 
 /** Section with a subtle fade-in (disabled under prefers-reduced-motion via MotionConfig). */
@@ -18,12 +18,14 @@ export function Section({
   titleId?: string;
 }) {
   const hid = titleId ?? (id ? `${id}-title` : undefined);
+  // ux-spec: all animation disabled under prefers-reduced-motion (Motion's "user" mode only drops transforms).
+  const reduce = useReducedMotion();
   return (
     <m.section
       id={id}
       aria-labelledby={title ? hid : undefined}
       className={cn('mx-auto max-w-6xl scroll-mt-20 px-4 py-14', className)}
-      initial={{ opacity: 0, y: 16 }}
+      initial={reduce ? false : { opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.45, ease: 'easeOut' }}

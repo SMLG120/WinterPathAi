@@ -14,12 +14,11 @@ import type {
   HazardFeature,
   Health,
   ModelStatus,
-  SegmentFeature,
   WeatherCurrent,
   WeatherForecast,
 } from '@/api/types';
 import { PILOT_BBOX } from '@/lib/env';
-import { haversineM } from './geo-mock';
+import { PILOT_MINI } from './pilotMini';
 
 export const DEMO_SOURCE_ID = 'demo-fixture';
 
@@ -68,9 +67,30 @@ export const coverage = (): Coverage => ({
       ],
     ],
   },
-  graph: { node_count: 0, edge_count: 0, built_at: null, osm_snapshot: null },
+  // Demo mode serves only the real pilot_mini OSM fixture (data/fixtures/pilot_mini).
+  graph: {
+    node_count: PILOT_MINI.nodeCount,
+    edge_count: PILOT_MINI.edgeCount,
+    built_at: PILOT_MINI.builtAt,
+    osm_snapshot: PILOT_MINI.osmSnapshot,
+  },
   known_gaps: [
-    { description: 'Demo mode: no pedestrian graph has been built in this environment.', geometry: null },
+    {
+      description:
+        'Demo mode: only the pilot_mini fixture (a few blocks around McGill Roddick Gates) is loaded; the rest of the pilot area has no pedestrian network data.',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [W, S],
+            [E, S],
+            [E, N],
+            [W, N],
+            [W, S],
+          ],
+        ],
+      },
+    },
   ],
 });
 
@@ -104,7 +124,7 @@ export const dataSources = (): DataSource[] => [
     status: 'disabled',
     last_success_at: null,
     record_count: null,
-    notes: demoNote,
+    notes: `Demo mode serves the static pilot_mini fixture (OSM snapshot ${PILOT_MINI.osmSnapshot}); no live ingest.`,
   },
   vdm('mtl-voirie', 'vmtl-voirie-trottoir-ilot', 'Trottoir et îlot (Voirie)'),
   vdm('mtl-311', 'vmtl-requete-311', 'Requêtes 311'),
@@ -249,41 +269,3 @@ export const hazards = (now: Date): HazardFeature[] => [
     },
   },
 ];
-
-const LEVELS = ['low', 'moderate', 'elevated', 'high', 'unknown', 'unknown'] as const;
-
-/** A coarse synthetic grid over the pilot bbox — clearly not real sidewalks. */
-export const segments = (now: Date): SegmentFeature[] => {
-  const out: SegmentFeature[] = [];
-  const steps = 8;
-  let i = 0;
-  for (let r = 1; r < steps; r++) {
-    for (let c = 0; c < steps; c++) {
-      for (const horizontal of [true, false]) {
-        const a = horizontal ? at(c / steps, r / steps) : at(r / steps, c / steps);
-        const b = horizontal ? at((c + 1) / steps, r / steps) : at(r / steps, (c + 1) / steps);
-        const level = LEVELS[(r * 7 + c * 3 + (horizontal ? 1 : 0)) % LEVELS.length]!;
-        out.push({
-          type: 'Feature',
-          id: `demo-seg-${i++}`,
-          geometry: { type: 'LineString', coordinates: [a, b] },
-          properties: {
-            length_m: Math.round(haversineM(a, b) * 10) / 10,
-            edge_kind: 'sidewalk',
-            crossing: null,
-            connectivity_confidence: 'low',
-            accessibility: { step_free: null, incline_percent: null, width_m: null, surface: null },
-            risk: {
-              level,
-              probability: null,
-              evidence: level === 'unknown' ? unknownEvidence() : simulatedEvidence(now),
-            },
-            sources: [DEMO_SOURCE_ID],
-            updated_at: null,
-          },
-        });
-      }
-    }
-  }
-  return out;
-};

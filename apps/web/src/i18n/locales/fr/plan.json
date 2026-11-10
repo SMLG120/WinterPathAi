@@ -107,7 +107,8 @@
     "loading": "Chargement des couches…",
     "error": "Impossible de charger les couches.",
     "inView": "Problèmes dans la vue",
-    "none": "Aucune fermeture ni aucun signalement dans cette vue."
+    "none": "Aucune fermeture ni aucun signalement dans cette vue.",
+    "demoNote": "Les fermetures et signalements sont simulés. Les tracés de trottoirs sont de vraies données OpenStreetMap (jeu pilot_mini, quelques îlots autour de McGill) dont l'état est inconnu — aucune couche de risque n'est active."
   },
   "legend": {
     "title": "Légende",

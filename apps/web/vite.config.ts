@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
@@ -9,7 +9,12 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  server: { port: 5174, strictPort: true },
+  server: {
+    port: 5174,
+    strictPort: true,
+    // Mock mode reads the Data agent's real fixture read-only from ../../data/fixtures.
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../../data/fixtures/pilot_mini'] },
+  },
   preview: { port: 5174, strictPort: true },
   build: {
     target: 'es2022',

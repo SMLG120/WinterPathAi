@@ -5,6 +5,7 @@ import { contractValidator } from '@/test/openapi';
 import { handlers, resetMockState } from './handlers';
 import * as fx from './fixtures';
 import { mockCompare } from './routes';
+import { pilotMiniSegments, PILOT_MINI } from './pilotMini';
 
 const v = contractValidator();
 const server = setupServer(...handlers);
@@ -121,15 +122,29 @@ describe('mock payloads validate against docs/contracts/openapi.yaml', () => {
 
 describe('mock honesty invariants', () => {
   const now = new Date();
-  it('every hazard and risk datum is simulated or unknown — never confirmed', () => {
+  it('every hazard is simulated — never confirmed', () => {
     for (const h of fx.hazards(now)) expect(h.properties.evidence.state).toBe('simulated');
-    for (const s of fx.segments(now)) expect(['simulated', 'unknown']).toContain(s.properties.risk.evidence.state);
   });
-  it('unknown risk level always carries unknown evidence (never low)', () => {
-    for (const s of fx.segments(now)) {
-      if (s.properties.risk.level === 'unknown') expect(s.properties.risk.evidence.state).toBe('unknown');
-      expect(s.properties.accessibility.step_free).toBeNull();
+  it('segments are the real pilot_mini OSM fixture (simulated=false), all 200 edges, valid per contract', () => {
+    const segs = pilotMiniSegments();
+    expect(PILOT_MINI.simulated).toBe(false);
+    expect(segs).toHaveLength(PILOT_MINI.edgeCount);
+    for (const s of segs) expect(v('SegmentFeature', s)).toEqual([]);
+  });
+  it('without a risk layer every segment risk is unknown (never low) and carries unknown evidence', () => {
+    for (const s of pilotMiniSegments()) {
+      expect(s.properties.risk.level).toBe('unknown');
+      expect(s.properties.risk.evidence.state).toBe('unknown');
+      expect(s.properties.risk.probability).toBeNull();
     }
+  });
+  it('step_free passes through from OSM unchanged — unknown stays null, never upgraded to true', () => {
+    const counts = { true: 0, false: 0, null: 0 };
+    for (const s of pilotMiniSegments()) counts[String(s.properties.accessibility.step_free) as keyof typeof counts]++;
+    expect(counts).toEqual({ true: 2, false: 10, null: 188 });
+  });
+  it('steps edges are never marked step-free', () => {
+    for (const s of pilotMiniSegments()) if (s.properties.edge_kind === 'steps') expect(s.properties.accessibility.step_free).not.toBe(true);
   });
   it('no ECCC alert is fabricated', () => {
     expect(fx.weatherForecast(now).alerts).toEqual([]);
@@ -139,11 +154,10 @@ describe('mock honesty invariants', () => {
     expect(m.enabled).toBe(false);
     expect(m.evaluation).toBeNull();
   });
-  it('coverage claims no graph in demo mode', () => {
+  it('coverage reports the fixture graph and declares the rest of the pilot a gap', () => {
     const c = fx.coverage();
-    expect(c.graph.node_count).toBe(0);
-    expect(c.graph.built_at).toBeNull();
-    expect(c.known_gaps.length).toBeGreaterThan(0);
+    expect(c.graph).toMatchObject({ node_count: 88, edge_count: 200, osm_snapshot: PILOT_MINI.osmSnapshot });
+    expect(c.known_gaps[0]!.description).toMatch(/only the pilot_mini fixture/);
   });
   it('route explanations are labelled simulated/unknown', () => {
     const r = mockCompare({ origin: IN_A, destination: IN_B });

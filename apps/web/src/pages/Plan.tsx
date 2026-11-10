@@ -185,7 +185,7 @@ export default function Plan() {
         <h2 id="layers-title" className="text-base font-semibold">
           {t('overlays.title')}
         </h2>
-        {USE_MOCKS && <SimulatedBanner />}
+        {USE_MOCKS && <SimulatedBanner>{t('overlays.demoNote')}</SimulatedBanner>}
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2">
             <input type="checkbox" className="size-5" checked={showSegments} onChange={(e) => setShowSegments(e.target.checked)} />

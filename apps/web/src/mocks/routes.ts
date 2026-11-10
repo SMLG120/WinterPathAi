@@ -19,7 +19,7 @@ const T = {
     step: (s: string) => `Walk along ${s}`,
     arrive: 'Arrive at destination',
     turn: 'Turn at the corner',
-    noRoute: 'No step-free path: the demo fixture has no edge with verified step-free status.',
+    noRoute: 'Demo mode cannot compute step-free routes (that needs the real routing API). In the pilot_mini OSM fixture only 2 of 200 edges are verified step-free.',
     outside: 'Origin or destination is outside the pilot coverage area.',
   },
   fr: {
@@ -30,7 +30,7 @@ const T = {
     step: (s: string) => `Marchez le long de ${s}`,
     arrive: 'Arrivée à destination',
     turn: 'Tournez au coin',
-    noRoute: 'Aucun trajet sans marche : la démo ne contient aucun tronçon dont l’absence de marche est vérifiée.',
+    noRoute: 'Le mode démo ne peut pas calculer de trajets sans marche (il faut l’API d’itinéraires réelle). Dans le jeu OSM pilot_mini, seuls 2 tronçons sur 200 sont vérifiés sans marche.',
     outside: 'Le départ ou l’arrivée est hors de la zone pilote.',
   },
 };

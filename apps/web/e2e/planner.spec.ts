@@ -60,7 +60,7 @@ test('outside coverage shows helpful 422 copy', async ({ page }) => {
   await expect(err).toContainText('Outside the pilot area');
 });
 
-test('step-free profile with no verified edges → 404 NO_ROUTE copy', async ({ page }) => {
+test('step-free profile in demo → 404 NO_ROUTE copy', async ({ page }) => {
   await page.goto('/fr/plan');
   await openSheetIfMobile(page);
   await setPoint(page, 'origin', IN_A);
@@ -86,11 +86,15 @@ test('address search is disabled with an explanation (no public Nominatim)', asy
   await expect(page.getByText(/no permitted geocoding provider/)).toBeVisible();
 });
 
-test('map attribution stays visible', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'covered on desktop; mobile places it top-left');
+test('map attribution stays visible (desktop bottom-right, mobile top-left above the sheet)', async ({ page }) => {
   await page.goto('/en/plan');
   const attrib = page.locator('.maplibregl-ctrl-attrib');
   await expect(attrib).toBeVisible();
   await expect(attrib).toContainText('OpenStreetMap');
   await expect(attrib).toContainText('Ville de Montréal');
+  // Not covered by the bottom sheet / panel.
+  const box = (await attrib.boundingBox())!;
+  const panel = (await page.getByTestId('planner-panel').boundingBox())!;
+  const overlaps = box.x < panel.x + panel.width && box.x + box.width > panel.x && box.y < panel.y + panel.height && box.y + box.height > panel.y;
+  expect(overlaps).toBe(false);
 });

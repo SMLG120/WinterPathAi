@@ -79,7 +79,8 @@ export const useDeleteReport = () =>
   });
 
 export const useCreatePilotRequest = () =>
-  useMutation({ mutationFn: (body: PilotRequest) => unwrap(api.POST('/pilot-requests', { body })) });
+  // Contract declares 201 with no body: don't try to parse JSON.
+  useMutation({ mutationFn: (body: PilotRequest) => unwrap(api.POST('/pilot-requests', { body, parseAs: 'text' })) });
 
 /** Admin token is held in memory only (never persisted). */
 export const useAdminReports = (token: string | null, status: ModerationStatus | 'all') =>
