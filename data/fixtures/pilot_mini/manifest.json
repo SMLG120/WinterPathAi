@@ -1,0 +1,16 @@
+{
+  "finished_at": "2026-11-10T20:46:32+00:00",
+  "ingest_run_id": "f92bc4a8-7ce6-4aee-80d1-2215dfcc064c",
+  "input_checksum": "a7ee9f8c1af78a1756c7500fdeac37ebc82b0afdd309dd18ac38a0e8e4f02e2a",
+  "name": "pilot_mini",
+  "stats": {
+    "bbox": [
+      -73.578035,
+      45.503034,
+      -73.573657,
+      45.505518
+    ],
+    "edge_count": 200,
+    "node_count": 88
+  }
+}
