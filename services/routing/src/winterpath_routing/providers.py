@@ -62,6 +62,11 @@ def edge_from_properties(edge_id: str, coords: list, props: dict[str, Any]) -> E
     length = _opt_float(props.get("length_m"))
     if length is None:
         length = metric_length_m(coords_t)
+    # Crossing metadata: nested {"crossing": {"type", "kerb"}} (pilot_mini fixture) or flat
+    # columns crossing_type / crossing_kerb (wp.edge, data-model v1.2) / kerb.
+    crossing = props.get("crossing") if isinstance(props.get("crossing"), dict) else {}
+    crossing_type = props.get("crossing_type") or crossing.get("type")
+    kerb = props.get("crossing_kerb") or props.get("kerb") or crossing.get("kerb")
     src = props.get("source_ids") or props.get("sources")
     if src is None:
         src = [props["source_id"]] if props.get("source_id") else ["osm"]
@@ -83,8 +88,8 @@ def edge_from_properties(edge_id: str, coords: list, props: dict[str, Any]) -> E
         component_id=props.get("component_id"),
         source_ids=tuple(str(s) for s in src),
         updated_at=_parse_dt(props.get("updated_at")),
-        crossing_type=props.get("crossing_type"),
-        kerb=props.get("kerb"),
+        crossing_type=crossing_type,
+        kerb=kerb,
     )
 
 
@@ -128,6 +133,9 @@ class FixtureGraphProvider:
                 )
             )
 
+        manifest: dict[str, Any] = {}
+        if (d / "manifest.json").exists():
+            manifest = json.loads((d / "manifest.json").read_text())
         freshness = {k: _parse_dt(v) for k, v in (meta.get("source_freshness") or {}).items()}
         snapshot = meta.get("osm_snapshot") or meta.get("snapshot")
         if "osm" not in freshness and snapshot:
@@ -138,7 +146,7 @@ class FixtureGraphProvider:
             metadata=GraphMetadata(
                 simulated=bool(meta["simulated"]),
                 osm_snapshot=str(snapshot) if snapshot else None,
-                built_at=_parse_dt(meta.get("built_at")),
+                built_at=_parse_dt(meta.get("built_at") or manifest.get("finished_at")),
                 source_freshness=freshness,
                 description=str(meta.get("description") or ""),
             ),
@@ -178,7 +186,7 @@ class PostgisGraphProvider:
         SELECT e.edge_id, e.from_node_id, e.to_node_id, ST_AsGeoJSON(e.geom) AS geom,
                e.length_m, e.edge_kind, e.foot_access, e.step_free, e.incline_percent,
                e.width_m, e.surface, e.lit, e.connectivity_confidence, e.component_id,
-               e.source_id, e.updated_at
+               e.source_id, e.updated_at{optional}
         FROM wp.edge e
         WHERE e.geom && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
     """
@@ -188,6 +196,12 @@ class PostgisGraphProvider:
         WHERE n.geom && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
     """
     SOURCE_SQL = "SELECT source_id, last_success_at FROM wp.source"
+    #: data-model v1.2 columns; selected only if the applied migrations created them
+    OPTIONAL_EDGE_COLS = ("crossing_type", "crossing_kerb")
+    COLUMNS_SQL = (
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = 'wp' AND table_name = 'edge'"
+    )
 
     def __init__(self, database_url: str, bbox: tuple[float, float, float, float]) -> None:
         self.database_url = database_url
@@ -203,8 +217,11 @@ class PostgisGraphProvider:
         try:
             engine = create_engine(self.database_url, pool_pre_ping=True)
             with engine.connect() as conn:
+                present = {r[0] for r in conn.execute(text(self.COLUMNS_SQL))}
+                optional = "".join(f", e.{c}" for c in self.OPTIONAL_EDGE_COLS if c in present)
                 node_rows = conn.execute(text(self.NODE_SQL), params).mappings().all()
-                edge_rows = conn.execute(text(self.EDGE_SQL), params).mappings().all()
+                edge_sql = self.EDGE_SQL.format(optional=optional)
+                edge_rows = conn.execute(text(edge_sql), params).mappings().all()
                 src_rows = conn.execute(text(self.SOURCE_SQL)).mappings().all()
         except Exception as exc:
             raise GraphUnavailableError(f"PostGIS graph unavailable: {type(exc).__name__}") from exc

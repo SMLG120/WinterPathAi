@@ -31,7 +31,7 @@ STATIC_SOURCES: list[dict[str, Any]] = [
         "status": "disabled",
     },
     {
-        "id": "mtl-voirie-trottoir",
+        "id": "mtl-voirie",
         "name": "Trottoir et îlot (Voirie)",
         "publisher": "Ville de Montréal",
         "license": "CC BY 4.0",

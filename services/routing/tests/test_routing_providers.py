@@ -8,7 +8,12 @@ import shutil
 from pathlib import Path
 
 import pytest
-from routing_testlib import TOY_DIR
+from routing_testlib import (
+    PILOT_MINI,
+    TOY_DIR,
+    delete_pilot_mini_from_postgis,
+    load_pilot_mini_into_postgis,
+)
 
 from winterpath_routing import (
     CostConfig,
@@ -137,9 +142,39 @@ def _db_ready(url: str | None) -> str | None:
 
 
 def test_postgis_graph_provider_integration() -> None:
+    """Load the REAL pilot_mini fixture into the agent's own DB, read it back via
+    PostgisGraphProvider, and check it matches FixtureGraphProvider. Cleans up after itself."""
     reason = _db_ready(_db_url())
     if reason:
         pytest.skip(reason)
-    data = PostgisGraphProvider(_db_url(), (-73.588, 45.496, -73.562, 45.513)).load()
-    assert data.metadata.simulated is False
-    PedestrianGraph(data)
+    if not (PILOT_MINI / "edges.geojson").exists():
+        pytest.skip("data/fixtures/pilot_mini not present")
+    from sqlalchemy import create_engine, text
+
+    eng = create_engine(_db_url())
+    with eng.connect() as c:
+        if c.execute(text("SELECT count(*) FROM wp.edge")).scalar():
+            pytest.skip("wp.edge already has rows; refusing to modify existing data")
+    with eng.begin() as c:
+        load_pilot_mini_into_postgis(c)
+    try:
+        data = PostgisGraphProvider(_db_url(), (-73.588, 45.496, -73.562, 45.513)).load()
+        ref = FixtureGraphProvider(PILOT_MINI).load()
+        assert data.metadata.simulated is False
+        assert {e.edge_id for e in data.edges} == {e.edge_id for e in ref.edges}
+        assert set(data.nodes) == set(ref.nodes)
+        by_id = {e.edge_id: e for e in ref.edges}
+        for e in data.edges:
+            r = by_id[e.edge_id]
+            assert e.length_m == pytest.approx(r.length_m)
+            assert (e.edge_kind, e.foot_access, e.step_free) == (
+                r.edge_kind,
+                r.foot_access,
+                r.step_free,
+            )
+            assert e.coords[0] == pytest.approx(r.coords[0])
+        g = PedestrianGraph(data)
+        assert g.largest_component_share == 1.0
+    finally:
+        with eng.begin() as c:
+            delete_pilot_mini_from_postgis(c)

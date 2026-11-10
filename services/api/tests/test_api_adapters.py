@@ -119,6 +119,10 @@ def test_postgis_report_repository_integration() -> None:
     )
     assert repo.get(r.id, AT).status == "pending"
     assert repo.delete_own(r.id, AT)
+    from sqlalchemy import text
+
+    with repo.engine.begin() as c:  # clean up the row this test created
+        c.execute(text("DELETE FROM wp.community_report WHERE report_id = :id"), {"id": r.id})
 
 
 def test_api_latency_100_random_pairs(client, capsys) -> None:

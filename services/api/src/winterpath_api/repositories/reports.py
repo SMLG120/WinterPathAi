@@ -268,8 +268,12 @@ class PostgisReportRepository:
     def list(self, status, limit, after, now):
         from sqlalchemy import text
 
-        where = ["(:status IS NULL OR status = :status)"]
-        params: dict = {"status": status, "limit": limit}
+        # Build the filter explicitly: "(:status IS NULL OR …)" is untyped for Postgres.
+        where = ["TRUE"]
+        params: dict = {"limit": limit}
+        if status is not None:
+            where.append("status = :status")
+            params["status"] = status
         if after is not None:
             where.append("(created_at, report_id) > (:a_ts, :a_id)")
             params.update(a_ts=after[0], a_id=after[1])

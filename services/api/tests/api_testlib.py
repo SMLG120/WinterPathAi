@@ -11,6 +11,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 REPO = Path(__file__).resolve().parents[3]
 CONTRACT = REPO / "docs" / "contracts" / "openapi.yaml"
+PILOT_MINI = REPO / "data" / "fixtures" / "pilot_mini"
 TOY_DIR = REPO / "services" / "routing" / "tests" / "fixtures" / "synthetic" / "toy_grid"
 ADMIN_TOKEN = "test-admin-token-not-a-secret-0123456789"
 
