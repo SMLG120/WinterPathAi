@@ -17,14 +17,15 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
 fi
 existing="$(tmux list-windows -t "$SESSION" -F '#{window_name}')"
 for a in "${AGENTS[@]}"; do
-  if grep -qx "$a" <<<"$existing"; then
-    log "SKIP $a: window already exists in session $SESSION (no double launch)"
+  if grep -qx "$a" <<<"$existing" || [[ -n "$(agent_pane "$a")" ]]; then
+    log "SKIP $a: agent pane already running ($(agent_pane "$a")) — no double launch"
     continue
   fi
   p="$(wt_path "$a")"
   prompt="Read docs/agents/$a.md and implement only your assigned work. Read docs/contracts and CLAUDE.md first."
   log "RUN tmux new-window -t $SESSION -n $a -c $p ; claude \"$prompt\""
   tmux new-window -d -t "$SESSION:" -n "$a" -c "$p"
+  tmux set-option -p -t "$SESSION:$a" @agent "$a"
   tmux send-keys -t "$SESSION:$a" "claude $(printf '%q' "$prompt")" Enter
 done
 log "windows now: $(tmux list-windows -t "$SESSION" -F '#{window_name}' | tr '\n' ' ')"
