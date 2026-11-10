@@ -1,0 +1,46 @@
+# DRAFT Render blueprint — NOT APPLIED. Creating these resources requires explicit user
+# approval (docs/architecture.md §10). Review plans/pricing before any use: the values
+# below select free/starter tiers where Render offers them, but tier availability and
+# limits must be re-verified at deployment time.
+#
+# Database: Supabase (Postgres + PostGIS), not Render Postgres — see infra/SUPABASE.md.
+# Secrets are `sync: false` (entered in the Render dashboard, never committed).
+services:
+  - type: web
+    name: winterpath-api
+    runtime: docker
+    dockerfilePath: ./infra/docker/api.Dockerfile
+    dockerContext: .
+    plan: free            # verify; free web services sleep when idle
+    region: ohio          # verify latency to Montréal; no Canadian region assumed
+    autoDeploy: false     # deploys are manual and approval-gated
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL           # Supabase pooler URL, login user in role wp_reader/wp_writer
+        sync: false
+      - key: API_ADMIN_TOKEN_HASH
+        sync: false
+      - key: API_CORS_ORIGINS       # exact production web origin(s), comma-separated
+        sync: false
+      - key: API_LOG_LEVEL
+        value: info
+      - key: API_RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: GEOCODER_PROVIDER      # empty = no geocoder (v1 default)
+        sync: false
+      - key: GEOCODER_API_KEY
+        sync: false
+      - key: HTTP_USER_AGENT
+        sync: false
+
+# Ingestion cron jobs are intentionally NOT declared. Each scheduled job needs its own
+# approval (architecture §10). Template for later, once approved:
+#
+#  - type: cron
+#    name: winterpath-ingest-311
+#    runtime: docker
+#    dockerfilePath: ./infra/docker/ingestion.Dockerfile   # to be written with Data agent
+#    schedule: "15 6 * * *"
+#    envVars:
+#      - key: DATABASE_URL   # login user in role wp_writer
+#        sync: false
