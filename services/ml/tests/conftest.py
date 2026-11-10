@@ -7,7 +7,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-CENTER = h3.latlng_to_cell(45.5048, -73.5772, 9)  # McGill area, used only to get valid H3 ids
+CENTER = h3.latlng_to_cell(
+    45.5048, -73.5772, 9
+)  # McGill area, used only to get valid H3 ids
 
 
 @pytest.fixture
@@ -36,7 +38,11 @@ def SYNTHETIC_reports(SYNTHETIC_cells, SYNTHETIC_days) -> pd.DataFrame:
 @pytest.fixture
 def SYNTHETIC_all_requests(SYNTHETIC_cells, SYNTHETIC_days) -> pd.DataFrame:
     rng = np.random.default_rng(2)
-    rows = [(c, d, "SYNTHETIC-BOROUGH", int(rng.poisson(2)) + 1) for d in SYNTHETIC_days for c in SYNTHETIC_cells]
+    rows = [
+        (c, d, "SYNTHETIC-BOROUGH", int(rng.poisson(2)) + 1)
+        for d in SYNTHETIC_days
+        for c in SYNTHETIC_cells
+    ]
     return pd.DataFrame(rows, columns=["h3", "day", "borough", "n"])
 
 

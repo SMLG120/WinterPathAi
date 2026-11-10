@@ -13,11 +13,13 @@ Honesty rules enforced here:
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from itertools import pairwise
 from math import asin, cos, radians, sin, sqrt
 from pathlib import Path
-from typing import Iterable, Protocol, Sequence, runtime_checkable
+from typing import Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
 import h3
@@ -27,7 +29,7 @@ from . import config
 
 LOCAL_TZ = ZoneInfo("America/Montreal")
 LEVELS = ("low", "moderate", "elevated", "high")
-SOURCE_IDS = ["vmtl-requete-311", "eccc-climate-daily"]
+SOURCE_IDS = ["mtl-311", "eccc-geomet"]  # ids from wp.source (Data agent registry)
 EDGE_SAMPLE_M = 10.0
 
 
@@ -65,7 +67,9 @@ def unknown(note: str) -> RiskEstimate:
 class RiskProvider(Protocol):
     def cell_risk(self, h3_cell: str, valid_from: datetime) -> RiskEstimate: ...
 
-    def edge_risk(self, coords: Sequence[Sequence[float]], valid_from: datetime) -> RiskEstimate: ...
+    def edge_risk(
+        self, coords: Sequence[Sequence[float]], valid_from: datetime
+    ) -> RiskEstimate: ...
 
     def status(self) -> dict: ...
 
@@ -88,16 +92,23 @@ def local_day(valid_from: datetime) -> pd.Timestamp:
 
 def _haversine_m(a: Sequence[float], b: Sequence[float]) -> float:
     lon1, lat1, lon2, lat2 = map(radians, (a[0], a[1], b[0], b[1]))
-    h = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) ** 2
+    h = (
+        sin((lat2 - lat1) / 2) ** 2
+        + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) ** 2
+    )
     return 2 * 6371008.8 * asin(sqrt(h))
 
 
-def cells_along(coords: Sequence[Sequence[float]], res: int = config.H3_RES, step_m: float = EDGE_SAMPLE_M) -> list[str]:
+def cells_along(
+    coords: Sequence[Sequence[float]],
+    res: int = config.H3_RES,
+    step_m: float = EDGE_SAMPLE_M,
+) -> list[str]:
     """H3 cells touched by a [lon, lat] polyline, sampled every `step_m` metres (order preserved)."""
     if len(coords) < 2:
         raise ValueError("edge needs at least 2 coordinates")
     seen: dict[str, None] = {}
-    for a, b in zip(coords[:-1], coords[1:]):
+    for a, b in pairwise(coords):
         n = max(1, int(_haversine_m(a, b) // step_m))
         for i in range(n + 1):
             t = i / n
@@ -124,7 +135,9 @@ class _ScoreTableProvider:
 
     registry: dict
     layer: str
-    scores: pd.DataFrame = field(repr=False)  # columns: h3, day, p (calibrated), scored_at, data_through
+    scores: pd.DataFrame = field(
+        repr=False
+    )  # columns: h3, day, p (calibrated), scored_at, data_through
     coverage: frozenset[str] = field(repr=False)
 
     def __post_init__(self) -> None:
@@ -132,12 +145,17 @@ class _ScoreTableProvider:
         s = self.scores.copy()
         s["day"] = pd.to_datetime(s["day"]).dt.normalize()
         self._lookup = {
-            (h, d): (p, (obs, at)) for h, d, p, obs, at in zip(s["h3"], s["day"], s["p"], s["data_through"], s["scored_at"])
+            (h, d): (p, (obs, at))
+            for h, d, p, obs, at in zip(
+                s["h3"], s["day"], s["p"], s["data_through"], s["scored_at"]
+            )
         }
         self._days = frozenset(s["day"])
 
     # -- subclass hooks
-    def _estimate(self, p: float, times: tuple[str, str]) -> RiskEstimate:  # pragma: no cover - abstract
+    def _estimate(
+        self, p: float, times: tuple[str, str]
+    ) -> RiskEstimate:  # pragma: no cover - abstract
         raise NotImplementedError
 
     def _cell(self, h3_cell: str, day: pd.Timestamp) -> RiskEstimate | float:
@@ -155,7 +173,9 @@ class _ScoreTableProvider:
     def cell_risk(self, h3_cell: str, valid_from: datetime) -> RiskEstimate:
         return self._cell(h3_cell, local_day(valid_from))
 
-    def edge_risk(self, coords: Sequence[Sequence[float]], valid_from: datetime) -> RiskEstimate:
+    def edge_risk(
+        self, coords: Sequence[Sequence[float]], valid_from: datetime
+    ) -> RiskEstimate:
         """Max level over the cells the edge touches; any unknown cell -> whole edge unknown."""
         day = local_day(valid_from)
         ests = [self._cell(c, day) for c in cells_along(coords)]
@@ -215,12 +235,22 @@ class NullRiskProvider:
     def cell_risk(self, h3_cell: str, valid_from: datetime) -> RiskEstimate:
         return unknown("No risk layer available.")
 
-    def edge_risk(self, coords: Sequence[Sequence[float]], valid_from: datetime) -> RiskEstimate:
+    def edge_risk(
+        self, coords: Sequence[Sequence[float]], valid_from: datetime
+    ) -> RiskEstimate:
         return unknown("No risk layer available.")
 
     def status(self) -> dict:
-        return {"risk_layer": "none", "enabled": False, "model_id": None, "target": config.TARGET,
-                "trained_at": None, "training_window": None, "evaluation": None, "limitations": []}
+        return {
+            "risk_layer": "none",
+            "enabled": False,
+            "model_id": None,
+            "target": config.TARGET,
+            "trained_at": None,
+            "training_window": None,
+            "evaluation": None,
+            "limitations": [],
+        }
 
 
 def model_status(registry: dict) -> dict:
@@ -229,7 +259,10 @@ def model_status(registry: dict) -> dict:
     ev = m.get("evaluation")
     lim = list(registry.get("limitations", []))
     if not m["enabled"]:
-        lim.insert(0, "The ML model did not pass its pre-registered evaluation gate; the map shows a labelled heuristic and no probabilities.")
+        lim.insert(
+            0,
+            "The ML model did not pass its pre-registered evaluation gate; the map shows a labelled heuristic and no probabilities.",
+        )
     return {
         "risk_layer": registry["active_layer"],
         "enabled": bool(m["enabled"]),
@@ -239,7 +272,18 @@ def model_status(registry: dict) -> dict:
         "training_window": registry["training_window"],
         "evaluation": None
         if ev is None
-        else {k: ev[k] for k in ("split", "pr_auc", "brier", "precision_at_k", "recall_at_k", "baseline_pr_auc", "n_test")},
+        else {
+            k: ev[k]
+            for k in (
+                "split",
+                "pr_auc",
+                "brier",
+                "precision_at_k",
+                "recall_at_k",
+                "baseline_pr_auc",
+                "n_test",
+            )
+        },
         "limitations": lim,
     }
 
@@ -247,12 +291,22 @@ def model_status(registry: dict) -> dict:
 def _read_scores(d: Path) -> pd.DataFrame:
     files = sorted(d.glob("*.parquet")) if d.exists() else []
     if not files:
-        return pd.DataFrame({"h3": [], "day": pd.to_datetime([]), "p": [], "scored_at": [], "data_through": []})
+        return pd.DataFrame(
+            {
+                "h3": [],
+                "day": pd.to_datetime([]),
+                "p": [],
+                "scored_at": [],
+                "data_through": [],
+            }
+        )
     return pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
 
 
 def _coverage(registry: dict) -> frozenset[str]:
-    return frozenset(pd.read_parquet(config.REPO_ROOT / registry["coverage"]["path"])["h3"])
+    return frozenset(
+        pd.read_parquet(config.REPO_ROOT / registry["coverage"]["path"])["h3"]
+    )
 
 
 def load_provider(registry_path: Path = config.REGISTRY_PATH) -> RiskProvider:
@@ -268,18 +322,28 @@ def load_provider(registry_path: Path = config.REGISTRY_PATH) -> RiskProvider:
 
 
 def edge_risk_rows(
-    edges: Iterable[tuple[str, Sequence[Sequence[float]]]], provider: RiskProvider, valid_from: datetime, model_id: str | None
+    edges: Iterable[tuple[str, Sequence[Sequence[float]]]],
+    provider: RiskProvider,
+    valid_from: datetime,
+    model_id: str | None,
 ) -> list[dict]:
     """Rows shaped like `wp.edge_risk` (edge_id, valid_from, valid_to, level, probability, evidence_state, model_id)."""
     day = local_day(valid_from)
-    start = datetime(day.year, day.month, day.day, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+    start = datetime(day.year, day.month, day.day, tzinfo=LOCAL_TZ).astimezone(UTC)
     nxt = day + pd.Timedelta(days=1)
-    end = datetime(nxt.year, nxt.month, nxt.day, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+    end = datetime(nxt.year, nxt.month, nxt.day, tzinfo=LOCAL_TZ).astimezone(UTC)
     rows = []
     for edge_id, coords in edges:
         e = provider.edge_risk(coords, valid_from)
         rows.append(
-            {"edge_id": edge_id, "valid_from": start, "valid_to": end, "level": e.level, "probability": e.probability,
-             "evidence_state": e.evidence.state, "model_id": model_id if e.level != "unknown" else None}
+            {
+                "edge_id": edge_id,
+                "valid_from": start,
+                "valid_to": end,
+                "level": e.level,
+                "probability": e.probability,
+                "evidence_state": e.evidence.state,
+                "model_id": model_id if e.level != "unknown" else None,
+            }
         )
     return rows

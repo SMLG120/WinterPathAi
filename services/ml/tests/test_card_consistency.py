@@ -12,9 +12,27 @@ REG = config.REGISTRY_PATH
 @pytest.mark.skipif(not REG.exists(), reason="no registry yet")
 def test_card_and_registry_match_evaluation():
     reg = json.loads(REG.read_text())
-    ev = json.loads((config.MODELS_DIR / "evaluation" / f"{reg['run_id']}.json").read_text())
-    rows = [{"split": s, "method": m, **v} for s in ("test_chrono", "test_spatial") for m, v in ev["results"][s].items()]
-    table = evaluate.fmt_table(rows, ["split", "method", "pr_auc", "brier", "precision_at_k", "recall_at_k", "base_rate", "n"])
+    ev = json.loads(
+        (config.MODELS_DIR / "evaluation" / f"{reg['run_id']}.json").read_text()
+    )
+    rows = [
+        {"split": s, "method": m, **v}
+        for s in ("test_chrono", "test_spatial")
+        for m, v in ev["results"][s].items()
+    ]
+    table = evaluate.fmt_table(
+        rows,
+        [
+            "split",
+            "method",
+            "pr_auc",
+            "brier",
+            "precision_at_k",
+            "recall_at_k",
+            "base_rate",
+            "n",
+        ],
+    )
     card = (config.MODELS_DIR / "cards" / f"{evaluate.MODEL_ID}.md").read_text()
     assert table in card
     m = reg["layers"]["model"]

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 
 import joblib
 import pandas as pd
@@ -18,7 +18,12 @@ import pandas as pd
 from . import config, features, inference, weather
 
 
-def inputs_ready(day: pd.Timestamp, report_cells: pd.DataFrame, all_cells: pd.DataFrame, wdaily: pd.DataFrame) -> str | None:
+def inputs_ready(
+    day: pd.Timestamp,
+    report_cells: pd.DataFrame,
+    all_cells: pd.DataFrame,
+    wdaily: pd.DataFrame,
+) -> str | None:
     """None when ready, else a reason string."""
     if day.month not in config.SEASON_MONTHS:
         return "out of season"
@@ -51,7 +56,9 @@ def score_days(start: date, end: date, layer: str | None = None) -> list[str]:
         if why:
             print(f"{d.date()}: skipped ({why})", file=sys.stderr)
             continue
-        panel = features.build_panel(rc[rc["day"] < d], ac[ac["day"] < d], wd[wd.index < d], cells, d, d)
+        panel = features.build_panel(
+            rc[rc["day"] < d], ac[ac["day"] < d], wd[wd.index < d], cells, d, d
+        )
         # build_panel needs `end` inside the history range; day D itself carries no 311 rows (filtered above)
         panel = panel[panel["day"] == d]
         out = pd.DataFrame(
@@ -59,9 +66,13 @@ def score_days(start: date, end: date, layer: str | None = None) -> list[str]:
                 "h3": panel["h3"].to_numpy(),
                 "day": panel["day"].to_numpy(),
                 "p": scorer.proba(panel),
-                "scored_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                "scored_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
                 # inputs are observations up to the end of D-1 (local)
-                "data_through": datetime(d.year, d.month, d.day, tzinfo=inference.LOCAL_TZ).astimezone(timezone.utc).isoformat(),
+                "data_through": datetime(
+                    d.year, d.month, d.day, tzinfo=inference.LOCAL_TZ
+                )
+                .astimezone(UTC)
+                .isoformat(),
             }
         )
         path = out_dir / f"{d.date()}.parquet"

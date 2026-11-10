@@ -21,13 +21,17 @@ from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from .features import FEATURES
 
 # Count-like features get log1p before the linear model.
-_LOG_FEATURES = [f for f in FEATURES if f.startswith(("lag_", "nb_lag_", "all_req", "city_", "hist_mean"))]
+_LOG_FEATURES = [
+    f
+    for f in FEATURES
+    if f.startswith(("lag_", "nb_lag_", "all_req", "city_", "hist_mean"))
+]
 
 
 class Scorer(Protocol):
     name: str
 
-    def fit(self, df: pd.DataFrame) -> "Scorer": ...
+    def fit(self, df: pd.DataFrame) -> Scorer: ...
 
     def score(self, df: pd.DataFrame) -> np.ndarray: ...
 
@@ -38,7 +42,7 @@ class HistoricalFrequency:
 
     name: str = "baseline_hist_freq"
 
-    def fit(self, df: pd.DataFrame) -> "HistoricalFrequency":
+    def fit(self, df: pd.DataFrame) -> HistoricalFrequency:
         return self
 
     def score(self, df: pd.DataFrame) -> np.ndarray:
@@ -52,7 +56,9 @@ def weather_multiplier(df: pd.DataFrame) -> np.ndarray:
     """
     snow = df["w_snow_3d"].fillna(0).to_numpy(dtype=float)
     ft = df["w_freeze_thaw_3d"].fillna(0).to_numpy(dtype=float)
-    wet_cold = ((df["w_precip_1d"].fillna(0) > 0) & (df["w_tmin_1d"].fillna(1) < 0)).to_numpy(dtype=float)
+    wet_cold = (
+        (df["w_precip_1d"].fillna(0) > 0) & (df["w_tmin_1d"].fillna(1) < 0)
+    ).to_numpy(dtype=float)
     return 1.0 + snow / 5.0 + 0.5 * ft + 0.5 * wet_cold
 
 
@@ -62,7 +68,7 @@ class FrequencyWeatherHeuristic:
 
     name: str = "baseline_freq_x_weather"
 
-    def fit(self, df: pd.DataFrame) -> "FrequencyWeatherHeuristic":
+    def fit(self, df: pd.DataFrame) -> FrequencyWeatherHeuristic:
         return self
 
     def score(self, df: pd.DataFrame) -> np.ndarray:
@@ -83,7 +89,7 @@ class Logistic:
     name: str = "baseline_logistic"
     model: object = None
 
-    def fit(self, df: pd.DataFrame) -> "Logistic":
+    def fit(self, df: pd.DataFrame) -> Logistic:
         self.model = make_pipeline(
             FunctionTransformer(_log_counts),
             SimpleImputer(strategy="median", add_indicator=True),
@@ -103,19 +109,19 @@ class GradientBoosting:
 
     name: str = "hgb"
     params: dict = field(
-        default_factory=lambda: dict(
-            learning_rate=0.05,
-            max_iter=300,
-            max_leaf_nodes=31,
-            min_samples_leaf=200,
-            l2_regularization=1.0,
-            early_stopping=False,
-            random_state=0,
-        )
+        default_factory=lambda: {
+            "learning_rate": 0.05,
+            "max_iter": 300,
+            "max_leaf_nodes": 31,
+            "min_samples_leaf": 200,
+            "l2_regularization": 1.0,
+            "early_stopping": False,
+            "random_state": 0,
+        }
     )
     model: object = None
 
-    def fit(self, df: pd.DataFrame) -> "GradientBoosting":
+    def fit(self, df: pd.DataFrame) -> GradientBoosting:
         self.model = HistGradientBoostingClassifier(**self.params)
         self.model.fit(df[FEATURES], df["label"].to_numpy())
         return self
@@ -135,7 +141,7 @@ class Calibrated:
     def name(self) -> str:
         return self.scorer.name
 
-    def calibrate(self, valid: pd.DataFrame) -> "Calibrated":
+    def calibrate(self, valid: pd.DataFrame) -> Calibrated:
         self.iso = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
         self.iso.fit(self.scorer.score(valid), valid["label"].to_numpy())
         return self
@@ -148,7 +154,12 @@ class Calibrated:
 
 
 def all_methods() -> list[Scorer]:
-    return [HistoricalFrequency(), FrequencyWeatherHeuristic(), Logistic(), GradientBoosting()]
+    return [
+        HistoricalFrequency(),
+        FrequencyWeatherHeuristic(),
+        Logistic(),
+        GradientBoosting(),
+    ]
 
 
 BASELINES = ("baseline_hist_freq", "baseline_freq_x_weather", "baseline_logistic")

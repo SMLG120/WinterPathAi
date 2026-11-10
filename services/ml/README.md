@@ -26,10 +26,14 @@ Artifacts go to `$MODEL_ARTIFACT_DIR` (default `models/artifacts/`, git-ignored)
 from datetime import datetime, timezone
 from winterpath_ml.inference import load_provider
 
-risk = load_provider()                       # active layer from models/registry.json; NullRiskProvider if artifacts missing
-est = risk.edge_risk([[-73.5772, 45.5048], [-73.5765, 45.5050]], datetime.now(timezone.utc))
-est.to_dict()   # {"level": ..., "probability": None|float, "evidence": {...}}  == OpenAPI RiskEstimate
-risk.status()   # == OpenAPI ModelStatus
+risk = (
+    load_provider()
+)  # active layer from models/registry.json; NullRiskProvider if artifacts missing
+est = risk.edge_risk(
+    [[-73.5772, 45.5048], [-73.5765, 45.5050]], datetime.now(timezone.utc)
+)
+est.to_dict()  # {"level": ..., "probability": None|float, "evidence": {...}}  == OpenAPI RiskEstimate
+risk.status()  # == OpenAPI ModelStatus
 ```
 
 `unknown` is returned for: cells outside coverage (incl. demerged municipalities such as Westmount),

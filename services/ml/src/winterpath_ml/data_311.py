@@ -52,21 +52,34 @@ def valid_location(df: pd.DataFrame) -> pd.Series:
 
 def winter_reports(df: pd.DataFrame) -> pd.DataFrame:
     """Rows that count as winter-related reports, with a normalised `category`."""
-    m = df["ACTI_NOM"].isin(list(config.WINTER_CATEGORIES)) & df["NATURE"].isin(config.REPORT_NATURES)
+    m = df["ACTI_NOM"].isin(list(config.WINTER_CATEGORIES)) & df["NATURE"].isin(
+        config.REPORT_NATURES
+    )
     out = df[m].copy()
     out["category"] = out["ACTI_NOM"].map(config.WINTER_CATEGORIES)
     return out
 
 
 def to_cells(lon: pd.Series, lat: pd.Series, res: int = config.H3_RES) -> np.ndarray:
-    return np.array([h3.latlng_to_cell(la, lo, res) for lo, la in zip(lon.to_numpy(), lat.to_numpy())], dtype=object)
+    return np.array(
+        [
+            h3.latlng_to_cell(la, lo, res)
+            for lo, la in zip(lon.to_numpy(), lat.to_numpy())
+        ],
+        dtype=object,
+    )
 
 
 def aggregate_report_cells(winter: pd.DataFrame) -> pd.DataFrame:
     """(h3, day, category, n) — same shape as `wp.report_311_cell`."""
     w = winter[valid_location(winter) & winter["day"].notna()].copy()
     w["h3"] = to_cells(w["lon"], w["lat"])
-    agg = w.groupby(["h3", "day", "category"], observed=True).size().rename("n").reset_index()
+    agg = (
+        w.groupby(["h3", "day", "category"], observed=True)
+        .size()
+        .rename("n")
+        .reset_index()
+    )
     agg["day"] = pd.to_datetime(agg["day"])
     return agg
 
@@ -87,7 +100,9 @@ def read_report_cells_sql(conn) -> pd.DataFrame:
     return df
 
 
-def build_interim(raw_path: Path = config.RAW_311_CSV, out_dir: Path = config.INTERIM_DIR) -> dict[str, Path]:
+def build_interim(
+    raw_path: Path = config.RAW_311_CSV, out_dir: Path = config.INTERIM_DIR
+) -> dict[str, Path]:
     """Write aggregated (non-identifying) tables to the git-ignored cache."""
     out_dir.mkdir(parents=True, exist_ok=True)
     df = read_raw_311(raw_path)
@@ -95,6 +110,8 @@ def build_interim(raw_path: Path = config.RAW_311_CSV, out_dir: Path = config.IN
         "report_cells": out_dir / "report_311_cell.parquet",
         "all_cells": out_dir / "all_requests_cell.parquet",
     }
-    aggregate_report_cells(winter_reports(df)).to_parquet(paths["report_cells"], index=False)
+    aggregate_report_cells(winter_reports(df)).to_parquet(
+        paths["report_cells"], index=False
+    )
     aggregate_all_requests(df).to_parquet(paths["all_cells"], index=False)
     return paths

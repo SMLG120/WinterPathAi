@@ -34,7 +34,10 @@ WINTER_CATEGORIES: dict[str, str] = {
     "Opération déneigement": "snow_clearing",
     "Dépôt Illégal - Neige": "illegal_snow_dump",
 }
-REPORT_NATURES = ("Requete", "Plainte")  # 'Information' and 'Commentaire' are not reports of a condition
+REPORT_NATURES = (
+    "Requete",
+    "Plainte",
+)  # 'Information' and 'Commentaire' are not reports of a condition
 
 # The 311 file covers only the 19 boroughs of the City of Montréal. Demerged municipalities
 # (Westmount, Mont-Royal, Côte-Saint-Luc, ...) run their own services and have ~no rows, so
@@ -82,7 +85,14 @@ STATION_PRIMARY = "7025251"  # MONTREAL INTL A (has TOTAL_SNOW / SNOW_ON_GROUND)
 STATION_FALLBACK = "702S006"  # MONTREAL/PIERRE ELLIOTT TRUDEAU INTL (temps/precip only)
 
 # --- Seasons ---------------------------------------------------------------------------------
-SEASON_MONTHS = (11, 12, 1, 2, 3, 4)  # Nov–Apr: the only months the layer is defined for
+SEASON_MONTHS = (
+    11,
+    12,
+    1,
+    2,
+    3,
+    4,
+)  # Nov–Apr: the only months the layer is defined for
 
 
 def winter_of(d: date) -> int | None:

@@ -1,6 +1,6 @@
 """Label audit -> models/label-audit.md (measured numbers only, aggregated; no individual points).
 
-    uv run python -m winterpath_ml.audit
+uv run python -m winterpath_ml.audit
 """
 
 from __future__ import annotations
@@ -19,7 +19,10 @@ def _md(df: pd.DataFrame, floatfmt: str = "{:.4f}") -> str:
     cols = [str(c) for c in df.columns]
     lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
     for _, r in df.iterrows():
-        cells = [floatfmt.format(v) if isinstance(v, (float, np.floating)) else str(v) for v in r.tolist()]
+        cells = [
+            floatfmt.format(v) if isinstance(v, (float, np.floating)) else str(v)
+            for v in r.tolist()
+        ]
         lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
@@ -35,10 +38,14 @@ def run() -> str:
     period = f"{df['day'].min().date()} … {df['day'].max().date()}"
 
     cand = df[df["ACTI_NOM"].isin(list(config.WINTER_CATEGORIES))]
-    by_nature = cand.groupby(["ACTI_NOM", "NATURE"]).size().unstack(fill_value=0).reset_index()
+    by_nature = (
+        cand.groupby(["ACTI_NOM", "NATURE"]).size().unstack(fill_value=0).reset_index()
+    )
 
     w = data_311.winter_reports(df)
-    w["winter"] = [config.winter_of(d.date()) if pd.notna(d) else None for d in w["day"]]
+    w["winter"] = [
+        config.winter_of(d.date()) if pd.notna(d) else None for d in w["day"]
+    ]
     valid = data_311.valid_location(w)
     no_coord = w["lon"].isna() | w["lat"].isna()
 
@@ -49,7 +56,9 @@ def run() -> str:
         .unstack(fill_value=0)
         .reset_index()
     )
-    season["winter"] = season["winter"].map(lambda x: "off-season (May–Oct)" if x == -1 else f"{x}-{(x + 1) % 100:02d}")
+    season["winter"] = season["winter"].map(
+        lambda x: "off-season (May–Oct)" if x == -1 else f"{x}-{(x + 1) % 100:02d}"
+    )
 
     wv = w[valid].copy()
     wv["h3"] = data_311.to_cells(wv["lon"], wv["lat"])
@@ -57,12 +66,24 @@ def run() -> str:
     top10 = cell_counts.head(max(1, len(cell_counts) // 10)).sum() / cell_counts.sum()
 
     allv = df[data_311.valid_location(df)].copy()
-    allv["borough"] = allv["ARRONDISSEMENT_GEO"].fillna(allv["ARRONDISSEMENT"]).fillna("UNKNOWN")
+    allv["borough"] = (
+        allv["ARRONDISSEMENT_GEO"].fillna(allv["ARRONDISSEMENT"]).fillna("UNKNOWN")
+    )
     allv["h3"] = data_311.to_cells(allv["lon"], allv["lat"])
-    wv["borough"] = wv["ARRONDISSEMENT_GEO"].fillna(wv["ARRONDISSEMENT"]).fillna("UNKNOWN")
+    wv["borough"] = (
+        wv["ARRONDISSEMENT_GEO"].fillna(wv["ARRONDISSEMENT"]).fillna("UNKNOWN")
+    )
     # area proxy = summed area of H3 cells with any geolocated 311 request in the borough
-    cell_boro = allv.groupby(["h3", "borough"]).size().reset_index().sort_values(0, ascending=False).drop_duplicates("h3")
-    area = cell_boro.groupby("borough")["h3"].apply(lambda s: sum(h3.cell_area(c, "km^2") for c in s))
+    cell_boro = (
+        allv.groupby(["h3", "borough"])
+        .size()
+        .reset_index()
+        .sort_values(0, ascending=False)
+        .drop_duplicates("h3")
+    )
+    area = cell_boro.groupby("borough")["h3"].apply(
+        lambda s: sum(h3.cell_area(c, "km^2") for c in s)
+    )
     boro = pd.DataFrame(
         {
             "winter_reports": wv.groupby("borough").size(),
@@ -70,18 +91,55 @@ def run() -> str:
             "active_area_km2": area,
         }
     ).fillna(0)
-    boro[["winter_reports", "all_geolocated_requests"]] = boro[["winter_reports", "all_geolocated_requests"]].astype(int)
-    boro["winter_per_km2"] = boro["winter_reports"] / boro["active_area_km2"].replace(0, np.nan)
-    boro["winter_per_1000_requests"] = 1000 * boro["winter_reports"] / boro["all_geolocated_requests"].replace(0, np.nan)
-    boro = boro.sort_values("winter_reports", ascending=False).reset_index(names="borough")
-    rho = _spearman(boro["winter_per_km2"].fillna(0), (boro["all_geolocated_requests"] / boro["active_area_km2"]).fillna(0))
-
-    channel = w["PROVENANCE_ORIGINALE"].fillna("UNKNOWN").value_counts(normalize=True).rename("share").reset_index()
-    loc_type = w["TYPE_LIEU_INTERV"].fillna("UNKNOWN").value_counts(normalize=True).rename("share").reset_index()
-    decimals = (
-        w["lon"].dropna().map(lambda v: len(repr(float(v)).split(".")[1]) if "." in repr(float(v)) else 0)
+    boro[["winter_reports", "all_geolocated_requests"]] = boro[
+        ["winter_reports", "all_geolocated_requests"]
+    ].astype(int)
+    boro["winter_per_km2"] = boro["winter_reports"] / boro["active_area_km2"].replace(
+        0, np.nan
     )
-    dec_tab = pd.cut(decimals, [0, 4, 6, 8, 10, 20], labels=["≤4", "5–6", "7–8", "9–10", ">10"]).value_counts(normalize=True).sort_index().rename("share").reset_index()
+    boro["winter_per_1000_requests"] = (
+        1000
+        * boro["winter_reports"]
+        / boro["all_geolocated_requests"].replace(0, np.nan)
+    )
+    boro = boro.sort_values("winter_reports", ascending=False).reset_index(
+        names="borough"
+    )
+    rho = _spearman(
+        boro["winter_per_km2"].fillna(0),
+        (boro["all_geolocated_requests"] / boro["active_area_km2"]).fillna(0),
+    )
+
+    channel = (
+        w["PROVENANCE_ORIGINALE"]
+        .fillna("UNKNOWN")
+        .value_counts(normalize=True)
+        .rename("share")
+        .reset_index()
+    )
+    loc_type = (
+        w["TYPE_LIEU_INTERV"]
+        .fillna("UNKNOWN")
+        .value_counts(normalize=True)
+        .rename("share")
+        .reset_index()
+    )
+    decimals = (
+        w["lon"]
+        .dropna()
+        .map(
+            lambda v: len(repr(float(v)).split(".")[1]) if "." in repr(float(v)) else 0
+        )
+    )
+    dec_tab = (
+        pd.cut(
+            decimals, [0, 4, 6, 8, 10, 20], labels=["≤4", "5–6", "7–8", "9–10", ">10"]
+        )
+        .value_counts(normalize=True)
+        .sort_index()
+        .rename("share")
+        .reset_index()
+    )
     key = list(zip(w.loc[valid, "lon"].round(7), w.loc[valid, "lat"].round(7)))
     cnt = Counter(key)
     dup_share = sum(v for v in cnt.values() if v > 1) / len(key)
@@ -92,14 +150,25 @@ def run() -> str:
 
     ev_path = None
     if config.REGISTRY_PATH.exists():
-        ev_path = config.MODELS_DIR / "evaluation" / f"{json.loads(config.REGISTRY_PATH.read_text())['run_id']}.json"
+        ev_path = (
+            config.MODELS_DIR
+            / "evaluation"
+            / f"{json.loads(config.REGISTRY_PATH.read_text())['run_id']}.json"
+        )
     if ev_path and ev_path.exists():
         ev = json.loads(ev_path.read_text())
-        rates = {k: ev["positives"][k] / ev["rows"][k] for k in ev["rows"] if ev["rows"][k]}
-        panel_note = "\n".join(f"- `{k}`: {ev['positives'][k]} positive cell-days / {ev['rows'][k]} = {rates[k]:.4f}" for k in rates)
+        rates = {
+            k: ev["positives"][k] / ev["rows"][k] for k in ev["rows"] if ev["rows"][k]
+        }
+        panel_note = "\n".join(
+            f"- `{k}`: {ev['positives'][k]} positive cell-days / {ev['rows'][k]} = {rates[k]:.4f}"
+            for k in rates
+        )
 
     no_coord_all = (df["lon"].isna() | df["lat"].isna()).mean()
-    no_coord_req = (df.loc[df["NATURE"].isin(config.REPORT_NATURES), "lon"].isna()).mean()
+    no_coord_req = (
+        df.loc[df["NATURE"].isin(config.REPORT_NATURES), "lon"].isna()
+    ).mean()
 
     md = f"""# Label audit — winter 311 reports
 
@@ -109,7 +178,7 @@ def run() -> str:
 
 ## 1. Winter category list
 
-Included `ACTI_NOM` → normalised category (only `NATURE ∈ {{{', '.join(config.REPORT_NATURES)}}}` counts; `Information`/`Commentaire` are enquiries/comments, not condition reports):
+Included `ACTI_NOM` → normalised category (only `NATURE ∈ {{{", ".join(config.REPORT_NATURES)}}}` counts; `Information`/`Commentaire` are enquiries/comments, not condition reports):
 
 {_md(pd.DataFrame(list(config.WINTER_CATEGORIES.items()), columns=["ACTI_NOM", "category"]))}
 
@@ -135,7 +204,7 @@ Off-season rows exist (mostly snow-clearing complaints logged late); the model i
 
 Positive cell-day rates in the evaluated panel (Nov–Apr, covered cells):
 
-{panel_note or '(run `winterpath_ml.evaluate` first)'}
+{panel_note or "(run `winterpath_ml.evaluate` first)"}
 
 ## 4. Counts and reporting-bias indicators by borough
 
@@ -158,7 +227,7 @@ Spearman rank correlation across boroughs between winter reports per km² and *a
 - All rows in file lacking LOC_LONG/LOC_LAT: **{no_coord_all:.4f}** (dominated by `Information` calls, which have no location).
 - `Requete`/`Plainte` rows (all categories) lacking coordinates: **{no_coord_req:.4f}**.
 - Winter reports lacking coordinates: **{no_coord.mean():.4f}** ({int(no_coord.sum())} rows).
-- Winter reports flagged `LOC_ERREUR_GDT = 1` (geocoding error; excluded): **{(w['LOC_ERREUR_GDT'] == '1').mean():.4f}** ({int((w['LOC_ERREUR_GDT'] == '1').sum())} rows).
+- Winter reports flagged `LOC_ERREUR_GDT = 1` (geocoding error; excluded): **{(w["LOC_ERREUR_GDT"] == "1").mean():.4f}** ({int((w["LOC_ERREUR_GDT"] == "1").sum())} rows).
 - Winter reports excluded for any location reason (missing, error flag, outside envelope {config.MTL_ENVELOPE}): **{1 - valid.mean():.4f}**.
 
 ## 6. Location precision

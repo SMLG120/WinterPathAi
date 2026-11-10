@@ -27,10 +27,14 @@ FIELDS = [
     "TOTAL_RAIN",
     "SNOW_ON_GROUND",
 ]
-USER_AGENT = os.environ.get("HTTP_USER_AGENT", "WinterPathAI-dev/0.1 (local development)")
+USER_AGENT = os.environ.get(
+    "HTTP_USER_AGENT", "WinterPathAI-dev/0.1 (local development)"
+)
 
 
-def fetch_climate_daily(station: str, start: date, end: date, cache_dir: Path | None = None) -> pd.DataFrame:
+def fetch_climate_daily(
+    station: str, start: date, end: date, cache_dir: Path | None = None
+) -> pd.DataFrame:
     """Download (or read cached) daily climate rows for one station; returns raw ECCC columns."""
     cache_dir = cache_dir or config.RAW_DIR
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -50,7 +54,8 @@ def fetch_climate_daily(station: str, start: date, end: date, cache_dir: Path | 
                 }
             )
             req = urllib.request.Request(
-                f"{config.ECCC_API}/collections/climate-daily/items?{q}", headers={"User-Agent": USER_AGENT}
+                f"{config.ECCC_API}/collections/climate-daily/items?{q}",
+                headers={"User-Agent": USER_AGENT},
             )
             with urllib.request.urlopen(req, timeout=120) as r:
                 page = json.load(r)
@@ -67,7 +72,9 @@ def fetch_climate_daily(station: str, start: date, end: date, cache_dir: Path | 
     return df
 
 
-def build_daily_weather(primary: pd.DataFrame, fallback: pd.DataFrame | None = None) -> pd.DataFrame:
+def build_daily_weather(
+    primary: pd.DataFrame, fallback: pd.DataFrame | None = None
+) -> pd.DataFrame:
     """Merge stations into one observed daily frame indexed by local day.
 
     Temperature/precipitation from the primary station; gaps filled from the fallback
@@ -97,7 +104,9 @@ def weather_features(daily: pd.DataFrame, days: pd.DatetimeIndex) -> pd.DataFram
     """Features for target day D using only observations from days strictly before D."""
     d = daily.reindex(daily.index.union(days)).sort_index()
     d["freeze_thaw"] = np.where(
-        d["tmax"].notna() & d["tmin"].notna(), ((d["tmax"] > 0) & (d["tmin"] < 0)).astype(float), np.nan
+        d["tmax"].notna() & d["tmin"].notna(),
+        ((d["tmax"] > 0) & (d["tmin"] < 0)).astype(float),
+        np.nan,
     )
     s = d.shift(1)  # row D now holds D-1 observations
     out = pd.DataFrame(index=d.index)

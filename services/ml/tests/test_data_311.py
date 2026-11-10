@@ -6,8 +6,22 @@ from winterpath_ml import data_311
 def _SYNTHETIC_raw():
     return pd.DataFrame(
         {
-            "NATURE": ["Requete", "Information", "Requete", "Plainte", "Requete", "Requete"],
-            "ACTI_NOM": ["Trottoir glissant", "Trottoir glissant", "Nid de poule", "Opération déneigement", "Trottoir glissant", "Trottoir glissant"],
+            "NATURE": [
+                "Requete",
+                "Information",
+                "Requete",
+                "Plainte",
+                "Requete",
+                "Requete",
+            ],
+            "ACTI_NOM": [
+                "Trottoir glissant",
+                "Trottoir glissant",
+                "Nid de poule",
+                "Opération déneigement",
+                "Trottoir glissant",
+                "Trottoir glissant",
+            ],
             "TYPE_LIEU_INTERV": ["Adresse"] * 6,
             "ARRONDISSEMENT": ["SYNTH"] * 6,
             "ARRONDISSEMENT_GEO": ["SYNTH"] * 6,

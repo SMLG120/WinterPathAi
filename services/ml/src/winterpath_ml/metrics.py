@@ -21,11 +21,15 @@ def calibration_curve(y: np.ndarray, p: np.ndarray, n_bins: int = 10) -> pd.Data
     """Quantile-binned reliability table (mean predicted vs observed rate)."""
     df = pd.DataFrame({"y": y, "p": p})
     df["bin"] = pd.qcut(df["p"].rank(method="first"), q=n_bins, labels=False)
-    t = df.groupby("bin").agg(mean_pred=("p", "mean"), obs_rate=("y", "mean"), n=("y", "size"))
+    t = df.groupby("bin").agg(
+        mean_pred=("p", "mean"), obs_rate=("y", "mean"), n=("y", "size")
+    )
     return t.reset_index(drop=True)
 
 
-def precision_recall_at_k(day: np.ndarray, y: np.ndarray, s: np.ndarray, k: int = K_PER_DAY) -> tuple[float, float]:
+def precision_recall_at_k(
+    day: np.ndarray, y: np.ndarray, s: np.ndarray, k: int = K_PER_DAY
+) -> tuple[float, float]:
     """Top-k cells each day; pooled precision = hits / (k * days), recall = hits / positives."""
     df = pd.DataFrame({"day": day, "y": y, "s": s})
     df["r"] = df.groupby("day")["s"].rank(method="first", ascending=False)
@@ -36,7 +40,9 @@ def precision_recall_at_k(day: np.ndarray, y: np.ndarray, s: np.ndarray, k: int 
     return float(hits / (k * n_days)), float(hits / pos) if pos else float("nan")
 
 
-def summary(day: np.ndarray, y: np.ndarray, score: np.ndarray, prob: np.ndarray) -> dict[str, float]:
+def summary(
+    day: np.ndarray, y: np.ndarray, score: np.ndarray, prob: np.ndarray
+) -> dict[str, float]:
     p_at_k, r_at_k = precision_recall_at_k(day, y, score)
     return {
         "pr_auc": pr_auc(y, score),
@@ -44,12 +50,17 @@ def summary(day: np.ndarray, y: np.ndarray, score: np.ndarray, prob: np.ndarray)
         "precision_at_k": p_at_k,
         "recall_at_k": r_at_k,
         "base_rate": float(np.mean(y)),
-        "n": int(len(y)),
+        "n": len(y),
     }
 
 
 def bootstrap_pr_auc_diff(
-    day: np.ndarray, y: np.ndarray, s_a: np.ndarray, s_b: np.ndarray, n_boot: int = 200, seed: int = 0
+    day: np.ndarray,
+    y: np.ndarray,
+    s_a: np.ndarray,
+    s_b: np.ndarray,
+    n_boot: int = 200,
+    seed: int = 0,
 ) -> tuple[float, float]:
     """95% CI of PR-AUC(a) - PR-AUC(b), resampling whole days (block bootstrap)."""
     rng = np.random.default_rng(seed)

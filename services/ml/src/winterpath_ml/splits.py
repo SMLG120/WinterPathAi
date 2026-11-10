@@ -10,14 +10,20 @@ from . import config
 
 
 def spatial_blocks(cells: list[str], res: int = config.SPATIAL_BLOCK_RES) -> pd.Series:
-    return pd.Series([h3.cell_to_parent(c, res) for c in cells], index=cells, name="block")
+    return pd.Series(
+        [h3.cell_to_parent(c, res) for c in cells], index=cells, name="block"
+    )
 
 
-def holdout_blocks(cells: list[str], fraction: float = config.SPATIAL_HOLDOUT_FRACTION, seed: int = config.SEED) -> set[str]:
+def holdout_blocks(
+    cells: list[str],
+    fraction: float = config.SPATIAL_HOLDOUT_FRACTION,
+    seed: int = config.SEED,
+) -> set[str]:
     """Seeded random choice of whole H3 res-6 parent blocks (sorted first, so deterministic)."""
     blocks = sorted(set(spatial_blocks(cells)))
     rng = np.random.default_rng(seed)
-    n = max(1, int(round(fraction * len(blocks))))
+    n = max(1, round(fraction * len(blocks)))
     return set(rng.choice(blocks, size=n, replace=False).tolist())
 
 

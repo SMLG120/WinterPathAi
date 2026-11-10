@@ -80,8 +80,15 @@ def is_season(days: pd.DatetimeIndex) -> np.ndarray:
 
 def modal_borough(all_cells: pd.DataFrame, before: pd.Timestamp) -> pd.Series:
     """h3 -> borough with the most geolocated requests before `before` (names normalised)."""
-    a = all_cells[all_cells["day"] < before].assign(borough=lambda d: d["borough"].map(config.normalise_borough))
-    g = a.groupby(["h3", "borough"])["n"].sum().reset_index().sort_values(["h3", "n", "borough"], ascending=[True, False, True])
+    a = all_cells[all_cells["day"] < before].assign(
+        borough=lambda d: d["borough"].map(config.normalise_borough)
+    )
+    g = (
+        a.groupby(["h3", "borough"])["n"]
+        .sum()
+        .reset_index()
+        .sort_values(["h3", "n", "borough"], ascending=[True, False, True])
+    )
     return g.drop_duplicates("h3").set_index("h3")["borough"]
 
 
@@ -102,7 +109,10 @@ def neighbour_matrix(cells: list[str]) -> sparse.csr_matrix:
             if j is not None:
                 rows.append(i)
                 cols.append(j)
-    return sparse.csr_matrix((np.ones(len(rows), dtype=np.float32), (rows, cols)), shape=(len(cells), len(cells)))
+    return sparse.csr_matrix(
+        (np.ones(len(rows), dtype=np.float32), (rows, cols)),
+        shape=(len(cells), len(cells)),
+    )
 
 
 def _dense(df: pd.DataFrame, cells: list[str], days: pd.DatetimeIndex) -> np.ndarray:
@@ -134,9 +144,11 @@ def build_panel(
     history_start: pd.Timestamp | None = None,
 ) -> pd.DataFrame:
     """Rows for every covered cell × in-season day in [start, end]."""
-    history_start = history_start or min(report_cells["day"].min(), all_cells["day"].min())
+    history_start = history_start or min(
+        report_cells["day"].min(), all_cells["day"].min()
+    )
     days = pd.date_range(history_start, end, freq="D")
-    T, C = len(days), len(cells)
+    C = len(cells)
 
     Y = _dense(report_cells, cells, days)
     A = _dense(all_cells, cells, days)
@@ -186,8 +198,15 @@ def build_panel(
         hol |= quebec_holidays_in_season(y)
     out["dow"] = np.repeat(tdays.day_of_week.to_numpy(), C)
     out["is_weekend"] = (out["dow"] >= 5).astype(np.int8)
-    out["holiday"] = np.repeat(np.array([d.date() in hol for d in tdays], dtype=np.int8), C)
-    sd = np.array([(d - pd.Timestamp(d.year if d.month >= 11 else d.year - 1, 11, 1)).days for d in tdays])
+    out["holiday"] = np.repeat(
+        np.array([d.date() in hol for d in tdays], dtype=np.int8), C
+    )
+    sd = np.array(
+        [
+            (d - pd.Timestamp(d.year if d.month >= 11 else d.year - 1, 11, 1)).days
+            for d in tdays
+        ]
+    )
     out["season_day"] = np.repeat(sd, C)
 
     panel = pd.DataFrame(out)

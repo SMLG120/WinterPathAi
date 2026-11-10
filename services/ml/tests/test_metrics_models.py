@@ -17,9 +17,18 @@ def test_bootstrap_deterministic():
     day = np.repeat(np.arange(30), 20)
     y = rng.integers(0, 2, len(day))
     a, b = rng.random(len(day)), rng.random(len(day))
-    assert metrics.bootstrap_pr_auc_diff(day, y, a, b, n_boot=20) == metrics.bootstrap_pr_auc_diff(day, y, a, b, n_boot=20)
+    assert metrics.bootstrap_pr_auc_diff(
+        day, y, a, b, n_boot=20
+    ) == metrics.bootstrap_pr_auc_diff(day, y, a, b, n_boot=20)
 
 
 def test_weather_multiplier_neutral_when_weather_missing():
-    df = pd.DataFrame({"w_snow_3d": [np.nan], "w_freeze_thaw_3d": [np.nan], "w_precip_1d": [np.nan], "w_tmin_1d": [np.nan]})
+    df = pd.DataFrame(
+        {
+            "w_snow_3d": [np.nan],
+            "w_freeze_thaw_3d": [np.nan],
+            "w_precip_1d": [np.nan],
+            "w_tmin_1d": [np.nan],
+        }
+    )
     assert models.weather_multiplier(df)[0] == 1.0
