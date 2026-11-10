@@ -316,3 +316,24 @@ Ready for coordinator review: ownership check passes, 39/39 tests pass with Post
 no secrets or raw data are committed (the author email that `uv init` inserted into
 pyproject.toml was removed before the first commit). Please decide CR 1–4 and the
 Overpass→Geofabrik production path.
+
+## Post-merge check — integration/winterpath (contract v1.1.0 + platform), 2026-11-10
+`git merge --no-edit integration/winterpath` → merge commit `df39e73`, no conflicts.
+v1.1.0 does not change `data-model.md` → no migration needed. The CI steps for this package,
+run locally after the merge:
+```text
+$ uv run --with ruff ruff check .
+All checks passed!
+$ uv run --with ruff ruff format --check .
+26 files already formatted
+$ uv run pytest -q
+.......................................                                  [100%]
+39 passed in 20.97s
+$ uv run --with pip-audit pip-audit --skip-editable --progress-spinner off
+No known vulnerabilities found
+```
+Compatibility with `infra/db/init/20-winterpath.sh`: both create roles with `IF NOT EXISTS`.
+Platform's default privileges for `wp_migrator` would grant `wp_reader` SELECT on every table.
+Migration 0001 explicitly revokes `wp_reader` SELECT on `pilot_request` and `community_report`
+after creating them, so the PII tables stay unreadable by `wp_reader`.
+`scripts/check-ownership.sh data` → `ownership OK for agent/data`.
