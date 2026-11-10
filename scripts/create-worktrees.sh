@@ -42,7 +42,7 @@ for a in "${AGENTS[@]}"; do
         echo "DATABASE_URL=postgresql+psycopg://wp_dev:$pw@localhost:55432/$db"
       fi
       echo "API_CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175"
-      echo "HTTP_USER_AGENT=WinterPathAI-dev/0.1 (local development)"
+      echo "HTTP_USER_AGENT=\"WinterPathAI-dev/0.1 (local development)\""
       [[ "$a" == frontend ]] && { echo "VITE_API_BASE_URL=http://localhost:8104/api/v1"; echo "VITE_USE_MOCKS=true"; echo "VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/positron"; }
       [[ "$a" == ml ]] && echo "MODEL_ARTIFACT_DIR=models/artifacts"
     } > "$env_file"

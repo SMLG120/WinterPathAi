@@ -1,4 +1,6 @@
-# Data model — PostGIS contract v1
+# Data model — PostGIS contract v1.2.0
+
+> v1.2.0 (2026-11-10, CR-DATA-1/2/3/5): additive columns on `wp.edge` and `wp.closure`; new `wp.weather_daily`.
 
 **Migration owner: Data agent** (`db/migrations/`, Alembic). Other agents read these tables; they never create migrations. Schema changes → change request (integration-rules §3).
 
@@ -34,6 +36,10 @@ Conventions: schema `wp`; geometry SRID **4326** with GiST index; metric values 
 | incline_percent, width_m | double null | |
 | surface | text null | |
 | lit | boolean null | |
+| crossing_type | text null | v1.2: `CrossingInfo.type` enum; null when edge is not a crossing |
+| crossing_kerb | text null | v1.2: `CrossingInfo.kerb` enum |
+| highway | text null | v1.2: OSM `highway` value (traceability) |
+| osm_snapshot | timestamptz null | v1.2: OSM snapshot timestamp the edge was built from |
 | sidewalk_polygon_ids | text[] | Voirie polygons matched by spatial join (enrichment only) |
 | connectivity_confidence | text | `high` (OSM topology), `medium` (documented snap rule ≤ 2 m), `low` |
 | component_id | int | connected component; routing uses largest + reports others as gaps |
@@ -45,13 +51,16 @@ Indexes: GiST(geom), btree(from_node_id), btree(to_node_id), btree(component_id)
 `polygon_id text PK` (publisher id), `geom geometry(MultiPolygon,4326)`, `category`, `type`, `material`, `surveyed_at date null`, `attrs jsonb`, `source_id`, `ingest_run_id`. GiST.
 
 ### `wp.closure` — Entraves
-`closure_id text PK` (`entrave:<id>`), `geom geometry(Geometry,4326)`, `sidewalk_blockedtype text`, `blocks_passage boolean null` (true **only** if `sidewalk_blockedtype` explicitly indicates blocked pedestrian passage; mapping table documented by Data agent), `valid_from`, `valid_to`, `status`, `source_id`, `ingest_run_id`. GiST. Evidence state: `confirmed` (official permit data).
+`closure_id text PK` (`entrave:<id>`), `geom geometry(Geometry,4326)` (Entraves publishes the **permit point**; edge matching is approximate), `sidewalk_blockedtype text`, `blocks_passage boolean null`, `backsidewalk_blocks_passage boolean null` (v1.2; same rule applied to `backsidewalk_blockedtype`), `attrs jsonb` (v1.2; permit id and named affected street sections — never geocoded into certainty) (true **only** if `sidewalk_blockedtype` explicitly indicates blocked pedestrian passage; mapping table documented by Data agent), `valid_from`, `valid_to`, `status`, `source_id`, `ingest_run_id`. GiST. Evidence state: `confirmed` (official permit data).
 
 ### `wp.report_311_cell` — aggregated, privacy-preserving
 `h3 text`, `day date`, `category text` (normalised winter category), `n int`, PK(h3, day, category). **No raw rows stored in the DB**; raw CSV stays in git-ignored `data/raw/`. Cells with n<3 per day are kept for training but suppressed in public API output (k-anonymity floor; ML agent may use them).
 
 ### `wp.weather_obs`
 `station_id`, `observed_at`, `temperature_c`, `precip_mm`, `snow_depth_cm`, `wind_kmh`, `source_collection` (`climate-hourly|swob-realtime`), `ingest_run_id`. PK(station_id, observed_at).
+
+### `wp.weather_daily` (v1.2)
+`station_id`, `day date`, `total_precip_mm`, `total_snow_cm`, `snow_on_ground_cm`, `min_temp_c`, `max_temp_c`, `source_collection` (`climate-daily`), `ingest_run_id`. PK(station_id, day). Added because station 7025251's hourly precipitation is null throughout, while daily `SNOW_ON_GROUND`/`TOTAL_PRECIPITATION` are populated.
 
 ### `wp.community_report`
 `report_id uuid PK`, `category`, `geom Point 4326` (stored only with consent), `description`, `status (pending|approved|rejected|expired|deleted)`, `created_at`, `expires_at` (default +72 h), `deletion_token_hash`, `moderated_at`, `moderation_note`, `client_hash` (salted, rotated daily, for rate-limit only). Hard-deleted 30 days after terminal status.
