@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 base="$(baseline_sha || echo '?')"
 echo "baseline: $base   integration: $(git -C "$REPO_ROOT" rev-parse --short "$INTEGRATION_BRANCH" 2>/dev/null)"
-tmux list-windows -t "$SESSION" -F '  tmux #{window_index}:#{window_name} #{pane_current_command}' 2>/dev/null || echo "  tmux session '$SESSION' not running"
+tmux list-panes -a -F '  #{@agent} -> #{session_name}:#{window_index}.#{pane_index} (#{pane_id}) #{pane_current_command}' 2>/dev/null | grep -v '^  [[:space:]]*->' || echo "  no agent panes found in tmux"
 printf '%-9s %-9s %-7s %-6s %-7s %s\n' AGENT SHA COMMITS DIRTY REPORT LAST_COMMIT
 for a in "${AGENTS[@]}"; do
   p="$(wt_path "$a")"

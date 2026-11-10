@@ -1,0 +1,194 @@
+{
+  "osm_snapshot": "2026-11-10T20:43:04Z",
+  "raw_sha256": "a7ee9f8c1af78a1756c7500fdeac37ebc82b0afdd309dd18ac38a0e8e4f02e2a",
+  "fetched_at": "2026-11-10T20:45:05+00:00",
+  "bbox": [
+    -73.588,
+    45.496,
+    -73.562,
+    45.513
+  ],
+  "stats": {
+    "components": 159,
+    "crossing_nodes": 1467,
+    "directed_edges": 16652,
+    "edge_kind_counts": {
+      "crossing": 5068,
+      "footway": 3508,
+      "other": 1382,
+      "path": 232,
+      "pedestrian_street": 188,
+      "shared_street": 16,
+      "sidewalk": 5194,
+      "steps": 1064
+    },
+    "foot_access_counts": {
+      "designated": 84,
+      "permissive": 36,
+      "unknown": 16200,
+      "yes": 332
+    },
+    "gap_count": 351,
+    "largest_component_length_share": 0.9711,
+    "largest_component_node_share": 0.9157,
+    "largest_component_nodes": 6398,
+    "nodes": 6987,
+    "osm_snapshot": "2026-11-10T20:43:04Z",
+    "segments": 8326,
+    "step_free_counts": {
+      "False": 1128,
+      "None": 13976,
+      "True": 1548
+    },
+    "total_length_m_undirected": 172906.7,
+    "ways_downloaded": 6853,
+    "ways_excluded_by_reason": {
+      "access=no": 19,
+      "access=private": 92,
+      "area=yes (polygon, not a linear walkway)": 22,
+      "foot=no": 8,
+      "foot=use_sidepath": 481,
+      "highway=corridor": 147,
+      "highway=cycleway": 150,
+      "highway=secondary_link": 7,
+      "highway=service": 983,
+      "highway=unclassified": 8
+    },
+    "ways_included": 4936,
+    "zero_length_segments_dropped": 0
+  },
+  "voirie_match": {
+    "rule": {
+      "crs": "EPSG:32188",
+      "min_overlap_share": 0.5,
+      "tolerance_m": 1.0
+    },
+    "rates": {
+      "all": {
+        "edges": 16652,
+        "matched": 7130,
+        "rate": 0.4282
+      },
+      "crossing": {
+        "edges": 5068,
+        "matched": 1796,
+        "rate": 0.3544
+      },
+      "footway": {
+        "edges": 3508,
+        "matched": 376,
+        "rate": 0.1072
+      },
+      "other": {
+        "edges": 1382,
+        "matched": 8,
+        "rate": 0.0058
+      },
+      "path": {
+        "edges": 232,
+        "matched": 10,
+        "rate": 0.0431
+      },
+      "pedestrian_street": {
+        "edges": 188,
+        "matched": 0,
+        "rate": 0.0
+      },
+      "shared_street": {
+        "edges": 16,
+        "matched": 0,
+        "rate": 0.0
+      },
+      "sidewalk": {
+        "edges": 5194,
+        "matched": 4888,
+        "rate": 0.9411
+      },
+      "steps": {
+        "edges": 1064,
+        "matched": 52,
+        "rate": 0.0489
+      }
+    },
+    "polygons": {
+      "ilot": 182,
+      "trottoir": 1313
+    }
+  },
+  "entraves": {
+    "blocks_passage_counts": {
+      "False": 113,
+      "None": 10,
+      "True": 44
+    },
+    "closures_in_bbox": 167,
+    "impact_rows_total": 2105,
+    "observed_values": {
+      "backsidewalk_blockedtype": {
+        "Aucun impact / non applicable": 1578,
+        "Barré": 250,
+        "Obstrué": 277
+      },
+      "sidewalk_blockedtype": {
+        "Aucun impact / non applicable": 907,
+        "Barré": 642,
+        "Obstrué (un passage piéton de 1,5 m est conservé)": 556
+      }
+    },
+    "permits_total": 1974,
+    "unmapped": {}
+  },
+  "report_311": {
+    "winter_categories": {
+      "Chaussée glissante": "roadway_slippery",
+      "Déneigement ruelle": "snow_clearing",
+      "Dépôt Illégal - Neige": "snow_dumping",
+      "Dépôt neige-ruelle": "snow_dumping",
+      "Opération déneigement": "snow_clearing",
+      "Trottoir glissant": "sidewalk_slippery"
+    },
+    "day_basis": "calendar date of DDS_DATE_CREATION as published (no timezone stated)",
+    "stats": {
+      "cells_rows": 68214,
+      "day_range": [
+        "2022-01-01",
+        "2026-11-07"
+      ],
+      "distinct_cells": 2678,
+      "reports_aggregated_by_category": {
+        "roadway_slippery": 9159,
+        "sidewalk_slippery": 10391,
+        "snow_clearing": 55441,
+        "snow_dumping": 5623
+      },
+      "rows_by_reason": {
+        "located_at_borough_office": 2773,
+        "no_location": 24962,
+        "not_winter_category": 3163268,
+        "ok": 80614
+      },
+      "rows_with_n_lt_3": 65975
+    }
+  },
+  "weather_obs": {
+    "stations": [
+      "7025251",
+      "702S006"
+    ],
+    "null_counts": {
+      "precip_mm": 42733,
+      "snow_depth_cm": 84248,
+      "temperature_c": 1,
+      "wind_kmh": 33
+    },
+    "observed_range": [
+      "2022-01-01T05:00:00Z",
+      "2026-10-01T12:00:00Z"
+    ],
+    "rows": 84248,
+    "rows_by_collection": {
+      "climate-hourly": 84085,
+      "swob-realtime": 163
+    }
+  }
+}
