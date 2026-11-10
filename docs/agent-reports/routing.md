@@ -170,8 +170,8 @@ Not done or not verifiable here:
 5. data-model (additive): `wp.community_report.terminal_at timestamptz`. Hard delete currently approximates with `COALESCE(moderated_at, expires_at)`.
 6. data-model (clarify): `wp.closure.status` vocabulary (closures are currently filtered by validity window only).
 7. Confirm the evidence states chosen for explanation codes, and that both routes are returned when they are identical.
-9. data-model (clarify, cycle 3): the interval of `wp.weather_obs.precip_mm`. I serve it as `precipitation_mm_1h`, which is correct for `climate-hourly` and for SWOB's 1-hour amount. Please confirm the ingest stores the 1-hour value for `swob-realtime`. Also: `wp.weather_daily` needs a migration.
 8. **Platform (FYI, not a contract change):** `tests/integration/log_scan.py` flags fractional seconds of microsecond ISO timestamps (e.g. `…:40.010135Z`) as latitudes. I avoided this by logging milliseconds, but other services may trip it.
+9. data-model (clarify, cycle 3): the interval of `wp.weather_obs.precip_mm`. I serve it as `precipitation_mm_1h`, which is correct for `climate-hourly` and for SWOB's 1-hour amount. Please confirm the ingest stores the 1-hour value for `swob-realtime`. Also: `wp.weather_daily` needs a migration.
 
 (Withdrawn: the source-id CR is resolved by the Data agent's canonical ids. The `DELETE /reports` 404/422 question is resolved by v1.1.0.)
 
