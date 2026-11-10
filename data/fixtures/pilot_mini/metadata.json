@@ -1,0 +1,33 @@
+{
+  "simulated": false,
+  "description": "Real OSM pedestrian edges around McGill Roddick Gates (WinterPath pilot_mini fixture).",
+  "source_ids": [
+    "osm",
+    "mtl-voirie"
+  ],
+  "sidewalk_polygon_ids": "Voirie polygons matched by spatial overlap (enrichment only; never connectivity)",
+  "osm_snapshot": "2026-11-10T20:43:04Z",
+  "osm_raw_sha256": "a7ee9f8c1af78a1756c7500fdeac37ebc82b0afdd309dd18ac38a0e8e4f02e2a",
+  "parent_bbox": [
+    -73.588,
+    45.496,
+    -73.562,
+    45.513
+  ],
+  "bbox": [
+    -73.578035,
+    45.503034,
+    -73.573657,
+    45.505518
+  ],
+  "anchor": [
+    -73.5765,
+    45.5045
+  ],
+  "edge_count": 200,
+  "node_count": 88,
+  "crs": "EPSG:4326",
+  "length_crs": "EPSG:32188",
+  "id_scheme": "docs/contracts/data-model.md#stable-ids",
+  "license": "ODbL-1.0"
+}

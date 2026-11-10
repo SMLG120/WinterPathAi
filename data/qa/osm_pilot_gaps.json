@@ -1,0 +1,2722 @@
+[
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10013636151",
+  "near_edge_id": "osm:n10013636150>osm:n10013636153:0",
+  "distance_m": 0.8,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.566895,
+  "lat": 45.497372
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10031858489",
+  "near_edge_id": "osm:n11289783913>osm:n11289783914:0",
+  "distance_m": 1.66,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.578519,
+  "lat": 45.506918
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10099144286",
+  "near_edge_id": "osm:n10099144274>osm:n10099144285:0",
+  "distance_m": 1.63,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565696,
+  "lat": 45.509262
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10114462093",
+  "near_edge_id": "osm:n13076068748>osm:n13076068749:0",
+  "distance_m": 1.61,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.579994,
+  "lat": 45.498683
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10144109400",
+  "near_edge_id": "osm:n10144109413>osm:n10144109414:0",
+  "distance_m": 1.75,
+  "node_component": 34,
+  "edge_component": 35,
+  "lon": -73.578637,
+  "lat": 45.497095
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10144109412",
+  "near_edge_id": "osm:n10144109413>osm:n10144109414:0",
+  "distance_m": 1.58,
+  "node_component": 34,
+  "edge_component": 35,
+  "lon": -73.578541,
+  "lat": 45.497193
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10144109413",
+  "near_edge_id": "osm:n10144109400>osm:n10144109412:0",
+  "distance_m": 1.75,
+  "node_component": 35,
+  "edge_component": 34,
+  "lon": -73.578655,
+  "lat": 45.497104
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10144109414",
+  "near_edge_id": "osm:n10144109400>osm:n10144109412:0",
+  "distance_m": 1.57,
+  "node_component": 35,
+  "edge_component": 34,
+  "lon": -73.578558,
+  "lat": 45.4972
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10281036983",
+  "near_edge_id": "osm:n10281036982>osm:n12193412063:0",
+  "distance_m": 1.17,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.566506,
+  "lat": 45.497403
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10739836859",
+  "near_edge_id": "osm:n10739836860>osm:n10739836861:0",
+  "distance_m": 1.43,
+  "node_component": 16,
+  "edge_component": 16,
+  "lon": -73.563519,
+  "lat": 45.498807
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10756240895",
+  "near_edge_id": "osm:n10756240899>osm:n10756240900:0",
+  "distance_m": 1.54,
+  "node_component": 37,
+  "edge_component": 39,
+  "lon": -73.57879,
+  "lat": 45.497228
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10756240897",
+  "near_edge_id": "osm:n10756240899>osm:n10756240900:0",
+  "distance_m": 1.52,
+  "node_component": 37,
+  "edge_component": 39,
+  "lon": -73.578712,
+  "lat": 45.497191
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10756240898",
+  "near_edge_id": "osm:n10756240903>osm:n10756240904:0",
+  "distance_m": 1.46,
+  "node_component": 38,
+  "edge_component": 40,
+  "lon": -73.578729,
+  "lat": 45.49729
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10756240899",
+  "near_edge_id": "osm:n10756240895>osm:n10756240897:0",
+  "distance_m": 1.54,
+  "node_component": 39,
+  "edge_component": 37,
+  "lon": -73.578779,
+  "lat": 45.49724
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10756240900",
+  "near_edge_id": "osm:n10756240895>osm:n10756240897:0",
+  "distance_m": 1.52,
+  "node_component": 39,
+  "edge_component": 37,
+  "lon": -73.578702,
+  "lat": 45.497203
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10756240902",
+  "near_edge_id": "osm:n10756240903>osm:n10756240904:0",
+  "distance_m": 1.41,
+  "node_component": 38,
+  "edge_component": 40,
+  "lon": -73.578646,
+  "lat": 45.49725
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10756240903",
+  "near_edge_id": "osm:n10756240898>osm:n10756240902:0",
+  "distance_m": 1.46,
+  "node_component": 40,
+  "edge_component": 38,
+  "lon": -73.578739,
+  "lat": 45.497279
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10756240904",
+  "near_edge_id": "osm:n10756240898>osm:n10756240902:0",
+  "distance_m": 1.41,
+  "node_component": 40,
+  "edge_component": 38,
+  "lon": -73.578656,
+  "lat": 45.497239
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10867519111",
+  "near_edge_id": "osm:n10867519109>osm:n10867519110:0",
+  "distance_m": 1.67,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.568176,
+  "lat": 45.499469
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10926808458",
+  "near_edge_id": "osm:n10926808456>osm:n11069939453:0",
+  "distance_m": 1.6,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.585764,
+  "lat": 45.498894
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10946656065",
+  "near_edge_id": "osm:n10946656063>osm:n12798012773:0",
+  "distance_m": 1.87,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.582172,
+  "lat": 45.50908
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n10946731244",
+  "near_edge_id": "osm:n11423891463>osm:n12778801937:0",
+  "distance_m": 1.61,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.583236,
+  "lat": 45.497605
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014210527",
+  "near_edge_id": "osm:n10979652437>osm:n10979652438:0",
+  "distance_m": 1.7,
+  "node_component": 6,
+  "edge_component": 4,
+  "lon": -73.581298,
+  "lat": 45.510842
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014210548",
+  "near_edge_id": "osm:n11014210584>osm:n11014210585:0",
+  "distance_m": 1.41,
+  "node_component": 1,
+  "edge_component": 6,
+  "lon": -73.581403,
+  "lat": 45.510751
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014210556",
+  "near_edge_id": "osm:n11014210562>osm:n11014210565:0",
+  "distance_m": 1.04,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581469,
+  "lat": 45.510624
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014210564",
+  "near_edge_id": "osm:n11014210563>osm:n11014213226:0",
+  "distance_m": 1.9,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581131,
+  "lat": 45.510583
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014210573",
+  "near_edge_id": "osm:n11014210579>osm:n11014213611:0",
+  "distance_m": 1.57,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581528,
+  "lat": 45.510418
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014210581",
+  "near_edge_id": "osm:n11014210580>osm:n11014213374:0",
+  "distance_m": 1.53,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581186,
+  "lat": 45.510375
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014210585",
+  "near_edge_id": "osm:n11014210548>osm:n11014210553:0",
+  "distance_m": 1.41,
+  "node_component": 6,
+  "edge_component": 1,
+  "lon": -73.581385,
+  "lat": 45.510751
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014210586",
+  "near_edge_id": "osm:n11014210584>osm:n11014210585:0",
+  "distance_m": 1.87,
+  "node_component": 6,
+  "edge_component": 6,
+  "lon": -73.581368,
+  "lat": 45.510764
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213226",
+  "near_edge_id": "osm:n11014210571>osm:n11014213266:0",
+  "distance_m": 1.59,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581143,
+  "lat": 45.510552
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213263",
+  "near_edge_id": "osm:n11014210569>osm:n11014210570:0",
+  "distance_m": 0.96,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581495,
+  "lat": 45.510523
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213264",
+  "near_edge_id": "osm:n11014210567>osm:n11014210569:0",
+  "distance_m": 1.06,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581498,
+  "lat": 45.510505
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213265",
+  "near_edge_id": "osm:n11014210563>osm:n11014210564:0",
+  "distance_m": 1.7,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581149,
+  "lat": 45.510591
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213277",
+  "near_edge_id": "osm:n11014213274>osm:n11014213276:0",
+  "distance_m": 1.59,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.58135,
+  "lat": 45.509699
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213278",
+  "near_edge_id": "osm:n11014213277>osm:n11014213280:0",
+  "distance_m": 1.54,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581349,
+  "lat": 45.509732
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213342",
+  "near_edge_id": "osm:n11014213325>osm:n11014213327:0",
+  "distance_m": 1.29,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.58155,
+  "lat": 45.510283
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213344",
+  "near_edge_id": "osm:n11014213342>osm:n11014213343:0",
+  "distance_m": 1.91,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581547,
+  "lat": 45.5103
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213347",
+  "near_edge_id": "osm:n11014213353>osm:n11014213371:0",
+  "distance_m": 1.7,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581583,
+  "lat": 45.510197
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213354",
+  "near_edge_id": "osm:n11014213408>osm:n11014213581:0",
+  "distance_m": 1.66,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581612,
+  "lat": 45.510086
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213372",
+  "near_edge_id": "osm:n11014213370>osm:n11014213373:0",
+  "distance_m": 1.82,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581243,
+  "lat": 45.510157
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213373",
+  "near_edge_id": "osm:n11014213269>osm:n11014213270:0",
+  "distance_m": 1.61,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.58125,
+  "lat": 45.510123
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213374",
+  "near_edge_id": "osm:n11014213267>osm:n11014213268:0",
+  "distance_m": 1.76,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581193,
+  "lat": 45.510345
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213391",
+  "near_edge_id": "osm:n11014213329>osm:n11014213346:0",
+  "distance_m": 1.81,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581558,
+  "lat": 45.510307
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213413",
+  "near_edge_id": "osm:n11014213424>osm:n11014213614:0",
+  "distance_m": 1.61,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581639,
+  "lat": 45.509974
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213426",
+  "near_edge_id": "osm:n11014213425>osm:n11014213427:0",
+  "distance_m": 1.52,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581301,
+  "lat": 45.509932
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213427",
+  "near_edge_id": "osm:n11014213271>osm:n11014213272:0",
+  "distance_m": 1.4,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581308,
+  "lat": 45.509902
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213439",
+  "near_edge_id": "osm:n11014213322>osm:n11014213323:0",
+  "distance_m": 1.54,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581666,
+  "lat": 45.509864
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11014213441",
+  "near_edge_id": "osm:n11014213279>osm:n11014213284:0",
+  "distance_m": 1.88,
+  "node_component": 1,
+  "edge_component": 1,
+  "lon": -73.581694,
+  "lat": 45.509746
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11100279948",
+  "near_edge_id": "osm:n11020678845>osm:n14042115065:0",
+  "distance_m": 1.39,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.574415,
+  "lat": 45.501361
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11100279949",
+  "near_edge_id": "osm:n14042115064>osm:n14042115065:0",
+  "distance_m": 1.34,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.574388,
+  "lat": 45.501388
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11289783939",
+  "near_edge_id": "osm:n11289783927>osm:n11289783928:0",
+  "distance_m": 0.82,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.578815,
+  "lat": 45.507234
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11289850473",
+  "near_edge_id": "osm:n11423890493>osm:n11793907087:0",
+  "distance_m": 1.73,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.575158,
+  "lat": 45.504987
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11291317665",
+  "near_edge_id": "osm:n11291317666>osm:n11291317667:0",
+  "distance_m": 1.33,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.574478,
+  "lat": 45.505239
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11291338294",
+  "near_edge_id": "osm:n11289783927>osm:n11289783928:0",
+  "distance_m": 0.77,
+  "node_component": 51,
+  "edge_component": 0,
+  "lon": -73.57883,
+  "lat": 45.507218
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11775484584",
+  "near_edge_id": "osm:n11542186910>osm:n11775484585:0",
+  "distance_m": 1.21,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.568694,
+  "lat": 45.512735
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11956716691",
+  "near_edge_id": "osm:n11956716692>osm:n11956716693:0",
+  "distance_m": 1.87,
+  "node_component": 7,
+  "edge_component": 7,
+  "lon": -73.575473,
+  "lat": 45.505089
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11973308216",
+  "near_edge_id": "osm:n10653578418>osm:n1290835483:0",
+  "distance_m": 1.3,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.569023,
+  "lat": 45.499548
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11973313945",
+  "near_edge_id": "osm:n12489290177>osm:n13339379501:0",
+  "distance_m": 1.75,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.575101,
+  "lat": 45.499136
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11973426647",
+  "near_edge_id": "osm:n10946656098>osm:n12770458263:0",
+  "distance_m": 0.7,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.581893,
+  "lat": 45.505855
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n11987914758",
+  "near_edge_id": "osm:n11987914759>osm:n11987914764:0",
+  "distance_m": 0.89,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.56782,
+  "lat": 45.498515
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12075450331",
+  "near_edge_id": "osm:n13256168927>osm:n13256168928:0",
+  "distance_m": 1.51,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.561748,
+  "lat": 45.50953
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207073369",
+  "near_edge_id": "osm:n10697887433>osm:n11119844451:0",
+  "distance_m": 1.74,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.567058,
+  "lat": 45.498188
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207073372",
+  "near_edge_id": "osm:n11399398098>osm:n12207073376:0",
+  "distance_m": 1.35,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.566085,
+  "lat": 45.497672
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207073373",
+  "near_edge_id": "osm:n12207073379>osm:n12207073395:0",
+  "distance_m": 1.4,
+  "node_component": 0,
+  "edge_component": 61,
+  "lon": -73.565432,
+  "lat": 45.498222
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207073379",
+  "near_edge_id": "osm:n12207073387>osm:n12207073388:0",
+  "distance_m": 0.81,
+  "node_component": 61,
+  "edge_component": 62,
+  "lon": -73.565551,
+  "lat": 45.498192
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207073387",
+  "near_edge_id": "osm:n12207073391>osm:n12207073392:0",
+  "distance_m": 0.94,
+  "node_component": 62,
+  "edge_component": 63,
+  "lon": -73.565551,
+  "lat": 45.498204
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207073388",
+  "near_edge_id": "osm:n12207073391>osm:n12207073392:0",
+  "distance_m": 1.91,
+  "node_component": 62,
+  "edge_component": 63,
+  "lon": -73.565506,
+  "lat": 45.498184
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207073391",
+  "near_edge_id": "osm:n12207073387>osm:n12207073388:0",
+  "distance_m": 1.84,
+  "node_component": 63,
+  "edge_component": 62,
+  "lon": -73.565505,
+  "lat": 45.498201
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207073400",
+  "near_edge_id": "osm:n12207130813>osm:n12207130817:0",
+  "distance_m": 0.24,
+  "node_component": 64,
+  "edge_component": 65,
+  "lon": -73.566096,
+  "lat": 45.497774
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130813",
+  "near_edge_id": "osm:n12207073400>osm:n12207130810:0",
+  "distance_m": 0.53,
+  "node_component": 65,
+  "edge_component": 64,
+  "lon": -73.566102,
+  "lat": 45.497773
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130817",
+  "near_edge_id": "osm:n12207073400>osm:n12207130810:0",
+  "distance_m": 0.4,
+  "node_component": 65,
+  "edge_component": 64,
+  "lon": -73.566048,
+  "lat": 45.49773
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130854",
+  "near_edge_id": "osm:n12207130856>osm:n12207130857:0",
+  "distance_m": 1.18,
+  "node_component": 71,
+  "edge_component": 72,
+  "lon": -73.566307,
+  "lat": 45.498615
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130855",
+  "near_edge_id": "osm:n12207130856>osm:n12207130857:0",
+  "distance_m": 1.12,
+  "node_component": 71,
+  "edge_component": 72,
+  "lon": -73.566448,
+  "lat": 45.498678
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130856",
+  "near_edge_id": "osm:n12207130854>osm:n12207130855:0",
+  "distance_m": 1.19,
+  "node_component": 72,
+  "edge_component": 71,
+  "lon": -73.566298,
+  "lat": 45.498624
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130857",
+  "near_edge_id": "osm:n12207130854>osm:n12207130855:0",
+  "distance_m": 1.11,
+  "node_component": 72,
+  "edge_component": 71,
+  "lon": -73.566439,
+  "lat": 45.498686
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130886",
+  "near_edge_id": "osm:n12209473101>osm:n12717580974:0",
+  "distance_m": 0.1,
+  "node_component": 74,
+  "edge_component": 0,
+  "lon": -73.56613,
+  "lat": 45.499064
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130905",
+  "near_edge_id": "osm:n11065676368>osm:n12207130906:0",
+  "distance_m": 1.73,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565538,
+  "lat": 45.500653
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207130916",
+  "near_edge_id": "osm:n11065676398>osm:n12207283746:0",
+  "distance_m": 1.37,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.568761,
+  "lat": 45.500068
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207283742",
+  "near_edge_id": "osm:n12207283743>osm:n12207283744:0",
+  "distance_m": 1.66,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.569293,
+  "lat": 45.5004
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12207283789",
+  "near_edge_id": "osm:n12207283761>osm:n13043752491:0",
+  "distance_m": 1.82,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.568738,
+  "lat": 45.500965
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12209471813",
+  "near_edge_id": "osm:n12209471826>osm:n12209471829:0",
+  "distance_m": 0.49,
+  "node_component": 86,
+  "edge_component": 88,
+  "lon": -73.56439,
+  "lat": 45.499895
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12209471816",
+  "near_edge_id": "osm:n12209471826>osm:n12209471829:0",
+  "distance_m": 1.14,
+  "node_component": 86,
+  "edge_component": 88,
+  "lon": -73.564512,
+  "lat": 45.499944
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12209471826",
+  "near_edge_id": "osm:n12209471813>osm:n12209471816:0",
+  "distance_m": 0.34,
+  "node_component": 88,
+  "edge_component": 86,
+  "lon": -73.564384,
+  "lat": 45.499897
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12209471829",
+  "near_edge_id": "osm:n12209471813>osm:n12209471816:0",
+  "distance_m": 0.37,
+  "node_component": 88,
+  "edge_component": 86,
+  "lon": -73.564509,
+  "lat": 45.499954
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12209471857",
+  "near_edge_id": "osm:n12209473101>osm:n12717580974:0",
+  "distance_m": 1.68,
+  "node_component": 95,
+  "edge_component": 0,
+  "lon": -73.566119,
+  "lat": 45.499046
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12215121409",
+  "near_edge_id": "osm:n1207379287>osm:n1207379323:0",
+  "distance_m": 1.32,
+  "node_component": 97,
+  "edge_component": 0,
+  "lon": -73.562416,
+  "lat": 45.501817
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12215121468",
+  "near_edge_id": "osm:n12122885632>osm:n12987475002:0",
+  "distance_m": 1.38,
+  "node_component": 98,
+  "edge_component": 0,
+  "lon": -73.563681,
+  "lat": 45.501621
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12215121470",
+  "near_edge_id": "osm:n12122885633>osm:n12122885634:0",
+  "distance_m": 1.05,
+  "node_component": 98,
+  "edge_component": 0,
+  "lon": -73.563572,
+  "lat": 45.501765
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12215121476",
+  "near_edge_id": "osm:n11070262975>osm:n11070262979:0",
+  "distance_m": 1.61,
+  "node_component": 100,
+  "edge_component": 0,
+  "lon": -73.564243,
+  "lat": 45.502136
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12215121479",
+  "near_edge_id": "osm:n11379805781>osm:n11379805785:0",
+  "distance_m": 1.23,
+  "node_component": 101,
+  "edge_component": 0,
+  "lon": -73.565195,
+  "lat": 45.502399
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12396739124",
+  "near_edge_id": "osm:n12989756789>osm:n12989756790:0",
+  "distance_m": 1.21,
+  "node_component": 108,
+  "edge_component": 122,
+  "lon": -73.564549,
+  "lat": 45.507691
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12396739127",
+  "near_edge_id": "osm:n12989756787>osm:n12989756788:0",
+  "distance_m": 1.49,
+  "node_component": 109,
+  "edge_component": 121,
+  "lon": -73.564507,
+  "lat": 45.507294
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12396739129",
+  "near_edge_id": "osm:n12989756785>osm:n12989756786:0",
+  "distance_m": 1.57,
+  "node_component": 108,
+  "edge_component": 120,
+  "lon": -73.564298,
+  "lat": 45.50774
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12480737017",
+  "near_edge_id": "osm:n12480737018>osm:n12798012684:0",
+  "distance_m": 1.99,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.581445,
+  "lat": 45.508931
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12517224230",
+  "near_edge_id": "osm:n12517224231>osm:n12517224232:0",
+  "distance_m": 1.85,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.586506,
+  "lat": 45.498366
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12527954345",
+  "near_edge_id": "osm:n10013289226>osm:n9917599787:0",
+  "distance_m": 0.94,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.562882,
+  "lat": 45.495922
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12714924730",
+  "near_edge_id": "osm:n12714860102>osm:n12714860103:0",
+  "distance_m": 1.95,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.568344,
+  "lat": 45.497722
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12717551029",
+  "near_edge_id": "osm:n12717551038>osm:n12717551040:0",
+  "distance_m": 1.39,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.568985,
+  "lat": 45.499587
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12717551030",
+  "near_edge_id": "osm:n10653578419>osm:n1290835174:0",
+  "distance_m": 1.38,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.569058,
+  "lat": 45.49951
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12717580978",
+  "near_edge_id": "osm:n12717580974>osm:n12717580975:0",
+  "distance_m": 1.98,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565603,
+  "lat": 45.498915
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12741895126",
+  "near_edge_id": "osm:n12741895127>osm:n12741895128:0",
+  "distance_m": 1.75,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.582998,
+  "lat": 45.495973
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12768970810",
+  "near_edge_id": "osm:n12768970811>osm:n12768970812:0",
+  "distance_m": 0.55,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.587537,
+  "lat": 45.497087
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12770458347",
+  "near_edge_id": "osm:n12770458352>osm:n12770458353:0",
+  "distance_m": 0.82,
+  "node_component": 12,
+  "edge_component": 12,
+  "lon": -73.581263,
+  "lat": 45.505621
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12798005729",
+  "near_edge_id": "osm:n12798012666>osm:n3383399207:0",
+  "distance_m": 1.29,
+  "node_component": 5,
+  "edge_component": 5,
+  "lon": -73.581204,
+  "lat": 45.508056
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n1282761412",
+  "near_edge_id": "osm:n11582634023>osm:n11582634089:0",
+  "distance_m": 0.72,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.576828,
+  "lat": 45.505214
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12841703318",
+  "near_edge_id": "osm:n12841703317>osm:n12841703319:0",
+  "distance_m": 1.93,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.578077,
+  "lat": 45.510776
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n1290834867",
+  "near_edge_id": "osm:n10943921845>osm:n1290835210:0",
+  "distance_m": 1.66,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.569265,
+  "lat": 45.499296
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n1290876557",
+  "near_edge_id": "osm:n1290876327>osm:n1290876481:0",
+  "distance_m": 0.37,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.567342,
+  "lat": 45.497858
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12989756784",
+  "near_edge_id": "osm:n12989756787>osm:n12989756788:0",
+  "distance_m": 1.27,
+  "node_component": 109,
+  "edge_component": 121,
+  "lon": -73.564731,
+  "lat": 45.507249
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12989756785",
+  "near_edge_id": "osm:n12989756789>osm:n12989756790:0",
+  "distance_m": 0.87,
+  "node_component": 120,
+  "edge_component": 122,
+  "lon": -73.564523,
+  "lat": 45.50768
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12989756786",
+  "near_edge_id": "osm:n12989756789>osm:n12989756790:0",
+  "distance_m": 0.99,
+  "node_component": 120,
+  "edge_component": 122,
+  "lon": -73.564276,
+  "lat": 45.50773
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12989756787",
+  "near_edge_id": "osm:n12396739127>osm:n12989756784:0",
+  "distance_m": 1.14,
+  "node_component": 121,
+  "edge_component": 109,
+  "lon": -73.564523,
+  "lat": 45.507301
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12989756788",
+  "near_edge_id": "osm:n12396739127>osm:n12989756784:0",
+  "distance_m": 1.72,
+  "node_component": 121,
+  "edge_component": 109,
+  "lon": -73.56475,
+  "lat": 45.507257
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12989756789",
+  "near_edge_id": "osm:n12989756785>osm:n12989756786:0",
+  "distance_m": 0.76,
+  "node_component": 122,
+  "edge_component": 120,
+  "lon": -73.564286,
+  "lat": 45.507735
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12989756790",
+  "near_edge_id": "osm:n12989756785>osm:n12989756786:0",
+  "distance_m": 1.22,
+  "node_component": 122,
+  "edge_component": 120,
+  "lon": -73.564536,
+  "lat": 45.507686
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12990939043",
+  "near_edge_id": "osm:n12990939044>osm:n12990939090:0",
+  "distance_m": 1.03,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.584347,
+  "lat": 45.499322
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n12990939045",
+  "near_edge_id": "osm:n10926771302>osm:n12990939046:0",
+  "distance_m": 0.86,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.584532,
+  "lat": 45.499151
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13015338905",
+  "near_edge_id": "osm:n13015338911>osm:n13015338912:0",
+  "distance_m": 1.11,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.5683,
+  "lat": 45.5019
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13076027632",
+  "near_edge_id": "osm:n13076027621>osm:n13076027622:0",
+  "distance_m": 0.86,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.580588,
+  "lat": 45.498325
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13140161859",
+  "near_edge_id": "osm:n13140161839>osm:n13140161858:0",
+  "distance_m": 1.59,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.578748,
+  "lat": 45.50006
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13184638755",
+  "near_edge_id": "osm:n10946656149>osm:n13184638800:0",
+  "distance_m": 1.19,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.582247,
+  "lat": 45.502946
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13184638894",
+  "near_edge_id": "osm:n10946656180>osm:n13184638895:0",
+  "distance_m": 1.65,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.581628,
+  "lat": 45.503394
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13397523015",
+  "near_edge_id": "osm:n13397523018>osm:n13397523029:0",
+  "distance_m": 1.51,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.576941,
+  "lat": 45.501781
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13397537546",
+  "near_edge_id": "osm:n13397537545>osm:n1455282299:0",
+  "distance_m": 1.9,
+  "node_component": 33,
+  "edge_component": 33,
+  "lon": -73.580041,
+  "lat": 45.503775
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13484859799",
+  "near_edge_id": "osm:n11399372524>osm:n11399372549:0",
+  "distance_m": 1.35,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.568864,
+  "lat": 45.502543
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n13510099186",
+  "near_edge_id": "osm:n11399372524>osm:n12207283778:0",
+  "distance_m": 1.49,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.569675,
+  "lat": 45.501865
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14042159027",
+  "near_edge_id": "osm:n11104909219>osm:n14042159026:0",
+  "distance_m": 1.57,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.574229,
+  "lat": 45.501151
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337248084",
+  "near_edge_id": "osm:n14337248083>osm:n14337248085:0",
+  "distance_m": 0.99,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565413,
+  "lat": 45.511712
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337248086",
+  "near_edge_id": "osm:n14337248087>osm:n14337248088:0",
+  "distance_m": 1.02,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565204,
+  "lat": 45.511622
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337248089",
+  "near_edge_id": "osm:n14337248090>osm:n14337248091:0",
+  "distance_m": 0.92,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565123,
+  "lat": 45.511587
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337248092",
+  "near_edge_id": "osm:n14337248093>osm:n14337248094:0",
+  "distance_m": 1.04,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.56535,
+  "lat": 45.511685
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337248095",
+  "near_edge_id": "osm:n14337248096>osm:n14337248097:0",
+  "distance_m": 0.96,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565267,
+  "lat": 45.511649
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337308008",
+  "near_edge_id": "osm:n14337308009>osm:n14337308011:0",
+  "distance_m": 0.68,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565875,
+  "lat": 45.512138
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337358591",
+  "near_edge_id": "osm:n14337358589>osm:n14337358590:0",
+  "distance_m": 0.77,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.564095,
+  "lat": 45.512988
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337437774",
+  "near_edge_id": "osm:n14337437773>osm:n14337437778:0",
+  "distance_m": 1.13,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.563891,
+  "lat": 45.512897
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337437776",
+  "near_edge_id": "osm:n14337437775>osm:n14337437777:0",
+  "distance_m": 1.28,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.563682,
+  "lat": 45.512804
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337477959",
+  "near_edge_id": "osm:n14337477952>osm:n14337477961:0",
+  "distance_m": 1.27,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.564839,
+  "lat": 45.512334
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337477960",
+  "near_edge_id": "osm:n14337477961>osm:n14337477962:0",
+  "distance_m": 1.16,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.564796,
+  "lat": 45.512381
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337477988",
+  "near_edge_id": "osm:n14337477987>osm:n14337477989:0",
+  "distance_m": 1.73,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.566262,
+  "lat": 45.511806
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n14337477991",
+  "near_edge_id": "osm:n14337477990>osm:n14337477992:0",
+  "distance_m": 1.89,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.566057,
+  "lat": 45.511714
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n1573559822",
+  "near_edge_id": "osm:n1573559838>osm:n1573559856:0",
+  "distance_m": 1.18,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.576651,
+  "lat": 45.505282
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n1574393105",
+  "near_edge_id": "osm:n11793882107>osm:n11793882108:0",
+  "distance_m": 1.02,
+  "node_component": 11,
+  "edge_component": 11,
+  "lon": -73.573767,
+  "lat": 45.506217
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n1574439792",
+  "near_edge_id": "osm:n11292375158>osm:n11292375161:0",
+  "distance_m": 1.57,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.577774,
+  "lat": 45.504321
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n2575317166",
+  "near_edge_id": "osm:n11119130911>osm:n11119130912:0",
+  "distance_m": 1.42,
+  "node_component": 129,
+  "edge_component": 0,
+  "lon": -73.572397,
+  "lat": 45.501646
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n2575317167",
+  "near_edge_id": "osm:n11119130905>osm:n13085055093:0",
+  "distance_m": 1.55,
+  "node_component": 129,
+  "edge_component": 0,
+  "lon": -73.572266,
+  "lat": 45.501767
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n2575317424",
+  "near_edge_id": "osm:n11367015627>osm:n12507511531:0",
+  "distance_m": 1.98,
+  "node_component": 130,
+  "edge_component": 0,
+  "lon": -73.571868,
+  "lat": 45.502117
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n4020481382",
+  "near_edge_id": "osm:n13043369261>osm:n4034134278:0",
+  "distance_m": 1.56,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.577121,
+  "lat": 45.496836
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n4035231079",
+  "near_edge_id": "osm:n4035231078>osm:n4035231080:0",
+  "distance_m": 0.81,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.581709,
+  "lat": 45.496399
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n4035248248",
+  "near_edge_id": "osm:n10184311425>osm:n10946656297:0",
+  "distance_m": 1.18,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.578625,
+  "lat": 45.497037
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n4035296908",
+  "near_edge_id": "osm:n4035322966>osm:n4035393449:0",
+  "distance_m": 1.67,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.581947,
+  "lat": 45.495953
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n4035322966",
+  "near_edge_id": "osm:n4035296908>osm:n4035393455:0",
+  "distance_m": 1.67,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.581933,
+  "lat": 45.495964
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n426003022",
+  "near_edge_id": "osm:n11119844451>osm:n3055925326:0",
+  "distance_m": 1.69,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.56692,
+  "lat": 45.498058
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n462248846",
+  "near_edge_id": "osm:n1207379275>osm:n1207379287:0",
+  "distance_m": 1.49,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.562141,
+  "lat": 45.50175
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n509331063",
+  "near_edge_id": "osm:n14337248034>osm:n509331060:0",
+  "distance_m": 1.4,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.564525,
+  "lat": 45.511859
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n509331072",
+  "near_edge_id": "osm:n14337248047>osm:n509331067:0",
+  "distance_m": 1.26,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.564736,
+  "lat": 45.511951
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n509331079",
+  "near_edge_id": "osm:n14337248065>osm:n509331076:0",
+  "distance_m": 1.32,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.564941,
+  "lat": 45.512041
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n509331171",
+  "near_edge_id": "osm:n14337248070>osm:n14337248071:0",
+  "distance_m": 1.91,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565177,
+  "lat": 45.512181
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n509331184",
+  "near_edge_id": "osm:n14337248073>osm:n509331188:0",
+  "distance_m": 1.9,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565436,
+  "lat": 45.511892
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n509331195",
+  "near_edge_id": "osm:n14337248081>osm:n14337248082:0",
+  "distance_m": 1.04,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.565462,
+  "lat": 45.511733
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n6015731525",
+  "near_edge_id": "osm:n13140161840>osm:n13140161857:0",
+  "distance_m": 1.33,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.578826,
+  "lat": 45.499976
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n6015766615",
+  "near_edge_id": "osm:n12297109542>osm:n13287109103:0",
+  "distance_m": 0.81,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.576238,
+  "lat": 45.499674
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n6025506578",
+  "near_edge_id": "osm:n12489290179>osm:n13377010408:0",
+  "distance_m": 1.05,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.574619,
+  "lat": 45.499739
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n6221609161",
+  "near_edge_id": "osm:n10926982161>osm:n10946251231:0",
+  "distance_m": 1.71,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.580382,
+  "lat": 45.507112
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423435257",
+  "near_edge_id": "osm:n14028907494>osm:n9423488406:0",
+  "distance_m": 1.17,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.570638,
+  "lat": 45.502492
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423435258",
+  "near_edge_id": "osm:n9423435260>osm:n9423435261:0",
+  "distance_m": 1.54,
+  "node_component": 22,
+  "edge_component": 22,
+  "lon": -73.571389,
+  "lat": 45.50278
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423435261",
+  "near_edge_id": "osm:n9423435258>osm:n9423435260:0",
+  "distance_m": 1.19,
+  "node_component": 22,
+  "edge_component": 22,
+  "lon": -73.57137,
+  "lat": 45.502777
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423435265",
+  "near_edge_id": "osm:n9423435267>osm:n9423435268:0",
+  "distance_m": 1.34,
+  "node_component": 136,
+  "edge_component": 137,
+  "lon": -73.571858,
+  "lat": 45.503072
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423435266",
+  "near_edge_id": "osm:n9423435267>osm:n9423435268:0",
+  "distance_m": 1.63,
+  "node_component": 136,
+  "edge_component": 137,
+  "lon": -73.571994,
+  "lat": 45.503134
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423435267",
+  "near_edge_id": "osm:n9423435265>osm:n9423435266:0",
+  "distance_m": 1.63,
+  "node_component": 137,
+  "edge_component": 136,
+  "lon": -73.571982,
+  "lat": 45.503146
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423435268",
+  "near_edge_id": "osm:n9423435265>osm:n9423435266:0",
+  "distance_m": 1.34,
+  "node_component": 137,
+  "edge_component": 136,
+  "lon": -73.571848,
+  "lat": 45.503082
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423488406",
+  "near_edge_id": "osm:n12207283788>osm:n9423435257:0",
+  "distance_m": 0.72,
+  "node_component": 0,
+  "edge_component": 0,
+  "lon": -73.570641,
+  "lat": 45.502482
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423488443",
+  "near_edge_id": "osm:n9423435265>osm:n9423435266:0",
+  "distance_m": 1.96,
+  "node_component": 145,
+  "edge_component": 136,
+  "lon": -73.572001,
+  "lat": 45.503116
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423488446",
+  "near_edge_id": "osm:n9423488448>osm:n9423488641:0",
+  "distance_m": 1.32,
+  "node_component": 147,
+  "edge_component": 148,
+  "lon": -73.570914,
+  "lat": 45.503307
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423488447",
+  "near_edge_id": "osm:n9423488448>osm:n9423488641:0",
+  "distance_m": 1.77,
+  "node_component": 147,
+  "edge_component": 148,
+  "lon": -73.571067,
+  "lat": 45.503378
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423488448",
+  "near_edge_id": "osm:n9423488446>osm:n9423488447:0",
+  "distance_m": 1.76,
+  "node_component": 148,
+  "edge_component": 147,
+  "lon": -73.571053,
+  "lat": 45.503391
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9423488641",
+  "near_edge_id": "osm:n9423488446>osm:n9423488447:0",
+  "distance_m": 1.32,
+  "node_component": 148,
+  "edge_component": 147,
+  "lon": -73.570905,
+  "lat": 45.503317
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424282909",
+  "near_edge_id": "osm:n9424282911>osm:n9424282912:0",
+  "distance_m": 1.16,
+  "node_component": 149,
+  "edge_component": 150,
+  "lon": -73.57172,
+  "lat": 45.501822
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424282910",
+  "near_edge_id": "osm:n9424282911>osm:n9424282912:0",
+  "distance_m": 1.41,
+  "node_component": 149,
+  "edge_component": 150,
+  "lon": -73.571594,
+  "lat": 45.501762
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424282911",
+  "near_edge_id": "osm:n9424282909>osm:n9424282910:0",
+  "distance_m": 1.41,
+  "node_component": 150,
+  "edge_component": 149,
+  "lon": -73.571604,
+  "lat": 45.501752
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424282912",
+  "near_edge_id": "osm:n9424282909>osm:n9424282910:0",
+  "distance_m": 1.16,
+  "node_component": 150,
+  "edge_component": 149,
+  "lon": -73.571728,
+  "lat": 45.501813
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424308817",
+  "near_edge_id": "osm:n9424308819>osm:n9424308820:0",
+  "distance_m": 1.26,
+  "node_component": 152,
+  "edge_component": 153,
+  "lon": -73.571862,
+  "lat": 45.501927
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424308818",
+  "near_edge_id": "osm:n9424308819>osm:n9424308820:0",
+  "distance_m": 1.09,
+  "node_component": 152,
+  "edge_component": 153,
+  "lon": -73.571987,
+  "lat": 45.501987
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424308819",
+  "near_edge_id": "osm:n9424308817>osm:n9424308818:0",
+  "distance_m": 1.09,
+  "node_component": 153,
+  "edge_component": 152,
+  "lon": -73.571979,
+  "lat": 45.501995
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424308820",
+  "near_edge_id": "osm:n9424308817>osm:n9424308818:0",
+  "distance_m": 1.26,
+  "node_component": 153,
+  "edge_component": 152,
+  "lon": -73.571853,
+  "lat": 45.501936
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424308821",
+  "near_edge_id": "osm:n9424308823>osm:n9424308824:0",
+  "distance_m": 1.35,
+  "node_component": 154,
+  "edge_component": 155,
+  "lon": -73.572636,
+  "lat": 45.502294
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424308822",
+  "near_edge_id": "osm:n9424308823>osm:n9424308824:0",
+  "distance_m": 1.29,
+  "node_component": 154,
+  "edge_component": 155,
+  "lon": -73.57253,
+  "lat": 45.502242
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424308823",
+  "near_edge_id": "osm:n9424308821>osm:n9424308822:0",
+  "distance_m": 1.35,
+  "node_component": 155,
+  "edge_component": 154,
+  "lon": -73.572645,
+  "lat": 45.502284
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424308824",
+  "near_edge_id": "osm:n9424308821>osm:n9424308822:0",
+  "distance_m": 1.29,
+  "node_component": 155,
+  "edge_component": 154,
+  "lon": -73.572539,
+  "lat": 45.502233
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424309207",
+  "near_edge_id": "osm:n9424309208>osm:n9424309211:0",
+  "distance_m": 1.35,
+  "node_component": 157,
+  "edge_component": 158,
+  "lon": -73.572382,
+  "lat": 45.502133
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424309208",
+  "near_edge_id": "osm:n9424309207>osm:n9424309210:0",
+  "distance_m": 1.35,
+  "node_component": 158,
+  "edge_component": 157,
+  "lon": -73.572396,
+  "lat": 45.50214
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424309210",
+  "near_edge_id": "osm:n9424309208>osm:n9424309211:0",
+  "distance_m": 1.25,
+  "node_component": 157,
+  "edge_component": 158,
+  "lon": -73.572304,
+  "lat": 45.502212
+ },
+ {
+  "type": "near_miss_dangling_endpoint",
+  "node_id": "osm:n9424309211",
+  "near_edge_id": "osm:n9424309207>osm:n9424309210:0",
+  "distance_m": 1.25,
+  "node_component": 158,
+  "edge_component": 157,
+  "lon": -73.572317,
+  "lat": 45.502218
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 1,
+  "nodes": 115
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 2,
+  "nodes": 37
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 3,
+  "nodes": 24
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 4,
+  "nodes": 15
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 5,
+  "nodes": 12
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 6,
+  "nodes": 11
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 7,
+  "nodes": 10
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 8,
+  "nodes": 10
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 9,
+  "nodes": 9
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 10,
+  "nodes": 7
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 11,
+  "nodes": 6
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 12,
+  "nodes": 6
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 13,
+  "nodes": 6
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 14,
+  "nodes": 5
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 15,
+  "nodes": 5
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 16,
+  "nodes": 4
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 17,
+  "nodes": 4
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 18,
+  "nodes": 4
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 19,
+  "nodes": 4
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 20,
+  "nodes": 4
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 21,
+  "nodes": 4
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 22,
+  "nodes": 4
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 23,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 24,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 25,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 26,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 27,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 28,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 29,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 30,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 31,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 32,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 33,
+  "nodes": 3
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 34,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 35,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 36,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 37,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 38,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 39,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 40,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 41,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 42,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 43,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 44,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 45,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 46,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 47,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 48,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 49,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 50,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 51,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 52,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 53,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 54,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 55,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 56,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 57,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 58,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 59,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 60,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 61,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 62,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 63,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 64,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 65,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 66,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 67,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 68,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 69,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 70,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 71,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 72,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 73,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 74,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 75,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 76,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 77,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 78,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 79,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 80,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 81,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 82,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 83,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 84,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 85,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 86,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 87,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 88,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 89,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 90,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 91,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 92,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 93,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 94,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 95,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 96,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 97,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 98,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 99,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 100,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 101,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 102,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 103,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 104,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 105,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 106,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 107,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 108,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 109,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 110,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 111,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 112,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 113,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 114,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 115,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 116,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 117,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 118,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 119,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 120,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 121,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 122,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 123,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 124,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 125,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 126,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 127,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 128,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 129,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 130,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 131,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 132,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 133,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 134,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 135,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 136,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 137,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 138,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 139,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 140,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 141,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 142,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 143,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 144,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 145,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 146,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 147,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 148,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 149,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 150,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 151,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 152,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 153,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 154,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 155,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 156,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 157,
+  "nodes": 2
+ },
+ {
+  "type": "disconnected_component",
+  "component_id": 158,
+  "nodes": 2
+ }
+]
