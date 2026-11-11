@@ -5,6 +5,31 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (e) — CI: Playwright job runs in the official image (no apt)
+The coordinator reported that CI run 43053137078 on main 6a712e9 passed 11/12 jobs; the contract job is green, which confirms the CORS fix from update (b). The `playwright` job failed twice in `npx playwright install --with-deps chromium`, with apt exit 100. Literal lines from `gh run view 43053137078 --log-failed`:
+```text
+Temporary failure resolving 'azure.archive.ubuntu.com'
+Temporary failure resolving 'archive.ubuntu.com'
+Temporary failure resolving 'security.ubuntu.com'
+```
+Fix (`.github/workflows/ci.yml`, job `e2e`, the coordinator's preferred option):
+- `container: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d`, `options: --ipc=host`. The tag equals apps/web's exact `"@playwright/test": "1.65.0"`; the lockfile resolves `@playwright/test` and `playwright` to 1.65.0. Pinned by digest, like the actions. MCR: tags `v1.65.0-noble` and `v1.65.0` both return HTTP 200 with this digest.
+- The `npx playwright install --with-deps chromium` step is removed. In its place, a step checks that `playwright-core`'s `chromium.executablePath()` exists in the image and fails with an `::error` naming the required version otherwise. A future `@playwright/test` bump without a tag/digest bump therefore fails loudly instead of downloading. There are no apt calls and no browser download.
+- `setup-node` stays, so the job keeps the project's Node 24 (the image ships Node v26.13.0).
+
+```text
+$ actionlint                          -> [actionlint exit 0]   (1.7.12)
+$ grep -n -- "--with-deps" .github/workflows/ci.yml   -> exit 1 (no matches)
+
+$ (local dry run of the job steps in the same image digest, `git archive HEAD` copy, CI=true, --ipc=host)
+v26.13.0
+aarch64
+chromium OK: /ms-playwright/chromium-1254/chrome-linux-arm64/chrome
+  102 passed (4.7m)
+[docker exit 0]
+```
+Differences between the dry run and CI: it ran on arm64 (CI is amd64; same multi-arch digest), used the image's Node 26 (CI uses Node 24 via setup-node), and ran as root (as GitHub's container jobs do by default). Not verified: the workflow change has not run on GitHub; that needs the coordinator's push. Nothing was pushed.
+
 ## Update 2026-11-11 (d) — merged integration/winterpath 6a712e9 (all five agents); checks re-run
 1. `git merge --no-edit integration/winterpath` → **fast-forward** to 6a712e9 (contains platform b2ed23a). Platform-owned paths are unchanged by it. Contract `version: 1.6.0`. `apps/web` now exists, so `make test` and `make lint` also cover the frontend.
 2. **Makefile fix (owned).** On first run, `make test` exited 2 at the web step because this worktree had never installed web dependencies. Literal output:
