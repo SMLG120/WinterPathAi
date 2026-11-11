@@ -1,4 +1,6 @@
-# Data model — PostGIS contract v1.6.0
+# Data model — PostGIS contract v1.7.0
+
+> v1.7.0 (2026-11-11, free-tier deployment): new `wp.risk_cell_score` so deployed APIs read daily risk scores from PostGIS instead of local files; Supabase deployment notes.
 
 > v1.6.0 (2026-11-11, user decisions on CR-ML-2 + CR-DATA-7): alley activities get their own 311 categories (`snow_clearing_alley`, `snow_dumping_alley`); an explicit `foot=yes|designated|permissive` overrides `access=private|no`.
 
@@ -81,6 +83,17 @@ Indexes: GiST(geom), btree(from_node_id), btree(to_node_id), btree(component_id)
 
 ### `wp.edge_risk` — ML/heuristic output (written by ML pipeline via Data-owned migration)
 `edge_id FK`, `valid_from`, `valid_to`, `level (low|moderate|elevated|high|unknown)`, `probability double null`, `evidence_state`, `model_id`, PK(edge_id, valid_from).
+
+### `wp.risk_cell_score` (v1.7) — daily per-cell risk scores (written by the ML scoring job)
+`h3 text` (res 9), `day date` (America/Montreal local day the score is valid for), `model_id text` (registry id, e.g. `winter311-heuristic-v1`), `layer text` (`heuristic|model`), `p double precision` (calibrated score as defined by the registry; not a sidewalk-condition probability), `scored_at timestamptz`, `data_through timestamptz` (latest input data used), `ingest_run_id uuid`. PK(`h3`, `day`, `model_id`). Index on (`day`, `model_id`).
+- One row per covered cell per day; cells outside the registry's coverage list have **no row** (⇒ `unknown`, never `low`).
+- Writers replace a whole (`day`, `model_id`) partition in one transaction; failed runs never leave a partial day.
+- Retention: keep 30 days; older rows are deleted by the scoring job.
+- Readers (API risk provider): use the row for the requested local day; no row ⇒ `unknown`. Level thresholds stay in `models/registry.json`.
+
+### Deployment notes (Supabase, v1.7)
+- Enable PostGIS **before** the first migration in schema `extensions` (Supabase guidance: never `public`); migration 0001's `CREATE EXTENSION IF NOT EXISTS postgis` is then a no-op. Login roles used by Alembic, the API and jobs must have `extensions` on their `search_path`.
+- Schema `wp` is not exposed through the Supabase Data API.
 
 ### `wp.pilot_request`
 `id uuid`, `organization`, `contact_name`, `contact_email`, `segment`, `message`, `locale`, `created_at`; deleted after 12 months.
