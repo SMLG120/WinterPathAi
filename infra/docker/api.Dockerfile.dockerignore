@@ -4,6 +4,8 @@
 *
 !services/
 !data/fixtures/pilot_mini/
+!models/registry.json
+!models/artifacts/v2-8d19aa86/coverage_cells.parquet
 **/.venv
 **/__pycache__
 **/.pytest_cache

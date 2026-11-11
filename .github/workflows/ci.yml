@@ -339,10 +339,20 @@ jobs:
           uid="$(docker run --rm --entrypoint id "$IMAGE" -u)"
           echo "uid=$uid"
           [ "$uid" != "0" ] || { echo "::error::API image runs as root"; exit 1; }
-      - name: container smoke test (/api/v1/health on fixture graph, PORT like Render)
+      - name: risk provider finds the model registry (no args = MODEL_REGISTRY_PATH from the image)
+        run: |
+          docker run --rm --entrypoint python "$IMAGE" -c '
+          import os
+          from winterpath_ml import inference
+          reg = inference.load_registry()
+          cov = inference.artifact_path(reg, reg["coverage"])
+          assert cov.is_file(), f"coverage artifact missing: {cov}"
+          print("registry OK:", os.environ["MODEL_REGISTRY_PATH"], "run_id=" + str(reg["run_id"]), "coverage=" + str(cov))
+          '
+      - name: container smoke test (/api/v1/health on fixture graph, default PORT 10000 like Render)
         run: |
           docker run -d --name wp-api-smoke -p 127.0.0.1:18080:10000 \
-            -e PORT=10000 -e ROUTING_GRAPH_SOURCE=fixture -e API_STORE_BACKEND=memory \
+            -e ROUTING_GRAPH_SOURCE=fixture -e API_STORE_BACKEND=memory \
             -e WEATHER_SOURCE=none -e RISK_PROVIDER=none "$IMAGE"
           if ! infra/scripts/wait-for-http.sh http://127.0.0.1:18080/api/v1/health 90; then
             docker logs wp-api-smoke; exit 1

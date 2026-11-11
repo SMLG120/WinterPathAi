@@ -25,16 +25,22 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app
 COPY --from=build /opt/venv /opt/venv
 WORKDIR /app
-# Read-only model artifacts may be bind-mounted here; inference never writes.
-RUN mkdir -p /app/models/artifacts && chown -R app:app /app
+# Model registry + the coverage artifact the risk provider needs (scores themselves come from
+# wp.risk_cell_score when RISK_SCORE_SOURCE=postgis). Root-owned, read-only: inference never writes.
+# Integrity: ML verifies artifacts against the sha256 values in registry.json before use.
+RUN mkdir -p /app/models/artifacts/v2-8d19aa86
+COPY --chown=root:root --chmod=0444 models/registry.json /app/models/registry.json
+COPY --chown=root:root --chmod=0444 models/artifacts/v2-8d19aa86/coverage_cells.parquet /app/models/artifacts/v2-8d19aa86/coverage_cells.parquet
+ENV MODEL_REGISTRY_PATH=/app/models/registry.json \
+    MODEL_ARTIFACT_DIR=/app/models/artifacts
 # Small committed OSM fixture graph (ODbL; ATTRIBUTION.md travels with it) so the image can boot
 # with ROUTING_GRAPH_SOURCE=fixture (CI smoke test, offline demo). The API's default fixture path is
 # relative to the source tree, which does not exist inside an installed venv, so set it explicitly.
 COPY --chown=root:root data/fixtures/pilot_mini/ /app/data/fixtures/pilot_mini/
 ENV ROUTING_FIXTURE_DIR=/app/data/fixtures/pilot_mini
 USER 10001:10001
-EXPOSE 8000
-# Contract v1.7: bind 0.0.0.0:$PORT (Render injects PORT); 8000 locally and in compose.
+EXPOSE 10000
+# Contract v1.7: bind 0.0.0.0:$PORT. Render injects PORT (default 10000); the default matches it.
 # --no-access-log: uvicorn's access log prints raw query strings; the API emits its own
 # structured, coordinate-redacted request log (infra/OBSERVABILITY.md).
-CMD ["sh", "-c", "exec uvicorn \"$API_APP\" --host 0.0.0.0 --port \"${PORT:-8000}\" --proxy-headers --no-access-log"]
+CMD ["sh", "-c", "exec uvicorn \"$API_APP\" --host 0.0.0.0 --port \"${PORT:-10000}\" --proxy-headers --no-access-log"]

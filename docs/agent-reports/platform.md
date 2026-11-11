@@ -5,6 +5,45 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (i) — deploy blocker: model registry in the API image
+The coordinator's trial image (`--memory=512m --cpus=0.1`, real DB at 0007 with today's scores) reported `risk: disabled` because the image had no `models/registry.json`. That was a known open item: I flagged it in update (f) but had not fixed it. Changes:
+- `infra/docker/api.Dockerfile`: `COPY --chown=root:root --chmod=0444` of `models/registry.json` → `/app/models/registry.json`, and of `models/artifacts/v2-8d19aa86/coverage_cells.parquet` → `/app/models/artifacts/v2-8d19aa86/`. Sets `ENV MODEL_REGISTRY_PATH=/app/models/registry.json MODEL_ARTIFACT_DIR=/app/models/artifacts`. `/app` is no longer chowned to the app user, so the app user cannot write there. CMD default port is now `${PORT:-10000}` (Render's default), with `EXPOSE 10000`.
+- `infra/docker/api.Dockerfile.dockerignore`: allows exactly those two files.
+- `docker-compose.yml` (`api` profile): container port and healthcheck now use 10000; the host port is still `${API_PORT:-8105}`.
+- CI `deploy-readiness`: new step running `inference.load_registry()` **with no arguments** in the container. It asserts that the registry's coverage artifact resolves to an existing file. The smoke run no longer passes `PORT`, so it exercises the 10000 default.
+
+**Merge-order dependencies (deploy-readiness stays red until both land on integration):**
+1. `models/artifacts/v2-8d19aa86/coverage_cells.parquet` is committed on `agent/ml` (8771d77) but not on integration (5238c45), so the `COPY` fails the build without it.
+2. ML's config does not honour `MODEL_REGISTRY_PATH` yet, on either branch. The no-argument `load_registry()` resolves relative to the installed package (`/opt/venv/models/registry.json`), so the new step fails. That is the blocker the coordinator found, now caught in CI.
+
+Local verification used a scratch build context: the working-tree versions of tracked files plus the parquet taken from `agent/ml`, with sha256 equal to the registry's. Nothing was added to the worktree, and the scratch context and image were removed afterwards.
+```text
+$ shasum -a 256 coverage_cells.parquet (from agent/ml)
+f7519df54d64d5d8734add8b4c3aa0631093007ffdd29de62432b729f8dc12cd
+(registry: f7519df54d64d5d8734add8b4c3aa0631093007ffdd29de62432b729f8dc12cd)
+$ docker build ... -> [build exit 0]
+10001
+-r--r--r-- 1 root root  4335 ... /app/models/registry.json
+-r--r--r-- 1 root root 19883 ... coverage_cells.parquet
+touch: cannot touch '/app/models/x': Permission denied
+MODEL_REGISTRY_PATH=/app/models/registry.json MODEL_ARTIFACT_DIR=/app/models/artifacts
+
+=== CI step: risk provider finds the model registry
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/venv/models/registry.json'
+[registry step exit 1]                       <- expected until ML honours MODEL_REGISTRY_PATH
+=== same, explicit path
+explicit path OK; coverage resolves to /app/models/artifacts/v2-8d19aa86/coverage_cells.parquet exists= True
+
+$ docker run --memory=512m --cpus=0.1 (no PORT; fixture graph, memory store, no DB)
+ready: http://127.0.0.1:18115/api/v1/health
+boot to healthy: 21.7 s (fixture graph, 0.1 CPU, 512m)
+{"status":"ok","version":"0.1.0 (contract 1.6.0)","checks":{"graph":{"status":"ok"},"database":{"status":"disa…
+coverage 200
+mem 69.7MiB / 512MiB
+$ actionlint -> [actionlint exit 0];  make config -> compose config OK
+```
+For the record (coordinator's measurement, real DB): boot to healthy 47 s at 0.1 CPU, 191 MiB RSS, DB ok. My fixture-graph number above is not comparable (no DB, no PostGIS graph). Local note: port 18080 was already in use on this machine by another container, which I did not touch; my run used 18115. CI is unaffected (fresh runner).
+
 ## Update 2026-11-11 (h) — weather job uses Data's per-source load (360fdd4)
 Merged data's exact commit 360fdd4 as merge commit 87c3841; it changed no platform-owned paths. The weather step is now:
 `uv run --locked wp-ingest load --source eccc-geomet --weather-since "$(date -u -d '365 days ago' +%F)"`
