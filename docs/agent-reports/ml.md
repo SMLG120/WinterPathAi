@@ -132,7 +132,25 @@ would flip 0->1: 18 already positive: 6
 - **Alternative:** the coordinator accepts the 18-cell-day difference, and the CSV aggregation stays the label of record for v2 and the 2026-27 gate.
 - ML continues other work and does not depend on the outcome.
 
+### Merge of integration d04da54 (data 0005, routing ML/weather wiring, platform)
+- Merged clean (e3f0df3).
+- **Migration 0005 is the closure exclusive-end fix, not `report_311_cell.nature`.** `db/` and `services/ingestion` contain no `nature` change yet, so the nature-summing reader is **still pending** per the coordinator's instruction.
+- **Routing wired ML differently from my adapter:** `RISK_PROVIDER=winterpath_ml.inference:load_provider`, adapted in the API, which calls my `cell_risk`/`edge_risk(coords)`/`status`. My `api_provider` is compatible but unused; either works.
+- **Compatibility re-checked** against my current ML code, which is newer than the coordinator's verified 28-test ML run:
+```text
+$ cd services/api && uv run pytest -q          # uses services/ml from this branch (editable path dep)
+71 passed, 8 skipped, 1 warning
+  all 8 skips: "DATABASE_URL not set" (PostGIS tests); test_api_ml_risk.py ran and passed
+$ cd services/routing && uv run pytest -q
+210 passed, 1 skipped
+$ cd services/ml && uv run pytest -q
+37 passed
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+
 ### Open items
+- Nature-summing reader: waiting for Data's `report_311_cell.nature` migration (not in d04da54).
 - CR-ML-2 (above): coordinator decision.
 - After Data's v1.5 migration lands: add the nature-summing reader and compare it with the CSV labels. The difference must equal the 18 cell-days predicted above.
 - Routing/API: wire `api_provider` as described above.
