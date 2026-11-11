@@ -97,8 +97,8 @@ jobs:
       group: scheduled-daily-scoring
       cancel-in-progress: false
     env:
-      # Entry point of ML's v1.7 DB-backed scorer. ML agent to confirm the module and flags before
-      # the secret is added; the job refuses to run until services/ml references wp.risk_cell_score.
+      # ML's v1.7 scorer (services/ml/src/winterpath_ml/score.py; flags --fetch-311 --write-db).
+      # The job still refuses to run on a commit where services/ml does not reference wp.risk_cell_score.
       SCORING_MODULE: winterpath_ml.score
       # The two scoring artifacts are committed (integration 5238c45 .gitignore; sha256-verified
       # against models/registry.json by ML before use) — read from the checkout, no download.
@@ -148,4 +148,7 @@ jobs:
         run: |
           day="$(TZ=America/Montreal date +%F)"
           echo "scoring day=$day module=$SCORING_MODULE"
-          uv run --locked python -m "$SCORING_MODULE" --start "$day"
+          # --fetch-311: the runner has no cached aggregate (fresh ~850 MB download every run, on
+          #   purpose: the 18:00 run exists to pick up 311 rows missing at 12:00).
+          # --write-db: write wp.risk_cell_score (without it, parquet lands on the ephemeral runner).
+          uv run --locked python -m "$SCORING_MODULE" --start "$day" --fetch-311 --write-db

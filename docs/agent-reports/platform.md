@@ -5,6 +5,22 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (k) — scoring job: `--fetch-311 --write-db`
+The coordinator set the `WP_ETL_DATABASE_URL` secret and dispatched `scheduled.yml` on main 0e9adef (run 43084925719). The weather job succeeded end to end (Supabase's latest observation: 19:00 UTC). Scoring failed with `311 aggregates missing … (use --fetch-311)`, exit 2. The step now runs:
+`uv run --locked python -m "$SCORING_MODULE" --start "$day" --fetch-311 --write-db`
+Both flags are `add_argument` options in `services/ml/src/winterpath_ml/score.py` on integration 0e9adef: `--fetch-311` downloads and aggregates 311 into `<WP_ML_CACHE_DIR>/score/`, and `--write-db` writes `wp.risk_cell_score` and reads `DATABASE_URL`, which the step provides from the secret.
+
+**311 download cache: not added (deliberate).**
+1. `fetch_311()` always streams the CSV, unconditionally. Without `--fetch-311`, the scorer reads `config.INTERIM_DIR`, not the `score/` directory. A restored cache would therefore never be used without an ML code change.
+2. The 18:00 UTC run exists to pick up 311 rows that are missing at 12:00. Reusing the 12:00 download would score the same file twice.
+If ML later adds a conditional fetch (ETag / If-Modified-Since), a cache keyed on the response validator would be the right design.
+```text
+$ actionlint   -> [actionlint exit 0]
+$ grep -n -E "SCORING_MODULE|fetch-311" .github/workflows/scheduled.yml
+154:          uv run --locked python -m "$SCORING_MODULE" --start "$day" --fetch-311 --write-db
+```
+Not verified by me: the scoring step has not been re-run. The coordinator will merge, push and re-dispatch.
+
 ## Update 2026-11-11 (j) — CI: production build + safety scan (`build:pages`) on every web change
 Merged frontend's exact commit 4ed7c81 as merge commit 3d2685b; it changed no platform-owned paths. In `ci.yml`'s `web` job, after `npm run build`, a new step runs `npm run build:pages` with placeholder production values: `VITE_API_BASE_URL=https://example.invalid/api/v1` (a reserved TLD that never resolves) and `VITE_PUBLIC_WRITES=false`. `build:pages` = `pagesCheck.ts env` (refuses an unsafe env) → `npm run build` → `pagesCheck.ts dist` (scans for mock code, sourcemaps, secrets, headers). If the script is absent on a branch, the step emits a `::notice` SKIP. It builds only; nothing is published.
 ```text
