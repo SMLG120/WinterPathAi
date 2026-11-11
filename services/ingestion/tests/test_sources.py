@@ -57,6 +57,18 @@ def test_blocks_passage_only_when_barred():
     assert set(gdf["evidence_state"]) == {"confirmed"}
 
 
+def test_status_is_publisher_lifecycle_only():
+    m = _main("u")
+    m["currentstatus"] = "Statut inédit"  # synthetic unseen value
+    gdf, unmapped = entraves.build_closures([_main("a"), m], [])
+    st = dict(zip(gdf["closure_id"], gdf["status"], strict=True))
+    assert st == {"entrave:a": "permit_issued", "entrave:u": "unknown"}
+    assert set(st.values()) <= set(entraves.CLOSURE_STATUS_VALUES)
+    raw = {r["currentstatus"] for r in gdf["attrs"]}
+    assert raw == {"Permis émis", "Statut inédit"}
+    assert unmapped["currentstatus='Statut inédit'"] == 1
+
+
 def test_closures_outside_bbox_dropped():
     gdf, _ = entraves.build_closures([_main("x", lon=-73.70, lat=45.60)], [])
     assert len(gdf) == 0
@@ -131,6 +143,23 @@ def test_climate_hourly_row():
     )
     assert r["observed_at"] == "2026-01-15T05:00:00Z"
     assert r["precip_mm"] is None and r["snow_depth_cm"] is None and r["wind_kmh"] == 12.0
+
+
+def test_climate_daily_row_keeps_nulls():
+    r = eccc.climate_daily_row(
+        {
+            "CLIMATE_IDENTIFIER": "7025251",
+            "LOCAL_DATE": "2025-01-01 00:00:00",
+            "TOTAL_PRECIPITATION": 6.8,
+            "TOTAL_SNOW": 5.6,
+            "SNOW_ON_GROUND": None,
+            "MIN_TEMPERATURE": 0.3,
+            "MAX_TEMPERATURE": 1.6,
+        }
+    )
+    assert r["day"] == "2025-01-01" and r["source_collection"] == "climate-daily"
+    assert r["snow_on_ground_cm"] is None  # missing stays NULL, never 0
+    assert r["total_precip_mm"] == 6.8 and r["total_snow_cm"] == 5.6
 
 
 def test_dedupe_prefers_climate_hourly():

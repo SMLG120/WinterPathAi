@@ -292,6 +292,7 @@ def build_graph(
             "edge_kind": kind,
             "osm_way_id": w["id"],
             "highway": t.get("highway"),
+            "name": t.get("name"),  # v1.3: street name for step directions
             "foot_access": foot_access(t),
             "step_free": step_free(t, kerbs),
             "incline_percent": incline_percent(t),

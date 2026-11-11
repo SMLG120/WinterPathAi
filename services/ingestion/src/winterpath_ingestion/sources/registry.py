@@ -70,4 +70,17 @@ SOURCES: list[dict] = [
         "status": "active",
         "notes": "Stations 7025251 (MONTREAL INTL A) and 702S006 (hourly precip, ends 2026-10-01).",
     },
+    {
+        "source_id": "mtl-planif-neige",
+        "name": "Déneigement des rues en arrondissements (Planif-Neige)",
+        "publisher": "Ville de Montréal",
+        "license": "CC BY 4.0",
+        "license_url": CC_BY,
+        "commercial_use": "allowed",
+        "attribution": MTL_ATTR,
+        "url": "https://donnees.montreal.ca/dataset/deneigement",
+        "status": "requires_credentials",
+        "notes": "NOT INGESTED. API token required (donneesouvertes@montreal.ca); no token "
+        "configured. Street snow-loading plans never certify sidewalk clearance.",
+    },
 ]

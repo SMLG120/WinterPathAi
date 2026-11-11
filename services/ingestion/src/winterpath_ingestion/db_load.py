@@ -212,6 +212,11 @@ def _osm(settings: Settings):
             "width_m",
             "surface",
             "lit",
+            "name",
+            "crossing_type",
+            "crossing_kerb",
+            "highway",
+            "osm_snapshot",
             "sidewalk_polygon_ids",
             "connectivity_confidence",
             "component_id",
@@ -231,6 +236,11 @@ def _osm(settings: Settings):
             "width_m": "double precision",
             "surface": "text",
             "lit": "boolean",
+            "name": "text",
+            "crossing_type": "text",
+            "crossing_kerb": "text",
+            "highway": "text",
+            "osm_snapshot": "timestamptz",
             "sidewalk_polygon_ids": "text[]",
             "connectivity_confidence": "text",
             "component_id": "integer",
@@ -257,6 +267,11 @@ def _osm(settings: Settings):
                     r.width_m,
                     r.surface,
                     r.lit,
+                    getattr(r, "name", None),
+                    _crossing(r.crossing, "type"),
+                    _crossing(r.crossing, "kerb"),
+                    r.highway,
+                    r.osm_snapshot,
                     mapping.get(r.edge_id, []),
                     r.connectivity_confidence,
                     r.component_id,
@@ -277,6 +292,11 @@ def _osm(settings: Settings):
         return {"node": n_nodes, "edge": n_edges}
 
     return "osm", m, fn
+
+
+def _crossing(c, key: str):
+    """CrossingInfo dict → one field; non-crossing edges (None/NaN) → None."""
+    return c.get(key) if isinstance(c, dict) else None
 
 
 def _voirie(settings: Settings):
@@ -344,6 +364,8 @@ def _entraves(settings: Settings):
             "geom",
             "sidewalk_blockedtype",
             "blocks_passage",
+            "backsidewalk_blocks_passage",
+            "attrs",
             "valid_from",
             "valid_to",
             "status",
@@ -358,6 +380,8 @@ def _entraves(settings: Settings):
                 "closure_id": "text",
                 "sidewalk_blockedtype": "text",
                 "blocks_passage": "boolean",
+                "backsidewalk_blocks_passage": "boolean",
+                "attrs": "jsonb",
                 "valid_from": "timestamptz",
                 "valid_to": "timestamptz",
                 "status": "text",
@@ -370,6 +394,8 @@ def _entraves(settings: Settings):
                     r.geometry.wkt,
                     r.sidewalk_blockedtype,
                     r.blocks_passage,
+                    r.backsidewalk_blocks_passage,
+                    json.dumps(r.attrs if isinstance(r.attrs, dict) else {}, ensure_ascii=False),
                     r.valid_from,
                     r.valid_to,
                     r.status,
@@ -460,7 +486,37 @@ def _weather(settings: Settings):
             "WHERE wp.weather_obs.source_collection='swob-realtime' "
             "OR EXCLUDED.source_collection='climate-hourly'"
         )
-        return {"weather_obs": n}
+        counts = {"weather_obs": n}
+        daily_csv = d / "weather_daily.csv"
+        if daily_csv.exists():
+            dcols = [
+                "station_id",
+                "day",
+                "total_precip_mm",
+                "total_snow_cm",
+                "snow_on_ground_cm",
+                "min_temp_c",
+                "max_temp_c",
+                "source_collection",
+                "ingest_run_id",
+            ]
+            dtypes = {c: "double precision" for c in dcols[2:7]} | {
+                "station_id": "text",
+                "day": "date",
+                "source_collection": "text",
+                "ingest_run_id": "uuid",
+            }
+            # history is kept (no prune): past days are immutable upstream
+            counts["weather_daily"] = _stage_and_merge(
+                cur,
+                table="weather_daily",
+                columns=dcols,
+                types=dtypes,
+                rows=_csv_rows(daily_csv, dcols, run_id),
+                key=["station_id", "day"],
+                prune_where="FALSE",
+            )
+        return counts
 
     return "eccc-geomet", m, fn
 
