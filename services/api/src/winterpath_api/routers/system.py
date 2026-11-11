@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 
 from .. import CONTRACT_VERSION, __version__
 from ..adapters import WeatherUnavailableError, default_model_status
-from ..deps import get_state
+from ..deps import get_state, require_public_writes
 from ..errors import ApiError
 from ..repositories.sources import PilotRequestRow
 from ..schemas import (
@@ -144,7 +144,12 @@ def get_model_status(state: AppState = Depends(get_state)) -> ModelStatus:
     return ModelStatus.model_validate(default_model_status(state.risk))
 
 
-@router.post("/pilot-requests", status_code=201, tags=["system"])
+@router.post(
+    "/pilot-requests",
+    status_code=201,
+    tags=["system"],
+    dependencies=[Depends(require_public_writes)],
+)
 def create_pilot_request(
     body: PilotRequest, request: Request, state: AppState = Depends(get_state)
 ) -> Response:

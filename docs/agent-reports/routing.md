@@ -1,6 +1,6 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Status:** READY FOR REVIEW. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
 - **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
@@ -24,7 +24,73 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0j. Cycle 11 — merge of `integration/winterpath` `3aa6438` — current
+### 0k. Cycle 12 — contract v1.7.0 (free-tier deployment): merge `07a1f29`, read-only mode, pooler settings, boot/SIGTERM — current
+The coordinator's message reached me truncated: it starts mid-sentence at "…X_OVERFLOW (default 2)", so items (1)–(2) were missing. I implemented the API's share of contract v1.7.0 as written in `07a1f29` (`API_PUBLIC_WRITES`, pooler-friendly engine), plus items (3)–(5). **If (1)–(2) asked for anything else, please resend them.**
+
+**Merge:** `integration/winterpath` `07a1f29` → `ef665fc`, no conflicts (contracts and `.env.example` only).
+
+**Changes:**
+- `CONTRACT_VERSION = "1.7.0"`; error code `WRITES_DISABLED` added.
+- **`API_PUBLIC_WRITES`** (default true; accepts `1/true/yes/on` and `0/false/no/off`; any other value fails at startup, so a typo can't silently open writes). When false, `POST /reports` and `POST /pilot-requests` return **503 `WRITES_DISABLED`**. The check is a route dependency, so it answers before body validation, rate limiting or any store access, and nothing about the request is stored. Reads, routing and `DELETE /reports/{id}` are unchanged.
+- **Pool (`winterpath_api/db.py`):**
+  - Settings:
+    - `DATABASE_POOL_SIZE`: default 3 (my choice, since the message didn't give one).
+    - `DATABASE_MAX_OVERFLOW`: default 2.
+    - `pool_pre_ping=True` and `pool_recycle=300`.
+    - `pool_timeout=10` s, so an exhausted pool fails fast and the endpoint returns 503.
+    - `connect_timeout=10` s and `application_name=winterpath-api`.
+  - One engine per process, shared by every repository and the weather store. Previously, weather got a second engine when the stores were in memory.
+  - Session pooler (port 5432) keeps psycopg's prepared statements working, so no `prepare_threshold` change. `sslmode=require` belongs in `DATABASE_URL`, which is never logged.
+- **Graph load (`PostgisGraphProvider`):** one connection via `NullPool`, `connect_timeout`, and `engine.dispose()` in `finally` (also on failure). The startup load therefore never holds a pooler slot.
+- **Shutdown:** a FastAPI lifespan hook runs after uvicorn drains requests on SIGTERM/SIGINT. It shuts the route worker pool and disposes the DB engine, then logs `shutdown_complete`.
+- **Tests:** `tests/test_api_deploy_v17.py` has 14 tests covering settings parsing and invalid values, engine/pool options, graph load (`NullPool` + dispose on failure), 503 on both write endpoints validated against the contract (valid and invalid bodies, repository spies prove no write), the gate answering before the limiter, reads unaffected, writes on by default, and lifespan shutdown releasing the pool and engine.
+
+**(4) Startup, measured against `wp_data`.** Settings: `ROUTING_GRAPH_SOURCE=postgis`, `API_STORE_BACKEND=postgis`, `API_PUBLIC_WRITES=false`, pool 3+2. The URL carries `options=-c default_transaction_read_only=on`, so the session could not write to Data's DB (`show default_transaction_read_only` → `on`). uvicorn started exactly as the image's CMD (`--no-access-log`), on loopback port 8102. A scratch `sitecustomize` recorded every non-loopback socket connect.
+```text
+wp_data: alembic 0006_report_311_nature; wp.node 7042, wp.edge 16846 (16694 in pilot bbox); wp.risk_cell_score absent (0007 not applied)
+label=none risk=none boot_to_health_200_s=4.8 rss_after_boot_mb=125
+health: ok {'graph': 'ok', 'database': 'ok', 'risk': 'disabled', 'weather': 'disabled'}
+graph: 6807 nodes 16296 edges
+compare 200 0.262568s / 0.066025s / 0.063107s / 0.064201s / 0.076824s
+rss_after_5_routes_mb=147
+POST /reports with writes disabled: 503
+SIGTERM -> exit=143 in 0.17s
+graph_loaded log lines: 1
+probe: no non-loopback connections
+
+label=ml risk=winterpath_ml.inference:load_provider boot_to_health_200_s=9.37 rss_after_boot_mb=162
+health: ok {'graph': 'ok', 'database': 'ok', 'risk': 'ok', 'weather': 'disabled'}
+compare 200 1.090192s / 0.106014s / 0.103326s / 0.097676s / 0.099556s
+rss_after_5_routes_mb=149
+SIGTERM -> exit=143 in 0.25s
+graph_loaded log lines: 1
+probe: no non-loopback connections
+
+in-process (sys.setprofile over create_app, ML provider):
+PostgisGraphProvider.load calls during startup: 1
+fit/train/calibrate/download calls during startup: none
+```
+- These figures sit within the coordinator's ~12 s / 125–215 MB. Boot is 4.8 s without a risk layer and 9.4 s with the file-based ML provider; RSS is 125–162 MB. The host load average was ~11–15 throughout.
+- With the ML layer, the first route of each Montréal local day pays about 1 s, because the adapter scores the day's edges and caches them per (edge, local day).
+- **(5) SIGTERM:** the uvicorn log shows `Shutting down` → `Waiting for application shutdown.` → `shutdown_complete` → `Application shutdown complete.` → `Finished server process`, in 0.17–0.25 s. Exit status 143 (128+15) is expected: uvicorn 0.54 re-raises the captured signal after a graceful shutdown (`server.py`: `signal.raise_signal(captured_signal)`).
+
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.7 ms p95=2.9 ms max=4.6 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=5.6 ms p95=8.3 ms max=65.1 ms
+======================= 317 passed, 1 warning in 24.13s ========================
+$ ruff (routing / api): All checks passed! 20 / 32 files already formatted (after `ruff format` of the new test file)
+$ (cd services/api && uv lock --check); echo exit=$?    → exit=0
+$ scripts/check-ownership.sh routing                    → ownership OK for agent/routing
+```
+
+**For other agents:**
+- **Platform:**
+  - `infra/docker/api.Dockerfile` hard-codes `--port 8000`. v1.7 says the image binds `0.0.0.0:$PORT`, so it should be `--port "${PORT:-8000}"`.
+  - With `uvicorn --workers N`, each worker loads the graph and holds its own pool. Keep the default single worker on Render Free, or size the pool as N×(pool+overflow) against the pooler limit.
+- **ML:** `RISK_SCORE_SOURCE=postgis` / the DB-backed provider isn't on integration yet; the API loads whatever `RISK_PROVIDER` names. If that provider opens its own engine, please keep it to a tiny pool (or accept an engine from the API) so the total stays inside the session-pooler budget.
+
+### 0j. Cycle 11 — merge of `integration/winterpath` `3aa6438`
 This was a fast-forward from `0823006`, because integration already contained it. It changes nothing under `db/` or `services/`; the incoming changes are the frontend explainer, Platform's CI changes and other agents' reports. `wp_routing` stays at `0006_report_311_nature (head)`.
 ```text
 $ git merge --no-edit integration/winterpath      # HEAD → 3aa6438

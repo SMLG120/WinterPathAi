@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request
@@ -19,12 +21,29 @@ from .state import AppState, build_state
 
 API_PREFIX = "/api/v1"
 log = structlog.get_logger("winterpath_api.access")
+lifecycle = structlog.get_logger("winterpath_api.lifecycle")
+
+
+def shutdown_state(state: AppState) -> None:
+    """Release process resources. Runs on SIGTERM/SIGINT via uvicorn's lifespan shutdown,
+    after in-flight requests have drained; safe to call more than once."""
+    state.compute.shutdown()
+    if state.db_engine is not None:
+        state.db_engine.dispose()
+    lifecycle.info("shutdown_complete")
 
 
 def create_app(settings: Settings | None = None, state: AppState | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     configure_logging(settings.log_level)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        yield
+        shutdown_state(app.state.wp)
+
     app = FastAPI(
+        lifespan=lifespan,
         title="WinterPath AI API",
         version=CONTRACT_VERSION,
         summary=f"Implementation {__version__} of contract v{CONTRACT_VERSION}.",

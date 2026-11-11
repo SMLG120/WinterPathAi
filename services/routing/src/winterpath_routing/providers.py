@@ -203,19 +203,34 @@ class PostgisGraphProvider:
         "WHERE table_schema = 'wp' AND table_name = 'edge'"
     )
 
-    def __init__(self, database_url: str, bbox: tuple[float, float, float, float]) -> None:
+    def __init__(
+        self,
+        database_url: str,
+        bbox: tuple[float, float, float, float],
+        *,
+        connect_timeout_s: int = 10,
+    ) -> None:
         self.database_url = database_url
         self.bbox = bbox
+        self.connect_timeout_s = connect_timeout_s
 
     def load(self) -> GraphData:
         try:
             from sqlalchemy import create_engine, text
+            from sqlalchemy.pool import NullPool
         except ImportError as exc:  # pragma: no cover - depends on extras
             raise GraphUnavailableError("install winterpath-routing[postgis]") from exc
         w, s, e, n = self.bbox
         params = {"west": w, "south": s, "east": e, "north": n}
+        # The graph is read once, at startup: one connection, closed afterwards (NullPool +
+        # dispose), so it never occupies a slot in a pooler's small client-connection budget.
+        engine = None
         try:
-            engine = create_engine(self.database_url, pool_pre_ping=True)
+            engine = create_engine(
+                self.database_url,
+                poolclass=NullPool,
+                connect_args={"connect_timeout": self.connect_timeout_s},
+            )
             with engine.connect() as conn:
                 present = {r[0] for r in conn.execute(text(self.COLUMNS_SQL))}
                 optional = "".join(f", e.{c}" for c in self.OPTIONAL_EDGE_COLS if c in present)
@@ -225,6 +240,9 @@ class PostgisGraphProvider:
                 src_rows = conn.execute(text(self.SOURCE_SQL)).mappings().all()
         except Exception as exc:
             raise GraphUnavailableError(f"PostGIS graph unavailable: {type(exc).__name__}") from exc
+        finally:
+            if engine is not None:
+                engine.dispose()
 
         nodes = {
             r["node_id"]: Node(

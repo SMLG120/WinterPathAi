@@ -19,6 +19,7 @@ from winterpath_routing import (
 
 from .adapters import WeatherAdapter, load_risk_provider
 from .compute import ComputePool
+from .db import create_db_engine
 from .repositories.hazards import (
     HazardRepository,
     InMemoryHazardRepository,
@@ -69,7 +70,13 @@ def _load_graph(
         if settings.graph_source == "postgis":
             if not settings.database_url:
                 return None, "ROUTING_GRAPH_SOURCE=postgis but DATABASE_URL is not set"
-            provider = PostgisGraphProvider(settings.database_url, PILOT_BBOX)
+            # One short-lived connection, released after the load (NullPool): the graph is read
+            # once at startup and never again, so it must not hold a pooled connection.
+            provider = PostgisGraphProvider(
+                settings.database_url,
+                PILOT_BBOX,
+                connect_timeout_s=settings.db_connect_timeout_s,
+            )
         else:
             provider = FixtureGraphProvider(settings.fixture_dir)
     try:
@@ -101,9 +108,7 @@ def build_state(
 
     db_engine = None
     if settings.store_backend == "postgis" and settings.database_url:
-        from sqlalchemy import create_engine
-
-        db_engine = create_engine(settings.database_url, pool_pre_ping=True)
+        db_engine = create_db_engine(settings)
 
     if reports is None:
         reports = PostgisReportRepository(db_engine) if db_engine else InMemoryReportRepository()
@@ -139,11 +144,11 @@ def build_state(
     if weather is None and settings.weather_source == "postgis" and settings.database_url:
         from datetime import timedelta
 
-        from sqlalchemy import create_engine
-
         from .weather import ObservationWeatherAdapter, PostgisWeatherStore
 
-        weather_engine = db_engine or create_engine(settings.database_url, pool_pre_ping=True)
+        if db_engine is None:  # weather from PostGIS while the stores stay in memory
+            db_engine = create_db_engine(settings)
+        weather_engine = db_engine
         weather = ObservationWeatherAdapter(
             PostgisWeatherStore(weather_engine),
             max_age=timedelta(minutes=settings.weather_max_age_minutes),

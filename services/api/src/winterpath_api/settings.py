@@ -19,6 +19,29 @@ def _csv(v: str | None) -> list[str]:
     return [s.strip() for s in (v or "").split(",") if s.strip()]
 
 
+_FALSE = {"0", "false", "no", "off"}
+_TRUE = {"1", "true", "yes", "on"}
+
+
+def _bool(v: str | None, default: bool) -> bool:
+    """Unset/empty → ``default``; anything that is neither true-ish nor false-ish is an error."""
+    if v is None or not v.strip():
+        return default
+    x = v.strip().lower()
+    if x in _TRUE:
+        return True
+    if x in _FALSE:
+        return False
+    raise ValueError(f"expected a boolean, got {v!r}")
+
+
+def _int(v: str | None, default: int, minimum: int = 0) -> int:
+    n = int(v) if v and v.strip() else default
+    if n < minimum:
+        raise ValueError(f"expected an integer >= {minimum}, got {n}")
+    return n
+
+
 @dataclass(frozen=True)
 class Settings:
     cors_origins: list[str] = field(default_factory=list)
@@ -43,6 +66,18 @@ class Settings:
     weather_max_age_minutes: int = 180
     #: station priority order; empty = most recent across stations
     weather_station_ids: list[str] = field(default_factory=list)
+    #: v1.7: false → POST /reports and POST /pilot-requests return 503 WRITES_DISABLED
+    public_writes: bool = True
+    #: v1.7: SQLAlchemy pool, sized for Supabase's session pooler on a free-tier host. One engine
+    #: is shared by every repository and the weather store; the graph load uses its own
+    #: short-lived connection at startup and releases it.
+    db_pool_size: int = 3
+    db_max_overflow: int = 2
+    #: recycle pooled connections before the pooler/NAT can drop them silently
+    db_pool_recycle_s: int = 300
+    #: fail fast (→ 503) rather than queue requests behind an exhausted pool
+    db_pool_timeout_s: int = 10
+    db_connect_timeout_s: int = 10
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -51,7 +86,7 @@ class Settings:
             cors_origins=_csv(e.get("API_CORS_ORIGINS")),
             log_level=e.get("API_LOG_LEVEL") or "INFO",
             admin_token_hash=(e.get("API_ADMIN_TOKEN_HASH") or "").strip(),
-            rate_limit_per_minute=int(e.get("API_RATE_LIMIT_PER_MINUTE") or 60),
+            rate_limit_per_minute=_int(e.get("API_RATE_LIMIT_PER_MINUTE"), 60, minimum=1),
             database_url=e.get("DATABASE_URL") or None,
             graph_source=(e.get("ROUTING_GRAPH_SOURCE") or "fixture").lower(),
             fixture_dir=Path(e["ROUTING_FIXTURE_DIR"])
@@ -63,4 +98,7 @@ class Settings:
             weather_source=(e.get("WEATHER_SOURCE") or "none").lower(),
             weather_max_age_minutes=int(e.get("WEATHER_MAX_AGE_MINUTES") or 180),
             weather_station_ids=_csv(e.get("WEATHER_STATION_IDS")),
+            public_writes=_bool(e.get("API_PUBLIC_WRITES"), True),
+            db_pool_size=_int(e.get("DATABASE_POOL_SIZE"), 3, minimum=1),
+            db_max_overflow=_int(e.get("DATABASE_MAX_OVERFLOW"), 2),
         )

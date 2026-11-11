@@ -28,6 +28,7 @@ ErrorCode = Literal[
     "UNAUTHORIZED",
     "RATE_LIMITED",
     "UPSTREAM_UNAVAILABLE",
+    "WRITES_DISABLED",
     "INTERNAL",
 ]
 Locale = Literal["en", "fr"]
