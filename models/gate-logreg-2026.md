@@ -75,3 +75,9 @@ Metric definitions: `metrics.summary` / `metrics.calibration_curve` (precision/r
 
 ## Earliest run date
 2027-05-08: one week after the test winter ends, so the daily 311 file has caught up.
+
+## Addendum 1 — 2026-11-10 (clarification, no protocol change)
+- `models/artifacts/` is git-ignored, so the frozen coverage list is also committed as text: `models/coverage-v2-8d19aa86-cells.txt` (2,930 sorted H3 ids, sha256 `3e80a04b27c0a8b8ab80793260cc5627256cb892db7d0fbef2e4f743dfd95e58`). It is the same list, in the same order, as the parquet above (checked by `test_coverage_list_matches_v2_parquet`). The runner reads this file.
+- The runner is `services/ml/src/winterpath_ml/gate_logreg_2026.py`. It refuses to run before 2027-05-08 or when any pinned hash differs, and it has no override. `--check` verifies the guards without fitting or scoring.
+- The runner writes `models/evaluation/logreg-2026-<sha8>.json` and prints the decision. It does **not** edit `models/registry.json`. On PASS, the registry change described above is made in a separate, reviewed commit.
+- `test_pinned_files_unchanged` runs in CI, so any edit to a pinned file fails the build until an addendum is written.
