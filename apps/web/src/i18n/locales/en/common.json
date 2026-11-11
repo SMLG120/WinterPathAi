@@ -1,0 +1,89 @@
+{
+  "brand": "WinterPath AI",
+  "tagline": "Navigate Montreal's winter, one better step at a time.",
+  "nav": {
+    "label": "Primary",
+    "home": "Home",
+    "plan": "Plan a walk",
+    "winter": "Winter conditions",
+    "reports": "Report an issue",
+    "how": "How it works",
+    "pilot": "Pilot programs",
+    "menu": "Open menu",
+    "closeMenu": "Close menu",
+    "skip": "Skip to main content"
+  },
+  "lang": {
+    "label": "Language",
+    "switchTo": "Français",
+    "switchToLabel": "Passer au français"
+  },
+  "theme": {
+    "label": "Colour theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "demo": {
+    "badge": "Demo data",
+    "banner": "Demo mode — everything on this site comes from labelled test fixtures. Nothing reflects real conditions in Montréal."
+  },
+  "evidence": {
+    "label": "Evidence",
+    "confirmed": "Confirmed",
+    "unverified_report": "Unverified report",
+    "model_estimate": "Model estimate",
+    "unknown": "Unknown",
+    "simulated": "SIMULATED",
+    "desc": {
+      "confirmed": "Official or verified observation from a cited source.",
+      "unverified_report": "A 311 request or community report. Not confirmed by anyone.",
+      "model_estimate": "Output of a validated model or a labelled heuristic. An estimate, not an observation.",
+      "unknown": "No data. Unknown is never treated as zero risk.",
+      "simulated": "Demo-only data. Not a real observation."
+    }
+  },
+  "states": {
+    "loading": "Loading…",
+    "empty": "Nothing to show yet.",
+    "error": "Something went wrong while loading this.",
+    "retry": "Retry",
+    "stale": "Stale",
+    "staleDesc": "Last refreshed more than 6 hours ago.",
+    "offline": "You appear to be offline. Data shown may be out of date.",
+    "outsidePilot": "Outside pilot area",
+    "updated": "Updated {{time}}",
+    "never": "Never",
+    "notAvailable": "Not available"
+  },
+  "actions": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "learnMore": "Learn more"
+  },
+  "footer": {
+    "attributionTitle": "Data & map attribution",
+    "osm": "© OpenStreetMap contributors",
+    "osmLicence": "Map data available under the Open Database License (ODbL).",
+    "openfreemap": "Basemap: OpenFreeMap © OpenMapTiles, data from OpenStreetMap.",
+    "vdm": "Contains data from the Ville de Montréal, licensed under CC BY 4.0.",
+    "eccc": "Data Source: Environment and Climate Change Canada.",
+    "disclaimer": "WinterPath AI is an information tool. It does not certify that any sidewalk is safe, cleared, ice-free or wheelchair accessible. Always use your own judgement.",
+    "privacy": "Privacy & data",
+    "sources": "Sources & licences",
+    "pilot": "Pilot programs",
+    "independent": "Independent project. Not affiliated with or endorsed by the Ville de Montréal or Environment and Climate Change Canada."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This path doesn't exist. It may have moved.",
+    "home": "Back to home"
+  },
+  "meta": {
+    "lastUpdated": "Last updated",
+    "source": "Source"
+  }
+}

@@ -1,0 +1,151 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --navy: #101b2c;
+  --frost: #bde8f4;
+  --teal: #087f8c;
+  --ice: #f7fafc;
+  --slate: #64748b;
+  --amber: #e7a83e;
+
+  --background: var(--ice);
+  --foreground: var(--navy);
+  --card: #ffffff;
+  --card-foreground: var(--navy);
+  --muted: #e8eef4;
+  --muted-foreground: var(--slate);
+  --border: #d5dee8;
+  --primary: var(--teal);
+  --primary-foreground: #ffffff;
+  --accent: var(--frost);
+  --accent-foreground: var(--navy);
+  --accent-text: var(--teal);
+  --ring: var(--teal);
+  --warning: var(--amber);
+  --warning-foreground: var(--navy);
+  --danger: #b4233c;
+  --radius: 0.75rem;
+  color-scheme: light;
+}
+
+.dark {
+  --background: var(--navy);
+  --foreground: var(--ice);
+  --card: #17253a;
+  --card-foreground: var(--ice);
+  --muted: #1f3049;
+  --muted-foreground: #a3b1c4;
+  --border: #2c3f5c;
+  --primary: var(--frost);
+  --primary-foreground: var(--navy);
+  --accent: #1f3a52;
+  --accent-foreground: var(--ice);
+  --accent-text: var(--frost);
+  --ring: var(--frost);
+  --danger: #ff8fa3;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-text: var(--accent-text);
+  --color-ring: var(--ring);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-navy: var(--navy);
+  --color-frost: var(--frost);
+  --color-teal: var(--teal);
+  --color-ice: var(--ice);
+  --color-slate-brand: var(--slate);
+  --color-amber-brand: var(--amber);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Source Serif 4 Variable', ui-serif, Georgia, serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  /* SIMULATED banner: striped amber, navy text (≥ 8:1). */
+  .simulated-stripes {
+    background: repeating-linear-gradient(135deg, #e7a83e 0 10px, #f2c879 10px 20px);
+    color: var(--navy);
+  }
+  /* Hatched pattern for coverage gaps / outside pilot. */
+  .hatch {
+    background-image: repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--slate) 45%, transparent) 6px 8px);
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--muted) 25%, color-mix(in srgb, var(--muted) 60%, var(--card)) 50%, var(--muted) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* MapLibre: keep attribution legible in both themes. */
+.maplibregl-ctrl-attrib {
+  font-size: 11px;
+}
+.dark .maplibregl-ctrl-attrib {
+  background: rgb(16 27 44 / 0.85);
+  color: var(--ice);
+}
+.dark .maplibregl-ctrl-attrib a {
+  color: var(--frost);
+}

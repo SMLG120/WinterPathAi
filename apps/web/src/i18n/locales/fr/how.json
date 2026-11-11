@@ -1,0 +1,74 @@
+{
+  "title": "Fonctionnement de WinterPath",
+  "intro": "Les données que nous utilisons, la façon dont nous les identifions, ce que notre modèle fait et ne fait pas, et notre traitement de vos renseignements personnels.",
+  "toc": "Sur cette page",
+  "sources": {
+    "title": "Sources et licences",
+    "intro": "Cette liste provient de l'API, qui indique la licence de chaque source et sa dernière mise à jour réussie.",
+    "name": "Source",
+    "publisher": "Éditeur",
+    "licence": "Licence",
+    "commercial": "Usage commercial",
+    "status": "Statut",
+    "lastSuccess": "Dernière mise à jour",
+    "commercialUse": {
+      "allowed": "Permis",
+      "allowed_with_conditions": "Permis sous conditions",
+      "not_allowed": "Non permis",
+      "unverified": "Non vérifié"
+    },
+    "statusValue": {
+      "active": "Active",
+      "stale": "Périmée",
+      "disabled": "Désactivée",
+      "requires_credentials": "Identifiants requis",
+      "error": "Erreur"
+    }
+  },
+  "attribution": {
+    "title": "Attribution de la carte",
+    "body": "La carte du planificateur utilise les tuiles vectorielles d'OpenFreeMap, produites à partir d'OpenStreetMap. L'attribution reste visible sur la carte en tout temps."
+  },
+  "evidence": {
+    "title": "Niveaux de fiabilité",
+    "intro": "Chaque état, fermeture, signalement ou estimation porte exactement une de ces étiquettes, toujours affichée avec une icône et du texte."
+  },
+  "model": {
+    "title": "Fiche du modèle",
+    "intro": "Notre couche de risque facultative prédit l'activité de signalement, pas la glace. Elle n'est activée qu'après avoir surpassé une référence simple sur des données réservées."
+  },
+  "coverage": {
+    "title": "Couverture",
+    "pilot": "Zone pilote",
+    "bbox": "Rectangle englobant (O, S, E, N)",
+    "graph": "Réseau piétonnier",
+    "nodes": "Nœuds",
+    "edges": "Tronçons",
+    "built": "Construit",
+    "snapshot": "Instantané OpenStreetMap",
+    "gaps": "Lacunes connues",
+    "noGaps": "Aucune lacune signalée.",
+    "schematic": "Schéma de la zone pilote (sans les rues, pas à l'échelle)."
+  },
+  "privacy": {
+    "title": "Vie privée (Loi 25 du Québec)",
+    "points": [
+      "Aucun compte et aucun historique de trajets. Les demandes d'itinéraire sont traitées en mémoire.",
+      "Votre position n'est demandée que lorsque vous appuyez sur « Utiliser ma position », et seulement après une explication.",
+      "Les journaux du serveur ne conservent qu'une position approximative (environ 100 m), jamais vos coordonnées précises.",
+      "Les signalements citoyens ne conservent un emplacement exact qu'avec votre consentement explicite, expirent après 72 heures et peuvent être supprimés avec votre code de suppression.",
+      "Les demandes de projet pilote conservent un minimum de coordonnées pendant 12 mois."
+    ],
+    "review": "Cette approche en matière de vie privée n'a pas encore été examinée par un conseiller juridique."
+  },
+  "limitations": {
+    "title": "Limites",
+    "points": [
+      "Nous ne décrivons jamais un trottoir comme sécuritaire, déneigé, sans glace ou accessible en fauteuil roulant, sauf si une source officielle le confirme.",
+      "Les requêtes 311 sont des signalements, pas des obstacles confirmés. Bien des conditions ne sont jamais signalées.",
+      "Les plans de chargement de la neige ne certifient pas qu'un trottoir a été déneigé.",
+      "Des travaux routiers ne signifient pas que le trottoir est fermé, sauf si les données du permis l'indiquent.",
+      "La couverture se limite à la zone pilote ; les lacunes du réseau sont signalées, pas devinées."
+    ]
+  }
+}
