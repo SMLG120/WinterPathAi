@@ -5,6 +5,72 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (d) — merged integration/winterpath 6a712e9 (all five agents); checks re-run
+1. `git merge --no-edit integration/winterpath` → **fast-forward** to 6a712e9 (contains platform b2ed23a). Platform-owned paths are unchanged by it. Contract `version: 1.6.0`. `apps/web` now exists, so `make test` and `make lint` also cover the frontend.
+2. **Makefile fix (owned).** On first run, `make test` exited 2 at the web step because this worktree had never installed web dependencies. Literal output:
+   ```text
+   > @winterpath/web@0.1.0 test
+   > vitest run --run
+   sh: vitest: command not found
+   make: *** [test] Error 127
+   ```
+   The web steps in `test` and `lint-web` now run `npm ci --no-audit --no-fund` when `apps/web/node_modules` is missing (it is git-ignored, `.gitignore:32`). This matches how the Python targets `uv sync` first.
+3. **Finding for Routing/ML — not fixed here (routing-owned file):** `services/api/uv.lock` is stale on integration. ML's `services/ml/pyproject.toml` added a `db` extra (`psycopg[binary]>=3.2`), but the API lock was not regenerated. Plain `uv run` in `services/api` silently re-locks it (+2 lines: the psycopg requirement and `provides-extras = ["db"]`). I restored the file with `git checkout -- services/api/uv.lock` and did not commit it.
+   ```text
+   $ (per package) uv lock --check
+   services/ingestion   Resolved 34 packages in 40ms
+   services/routing     Resolved 18 packages in 4ms
+   services/ml          Resolved 22 packages in 3ms
+   services/api         The lockfile at `uv.lock` needs to be updated, but `--check` was provided. To update the lockfile, run `uv lock`.
+   tests/integration    Resolved 62 packages in 9ms
+   ```
+   CI did not catch it because the Python matrix job runs `uv sync --all-extras --dev` (`ci.yml:112`) without `--locked`. Proposal, not applied (it would turn main red until Routing runs `uv lock` in `services/api`): switch that step to `uv sync --locked --all-extras --dev`, and use `uv run --locked` in the Makefile package loops, so a stale lock fails loudly instead of being rewritten in any agent's worktree.
+
+Literal outputs (merged tree 6a712e9 + Makefile fix):
+```text
+$ make test        (stub; API_BASE_URL unset)
+59 passed, 5 skipped in 11.30s
+== services/ingestion
+50 passed in 22.68s
+== services/routing
+210 passed, 1 skipped in 8.21s
+== services/ml
+43 passed, 1 skipped in 2.69s
+== services/api
+79 passed, 13 skipped, 1 warning in 5.11s
+added 554 packages in 12s
+ Test Files  11 passed (11)
+      Tests  107 passed (107)
+[make test exit 0]
+
+$ make lint
+All checks passed! / 13 files already formatted        (tests/integration)
+All checks passed! / 27 files already formatted        (services/ingestion)
+All checks passed! / 20 files already formatted        (services/routing)
+All checks passed! / 28 files already formatted        (services/ml)
+All checks passed! / 30 files already formatted        (services/api)
+> eslint . --max-warnings 0                             (apps/web; no findings printed)
+compose config OK
+[make lint exit 0]
+
+$ actionlint                -> [actionlint exit 0]
+$ make config               -> compose config OK [make config exit 0]
+$ scripts/check-ownership.sh platform
+ownership OK for agent/platform
+
+$ (real API from this tree, port 8105, same launch env as update (c), `uv run --frozen` so the lockfile is not rewritten)
+{"status":"ok","version":"0.1.0 (contract 1.6.0)","checks":{"graph":{"status":"ok"},"database":{"status":"disabled",...},"risk":{"status":"disabled",...},"weather":{"status":"disabled",...}}}
+=== real API, CONTRACT_MAX_EXAMPLES=40
+59 passed, 5 skipped in 20.96s
+[exit 0]
+=== real API, CONTRACT_MAX_EXAMPLES=150
+59 passed, 5 skipped in 53.51s
+[exit 0]
+log lines: 4530 | precise coordinate hits: 0
+API stopped; 8105 free
+```
+`npm ci` also printed two deprecation warnings (`whatwg-encoding@3.1.1`, `eslint@9.39.5`), which belong to the frontend. The ML risk layer is still disabled locally because `models/artifacts/` is empty in this worktree.
+
 ## Update 2026-11-11 (c) — API-NULL-1 fixed upstream; all 7 markers removed
 Coordinator instruction: merge routing's exact commit b036aab, remove all 7 API-NULL-1 markers in one commit, and run the harness against the stub and against a real API started from this tree.
 
