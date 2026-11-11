@@ -1,7 +1,7 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 4 adopts contract **v1.3.0** and wires the ML risk layer. Earlier cycles were merged into `integration/winterpath` at `517a493` (cycles 1–2), and cycle 3 (weather) at `d179845`.
-- **Branch / SHA:** `agent/routing` @ `4c2386d` (code). `integration/winterpath` was merged in first (`3725295`, including v1.3.0 `51f808c` and agent/ml `fa8b4ea`). This report is committed on top.
+- **Status:** READY FOR REVIEW. Cycle 5 adopts contract **v1.4.0**: closure activity through `wp.closure_active_at` (CR-ROUTING-7), plus `terminal_at` now that migration 0003 exists. Cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
+- **Branch / SHA:** `agent/routing` @ `b6b62c4` (code). `integration/winterpath` (`dc1ed12`, v1.4.0 + Data migrations 0002–0004) was merged in first as `c6d603f`. This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -24,7 +24,42 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0. Cycle 4 run (contract v1.3.0 + ML risk) — current
+### 0a. Cycle 5 run (contract v1.4.0 closure activity) — current
+`wp_routing` migrated to head with the Data agent's alembic (my own DB only):
+```text
+$ uv run --project services/ingestion --with alembic alembic -c db/alembic.ini current   # before
+0001_wp_schema_v1
+$ … alembic -c db/alembic.ini upgrade head; … current
+0004_closure_status (head)
+$ schema check on wp_routing
+('wp_routing', '0004_closure_status')
+(True, True)        # wp.closure_active_at(wp.closure, timestamptz) exists, wp.weather_daily exists
+['attrs', 'backsidewalk_blocks_passage', 'crossing_kerb', 'crossing_type', 'name', 'terminal_at']
+```
+`uptime` at start: `load averages: 28.18 31.32 33.66` (heavily shared machine).
+```text
+$ set -a; source .env.local; set +a; uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider -s   # filtered to latency + summary
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=6.2 ms p95=14.2 ms max=16.2 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=46.9 ms p95=134.9 ms max=255.0 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.1 ms p95=1.8 ms max=2.2 ms (rejected >75 m from network: 48)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=6.3 ms p95=17.1 ms max=32.0 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=23.2 ms p95=96.6 ms max=238.4 ms
+======================= 290 passed, 1 warning in 45.21s ========================
+$ # wp_routing must be at alembic head (0004_closure_status) for the closure-activity PostGIS tests
+(cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0}
+```
+The API latency figure is load noise. That test uses in-memory hazards, so it doesn't touch the closure code. Two immediate reruns at load ≈ 31 gave `p50=17.0 ms p95=101.5 ms` and `p50=7.3 ms p95=39.4 ms`. Engine `compare()` on the same graph is unchanged (p50 1.1 ms).
+
+### 0. Cycle 4 run (contract v1.3.0 + ML risk)
 `uptime` at start: `load averages: 27.01 18.65 11.32`. The ML artifacts (`models/artifacts/v2-8d19aa86/`, git-ignored) were copied from the ML worktree so the real-provider tests run; without them those 3 tests skip with a reason.
 ```text
 $ set -a; source .env.local; set +a; uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider -s   # filtered to latency + summary
@@ -34,7 +69,8 @@ $ set -a; source .env.local; set +a; uv run --project services/api pytest servic
 [latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=2.6 ms p95=5.9 ms max=9.7 ms
 [latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=3.1 ms p95=7.0 ms max=10.5 ms
 ======================= 281 passed, 1 warning in 13.03s ========================
-$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+$ # wp_routing must be at alembic head (0004_closure_status) for the closure-activity PostGIS tests
+(cd services/routing && uv run ruff check . && uv run ruff format --check .)
 All checks passed!
 20 files already formatted
 $ (cd services/api && uv run ruff check . && uv run ruff format --check .)
@@ -77,7 +113,8 @@ $ row counts in wp_routing after run
 
 ### 2. Lint and ownership gate
 ```text
-$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+$ # wp_routing must be at alembic head (0004_closure_status) for the closure-activity PostGIS tests
+(cd services/routing && uv run ruff check . && uv run ruff format --check .)
 All checks passed!
 20 files already formatted
 $ (cd services/api && uv run ruff check . && uv run ruff format --check .)
@@ -128,14 +165,54 @@ Size proxies (SYNTHETIC grids over PILOT_BBOX, final run): 2 400 edges p50 9.1 /
 | Latency p50/p95, 100 pilot OD pairs | Yes (pilot_mini) | table above; full pilot graph pending |
 | `pytest services/routing services/api` green; ruff clean | Yes | 281 passed, 0 skipped (cycle 4); ruff output above |
 
+## Cycle 5 — closure activity (contract v1.4.0, CR-ROUTING-7) and `terminal_at`
+Rule (data-model v1.4): `wp.closure_active_at(c, t)` is three-valued. An edge is excluded only when the closure is active at `t` **and** `blocks_passage` is true. `NULL` (unknown activity) must be flagged or penalised, never treated as clear.
+
+| Closure at departure time | `blocks_passage` | Routing | Response |
+|---|---|---|---|
+| `active = true` | `true` (confirmed) | **Excluded** (both directions, ≤ 5 m) | `EXCLUDES_CONFIRMED_CLOSURE`; `NO_ROUTE` if that disconnects the pair (never relaxed) |
+| `active = null` | `true` (confirmed) | **Not excluded; +120 s per edge** (`possible_closure_penalty_s`, larger than the 45 s passable disruption) | `PASSES_POSSIBLE_CLOSURE` / `AVOIDS_POSSIBLE_CLOSURE` (evidence `unknown`), id in `hazards_on_route` / `hazards_avoided`, EN/FR warning "…its schedule at this time is unknown: it may be in effect." |
+| `active = true` or `null` | `false`/`null` | Passable disruption, +45 s | `PASSES/AVOIDS_CONFIRMED_DISRUPTION` |
+| `active = false` | any | Ignored (row not returned) | — |
+
+- **Repository:** `PostgisHazardRepository` selects `wp.closure_active_at(c, :at) AS active … WHERE wp.closure_active_at(c, :at) IS DISTINCT FROM false`. On a database without the function (before migration 0004) it keeps the old validity-window filter.
+- **Labelling:** an unknown-activity hazard keeps evidence `confirmed`, because the permit itself is confirmed official data. Its title gains "— schedule at this time unknown" / "— horaire à ce moment inconnu", and its evidence note says activity is unknown.
+- **API reach:** `/routes/compare` evaluates closures at `departure_time`. `/hazards` and `/map` evaluate them at the current time, because they have no `at` parameter.
+
+Tests:
+- Engine on the toy grid (6):
+  - unknown activity is penalised and not excluded, with a cost above the no-hazard cost, a flag and a warning;
+  - the penalty takes part in the winter-aware choice;
+  - unknown activity on a non-blocking permit is a disruption;
+  - an active blocking closure is still excluded;
+  - the penalty ordering holds;
+  - the new texts make no safety claim.
+- PostGIS on `wp_routing` with the **real `wp.closure_active_at` from migration 0004** (2):
+  - 8 TEST-RT closures are classified as expected: all-day active and inside a 09:00–17:00 window → true; no schedule and status `unknown` → null; wrong weekday, ended, cancelled, and outside an evening window → dropped;
+  - through the API, an unknown-schedule closure on the shortest route is flagged and penalised but still routed, and the same point with an active closure is excluded.
+
+On this toy grid a 3-edge detour costs more than 120 s, so the winter-aware route keeps the edge but flags it. The 120 s value is a reviewable design choice, set in `CostConfig.possible_closure_penalty_s`.
+
+**`terminal_at` (v1.3, migration 0003 now applied):**
+- `PostgisReportRepository` writes it on reject (`now`), reporter delete (`now`) and expiry (`expires_at`, the moment it expired, matching the migration backfill).
+- The 30-day hard delete uses `COALESCE(terminal_at, moderated_at, expires_at)`, and the column is detected so pre-0003 databases keep the old rule.
+- PostGIS test: all three timestamps are written, and the purge deletes at +30 days, not +29.
+- `purge()` is still not scheduled.
+
+**`wp.edge.name`** now exists in `wp_routing`. The provider selects it, and pilot_mini rows carry none, so street names are still null on real data.
+
+**`CONTRACT_VERSION` stays `1.3.0`:** v1.4.0 changed only the data model, and `openapi.yaml` `info.version` is still 1.3.0.
+
+Observation for Data (not a request): `closure_active_at` returns `NULL` for `status = 'unknown'` **before** checking dates. A permit with an unmapped status whose `valid_to` is long past is therefore "unknown" rather than "false". Routing treats it as a possible closure (penalised and flagged). If the intent is that dates alone can establish `false`, the date check could move above the status check.
+
 ## Cycle 4 — contract v1.3.0 and ML risk layer
 | Item | Done | Where / evidence |
 |---|---|---|
 | 422 `OFF_NETWORK` when a point is inside the bbox but > 75 m from the network (`details.which`, `max_snap_distance_m`, plus `nearest_network_m`) | Yes | `routers/routing.py`; `test_api_contract.py`, `test_api_pilot_mini.py`. Outside the bbox is still `OUTSIDE_COVERAGE`. |
 | 503 `UPSTREAM_UNAVAILABLE` on `/routes/compare`, `/map/segments`, `/hazards`, `/data-sources` | Already implemented; now validated against the v1.3 declarations | `test_api_contract.py` (graph/store down) |
 | `CONTRACT_VERSION` | `1.3.0` | `winterpath_api/__init__.py` |
-| `wp.edge.name` | Read when the column exists (same presence check as the v1.2 columns) | `providers.py` `OPTIONAL_EDGE_COLS`. Not exercised against PostGIS: no migration creates the column yet. |
-| `wp.community_report.terminal_at` | **Not adopted yet** | No migration creates it, so I can't test it. Purge still uses `COALESCE(moderated_at, expires_at)`; I'll switch it once the column is migrated. In-memory repo already tracks `terminal_at`. |
+| `wp.edge.name` | Read when the column exists (same presence check as the v1.2 columns) | `providers.py` `OPTIONAL_EDGE_COLS`; present in `wp_routing` since cycle 5 |
+| `wp.community_report.terminal_at` | Adopted in cycle 5 | see Cycle 5 |
 | Canonical source ids | Already in use | `/data-sources` registry |
 | ML risk: `RISK_PROVIDER=winterpath_ml.inference:load_provider` | Yes | see below |
 
@@ -214,15 +291,13 @@ Not done or not verifiable here:
 | Blocker | Impact | Next step / who |
 |---|---|---|
 | Full pilot graph (whole PILOT_BBOX) not built | Real-data latency known only for 200 edges; synthetic 14k-edge proxy given | Data agent; rerun `test_routing_latency` pattern on it (routing) |
-| Migration `0001` lacks v1.2 columns (`wp.edge.crossing_type/crossing_kerb/highway/osm_snapshot`, `wp.closure.attrs/backsidewalk_blocks_passage`, `wp.weather_daily`) | From PostGIS, crossing type/kerb come only from node tags until the v1.2 migration lands (handled; selected automatically once present) | Data agent: migration 0002 |
 | ML artifacts are git-ignored | Real-ML tests skip in a checkout without `models/artifacts/<run_id>/`; the API falls back to `NullRiskProvider` (all unknown) | Coordinator: decide how artifacts reach the integration worktree |
-| Migrations for v1.2/v1.3 columns (`wp.edge.name`, `wp.community_report.terminal_at`, `wp.weather_daily`, …) | Code reads them when present; untested against PostGIS | Data agent: migration 0002 |
 | No forecast source ingested | `/weather/forecast` is always 503 (by design) | Decision (coordinator/user): ingest ECCC `citypageweather-realtime` into a table, or approve a live adapter |
 | No near-real-time weather ingest confirmed | `/weather/current` answers 503 (stale) unless `weather_obs` has a row newer than 180 min | Data agent: schedule a `swob-realtime` ingest (scheduled jobs need approval) |
 | Report `purge()` not scheduled | Expiry is enforced on read; 30-day hard delete only when `purge()` is called | Platform/coordinator (scheduled jobs need approval) |
 
 ## Dependencies on other agents
-- **Data:** fixture layout as delivered (`edges/nodes.geojson`, `metadata.json` with explicit `simulated`, `manifest.json`). `wp.source` ids are canonical.
+- **Data:** fixture layout as delivered (`edges/nodes.geojson`, `metadata.json` with explicit `simulated`, `manifest.json`). `wp.source` ids are canonical. Migrations 0001–0004; `wp.closure_active_at(c, t)` semantics as in migration 0004.
 - **ML:** `winterpath_ml.inference.load_provider()` → `edge_risk(coords, valid_from)`, `cell_risk`, `status()` (coordinate-keyed; adapted). Id-keyed providers (`edge_risk(edge_ids, at)`) are still accepted.
 - **Platform:** harness passes against this API.
 - **Frontend:** both routes are always returned; `explanation[].evidence_state` drives badges; `warnings` are localized.
@@ -237,9 +312,11 @@ Not done or not verifiable here:
 ## Change requests (contracts)
 Resolved by v1.3.0 and adopted in cycle 4: 503 declarations (old #2), `OFF_NETWORK` (old #3), `wp.edge.name` (old #4; read when migrated), `wp.community_report.terminal_at` (old #5; awaiting migration), and `.env.example` routing names (old #1, partly).
 
+Resolved by v1.4.0 and adopted in cycle 5: closure status vocabulary and activity (old #6, CR-ROUTING-7). Migrations 0002–0004 are applied to `wp_routing`.
+
 Still open (pending coordinator/user decision; not implemented):
 1. `.env.example`: still missing `WEATHER_SOURCE`, `WEATHER_MAX_AGE_MINUTES`, `WEATHER_STATION_IDS`. Also: `RISK_PROVIDER=winterpath_ml.inference:load_provider` enables the ML layer, and `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
-6. data-model (clarify): `wp.closure.status` vocabulary (closures are currently filtered by validity window only).
+6. openapi (additive, new in cycle 5): `HazardFeature.properties.active: boolean | null` (closure activity at the evaluated time). Today "schedule unknown" reaches the map only through `title_en/fr` and `evidence.note`, so the frontend cannot badge it reliably.
 7. Confirm the evidence states chosen for explanation codes, and that both routes are returned when they are identical.
 8. **Platform (FYI, not a contract change):** `tests/integration/log_scan.py` flags fractional seconds of microsecond ISO timestamps (e.g. `…:40.010135Z`) as latitudes. I avoided this by logging milliseconds, but other services may trip it.
 9. data-model (clarify, cycle 3): the interval of `wp.weather_obs.precip_mm`. I serve it as `precipitation_mm_1h`, which is correct for `climate-hourly` and for SWOB's 1-hour amount. Please confirm the ingest stores the 1-hour value for `swob-realtime`. Also: `wp.weather_daily` needs a migration.
@@ -252,6 +329,7 @@ READY FOR REVIEW. The worktree is clean after this commit. Coordinator re-run (c
 cd ../winterpath-routing
 set -a; source .env.local; set +a          # DATABASE_URL → wp_routing (schema: alembic -c db/alembic.ini upgrade head)
 uv run --project services/api pytest services/routing services/api -rs
+# wp_routing must be at alembic head (0004_closure_status) for the closure-activity PostGIS tests
 (cd services/routing && uv run ruff check . && uv run ruff format --check .)
 (cd services/api && uv run ruff check . && uv run ruff format --check .)
 scripts/check-ownership.sh routing
