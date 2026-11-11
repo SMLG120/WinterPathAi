@@ -24,7 +24,35 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0m. Cycle 13 — v1.7 risk wiring: merge data `360fdd4` + ml `79a0ee6`; shared engine → ML provider — current
+### 0n. Cycle 13b — combined-trial blocker: real-layer ML tests gated on per-day score tables — current
+**Cause (coordinator's combined trial):** `test_real_heuristic_layer_in_season` and `test_real_heuristic_estimates_have_no_probability` failed with "expected scored cells on 2026-01-14". Their skip checked only `reg['coverage']['path']`. ML commits `coverage_cells.parquet` in v1.7, but the per-day score tables (`models/artifacts/v2-8d19aa86/scores/…`) are still git-ignored. CI and fresh checkouts therefore ran these tests with no scores, so every edge was `unknown`.
+
+**Fix (`tests/test_api_ml_risk.py`):**
+- New `needs_scores` marker. It resolves the directory with ML's own `scores_dir(reg, active_layer)` (which honours `MODEL_ARTIFACT_DIR`), reads the `*.parquet` tables there, and skips unless they contain non-null `p` rows for `IN_SEASON_DAY = "2026-01-14"`, the day both tests route on.
+- The reason text names the missing path, says it is git-ignored, and says how to obtain it (copy `models/artifacts/v2-8d19aa86/scores/` from agent/ml or run the score job).
+- The coverage check now also uses ML's `artifact_path` rather than a repo-relative path.
+- `test_real_layer_out_of_season_is_unknown` (2026-07-01) needs no scores, so it keeps the coverage-only marker.
+- `test_real_heuristic_estimates_have_no_probability` now pins `score_source="file"`, so an ambient `RISK_SCORE_SOURCE=postgis` cannot change what it tests.
+
+**Verified both ways:**
+```text
+=== WITH scores dir
+test_real_heuristic_layer_in_season PASSED / test_real_heuristic_estimates_have_no_probability PASSED / test_real_layer_out_of_season_is_unknown PASSED
+========================= 7 passed, 1 warning in 1.89s =========================
+=== WITHOUT scores dir (moved to scratchpad)
+SKIPPED [1] services/api/tests/test_api_ml_risk.py:202: ML per-day score tables absent (…/models/artifacts/v2-8d19aa86/scores/winter311-heuristic-v1/*.parquet is git-ignored; copy models/artifacts/v2-8d19aa86/scores/ from agent/ml or run the ML score job)
+SKIPPED [1] services/api/tests/test_api_ml_risk.py:219: (same reason)
+=================== 5 passed, 2 skipped, 1 warning in 1.52s ====================
+=== fresh-checkout equivalent: ONLY git-tracked artifacts present (features.parquet, metrics.json, winter311-hgb-v1.joblib, scores/ moved aside), full suite
+================== 321 passed, 2 skipped, 1 warning in 24.32s ==================
+=== all local artifacts restored, full suite
+======================= 323 passed, 1 warning in 28.47s ========================
+$ ruff (routing / api): All checks passed! 20 / 33 files already formatted
+$ (cd services/api && uv lock --check)  → exit=0
+$ scripts/check-ownership.sh routing    → 19 flagged files, 19/19 byte-identical to 79a0ee6 (unchanged from 0m)
+```
+
+### 0m. Cycle 13 — v1.7 risk wiring: merge data `360fdd4` + ml `79a0ee6`; shared engine → ML provider
 **Merges (exact commits, as instructed):**
 - `git merge --no-edit 360fdd4` → `40a61a4`.
 - `git merge --no-edit 79a0ee6` → `737d3e5`. This merge first refused because two untracked files would be overwritten: `models/artifacts/v2-8d19aa86/{coverage_cells.parquet,winter311-heuristic-v1.joblib}`, my local copies of ML's artifacts, which ML now commits. Their `git hash-object` matched `79a0ee6`'s blobs (`cae69c1…`, `360242b…`), so I moved them to the scratchpad and the merge then succeeded.
