@@ -9,16 +9,26 @@ import os
 from datetime import date
 from pathlib import Path
 
+# Repo layout (editable/dev install): services/ml/src/winterpath_ml/config.py. In a non-editable
+# install (e.g. the API image) these point inside the venv, so deployments must set
+# MODEL_REGISTRY_PATH and MODEL_ARTIFACT_DIR (absolute paths).
 PKG_ROOT = Path(__file__).resolve().parents[2]  # services/ml
 REPO_ROOT = PKG_ROOT.parents[1]
-CACHE_DIR = Path(os.environ.get("WP_ML_CACHE_DIR", PKG_ROOT / ".cache"))
+
+
+def _env_path(name: str, default: Path) -> Path:
+    """Path from env; unset or empty means `default`; relative paths are taken from REPO_ROOT."""
+    raw = os.environ.get(name, "").strip()
+    p = Path(raw) if raw else default
+    return p if p.is_absolute() else REPO_ROOT / p
+
+
+CACHE_DIR = _env_path("WP_ML_CACHE_DIR", PKG_ROOT / ".cache")
 RAW_DIR = CACHE_DIR / "raw"
 INTERIM_DIR = CACHE_DIR / "interim"
 MODELS_DIR = REPO_ROOT / "models"
-ARTIFACT_DIR = Path(os.environ.get("MODEL_ARTIFACT_DIR", MODELS_DIR / "artifacts"))
-if not ARTIFACT_DIR.is_absolute():
-    ARTIFACT_DIR = REPO_ROOT / ARTIFACT_DIR
-REGISTRY_PATH = MODELS_DIR / "registry.json"
+ARTIFACT_DIR = _env_path("MODEL_ARTIFACT_DIR", MODELS_DIR / "artifacts")
+REGISTRY_PATH = _env_path("MODEL_REGISTRY_PATH", MODELS_DIR / "registry.json")
 
 # --- 311 source (Ville de Montréal, CC BY 4.0) ---------------------------------------------
 URL_311_2022_PRESENT = (

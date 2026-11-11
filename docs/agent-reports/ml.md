@@ -590,6 +590,30 @@ $ uv sync --locked --all-extras && WP_ML_TEST_DB_URL=<wp_ml> uv run --no-sync py
 67 passed, 1 skipped in 10.20s
 ```
 
+## Deploy blocker fix: registry/artifact paths in a non-editable install, 2026-11-11
+**Cause.** In a non-editable install (the API image), `config.py` lives at `/opt/venv/lib/python3.12/site-packages/winterpath_ml/`. `REPO_ROOT` then resolves to `/opt/venv`, and `REGISTRY_PATH` was hard-wired to `REPO_ROOT/models/registry.json` with no environment override. So the API logged `risk_registry_missing` and ran with no risk layer. A second bug: empty values such as `MODEL_ARTIFACT_DIR=` (as in `.env.example`) became `Path("")`, i.e. the repo root, instead of the default.
+
+**Fix.**
+- `config.REGISTRY_PATH` honours `MODEL_REGISTRY_PATH`, and `ARTIFACT_DIR` honours `MODEL_ARTIFACT_DIR` as before.
+- Unset or empty means the dev default. Absolute paths are used as given; relative ones are taken from `REPO_ROOT` (same for `WP_ML_CACHE_DIR`).
+- `load_registry` / `load_provider` resolve the registry path at call time, not at import time.
+- The `risk_registry_missing` warning now prints `MODEL_REGISTRY_PATH`.
+- `artifact_path()` already resolved entries as `ARTIFACT_DIR/<run_id>/<tail>`, never under `REPO_ROOT`. The test pins this for `/app/models/artifacts/v2-8d19aa86/coverage_cells.parquet`.
+
+**Test** `tests/test_noneditable_layout.py`: the package is copied into `<tmp>/venv/lib/python3.12/site-packages`, imported from there in a fresh interpreter (cwd elsewhere), with the registry and the two committed artifacts under `<tmp>/app/models/`. It checks that:
+- without env, it reproduces the image (`REPO_ROOT=<tmp>/venv`, NullRiskProvider, `risk_registry_missing`);
+- with `MODEL_REGISTRY_PATH` + `MODEL_ARTIFACT_DIR`, it gives `HeuristicRiskProvider`, the coverage resolves under the artifact dir, and no missing-file warning appears;
+- empty env values give the defaults.
+
+Negative control (pre-fix `config.py` and `inference.py` from HEAD, same layout, env set):
+```text
+WARNING:winterpath_ml.inference:risk_registry_missing: <tmp>/venv/models/registry.json not found; using NullRiskProvider (all unknown)
+OLD code: repo_root venv | registry <tmp>/venv/models/registry.json | provider NullRiskProvider
+```
+**Checks:** `uv sync --locked` (no extras) → `64 passed, 7 skipped`. `--all-extras` + `WP_ML_TEST_DB_URL=<wp_ml>` → `70 passed, 1 skipped`. `uvx ruff check .` → `All checks passed!` `gate_logreg_2026 --check` → `pins OK; coverage list OK` (config.py is not pinned).
+
+**For the image (Platform):** set `MODEL_REGISTRY_PATH=/app/models/registry.json` and `MODEL_ARTIFACT_DIR=/app/models/artifacts` (absolute). `DEFAULT_EDGES_GEOJSON` (used only by `api_provider()` when `WP_EDGES_GEOJSON` is unset) is also REPO_ROOT-based; the configured `RISK_PROVIDER=winterpath_ml.inference:load_provider` does not use it.
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|

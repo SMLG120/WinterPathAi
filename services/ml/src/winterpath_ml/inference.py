@@ -121,8 +121,8 @@ def cells_along(
     return list(seen)
 
 
-def load_registry(path: Path = config.REGISTRY_PATH) -> dict:
-    return json.loads(Path(path).read_text())
+def load_registry(path: Path | None = None) -> dict:
+    return json.loads(Path(path or config.REGISTRY_PATH).read_text())
 
 
 def _artifact_dir(registry: dict) -> Path:
@@ -398,7 +398,7 @@ def _iso(v) -> str | None:
 
 
 def load_provider(
-    registry_path: Path = config.REGISTRY_PATH,
+    registry_path: Path | None = None,
     *,
     engine=None,
     score_source: str | None = None,
@@ -417,12 +417,14 @@ def load_provider(
             source,
         )
         return NullRiskProvider()
+    registry_path = Path(registry_path or config.REGISTRY_PATH)
     try:
         reg = load_registry(registry_path)
     except FileNotFoundError:
         log.warning(
-            "risk_registry_missing: %s not found; using NullRiskProvider (all unknown)",
+            "risk_registry_missing: %s not found (MODEL_REGISTRY_PATH=%r); using NullRiskProvider (all unknown)",
             registry_path,
+            os.environ.get("MODEL_REGISTRY_PATH"),
         )
         return NullRiskProvider()
     if source == "postgis":
