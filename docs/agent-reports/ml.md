@@ -447,6 +447,137 @@ The gate procedure, features and hyper-parameters are unchanged. The change came
 
 Because the spatial holdout blocks are drawn from the coverage, they differ between v1 and v2 (v2 has 5 res-6 blocks and 158,013 test rows).
 
+## Headless daily scoring (`winterpath_ml.score`), 2026-11-11
+
+**Inputs** (nothing else is read or downloaded):
+| Input | Where it comes from | Size |
+|---|---|---|
+| `models/registry.json` | committed | — |
+| `winter311-heuristic-v1.joblib` | `$MODEL_ARTIFACT_DIR/v2-8d19aa86/`. Git-ignored, so the runner must supply it. sha256 is checked against the registry **before** `joblib.load`. | 2,953 B |
+| `coverage_cells.parquet` | same directory and sha check | 19,883 B |
+| 311 « Requêtes 3-1-1 (2022 à ce jour) » CSV | downloaded with `--fetch-311` from `config.URL_311_2022_PRESENT` into `$WP_ML_CACHE_DIR/score/` (never overwrites the pinned evaluation snapshot), then aggregated by the unchanged `data_311.build_interim` | 850,499,252 B on 2026-11-11 |
+| ECCC GeoMet `climate-daily`, stations 7025251 + 702S006, 2021-10-01..end | always fetched fresh into a temp dir. The old range-keyed cache could freeze an incomplete day: `eccc_…_2026-11-11.json`, fetched 2026-11-10 16:11, was byte-identical to the 11-10 file. | ~650 KB |
+
+**Exit policy (revised per coordinator, supersedes the first version):**
+
+| Exit | Meaning |
+|---|---|
+| 0 | Days written. Days whose inputs aren't published yet get a clear notice and are not written, which is not a failure. Out-of-season days are skipped with a notice. |
+| 1 | A scored table failed validation (one row per coverage cell, finite `p` in [0, 1]). Nothing is written. |
+| 2 | Artifact or registry error: missing, sha256 mismatch, or model disabled. |
+| 3 | Download error (311 or ECCC), with the URL and the reason in the message. A failed 311 download leaves no `.part` file. |
+| 4 | Stale: in season, and the newest `<day>.parquet` on disk is for a day that began (local midnight) more than 36 h ago. |
+
+Under GitHub Actions, notices and errors are also emitted as `::notice::` / `::error::` annotations. Tables are written to `.<day>.parquet.tmp`, then `os.replace`d (the provider globs `*.parquet`). Pinned gate files are untouched (`pins OK`).
+
+Real runs, 2026-11-11 13:02 EST, scratch artifacts, `GITHUB_ACTIONS=true`:
+```text
+== A: --start 2026-11-11 --end 2026-11-12
+::notice title=winterpath_ml.score::2026-11-12 not scored yet: 311 data ends 2026-11-10 < 2026-11-11. Will be scored on a later run.
+"rows_per_day": {"2026-11-11": 2930}, "newest_scored_day": "2026-11-11"
+exit 0
+== B: only 2026-11-09 on disk, --start 2026-11-12
+::error title=winterpath_ml.score::score tables are stale: newest scored day 2026-11-09 began 61.0 h ago (> 36 h)
+exit 4
+== C: --fetch-311 through a proxy on a closed port
+::error title=winterpath_ml.score::311 CSV download failed: GET https://donnees.montreal.ca/…/requetes311.csv -> URLError: <urlopen error [Errno 61] Connection refused>. Check that this runner can reach donnees.montreal.ca (HTTPS, port 443). Nothing was written.
+exit 3
+== D: ECCC through the same proxy
+::error title=winterpath_ml.score::ECCC climate-daily download failed: https://api.weather.gc.ca -> URLError: <urlopen error [Errno 61] Connection refused>. Check that this runner can reach the ECCC GeoMet API. Nothing was written.
+exit 3
+```
+Runner reachability of donnees.montreal.ca will be established on the first manual `workflow_dispatch` run (coordinator).
+
+**Measured locally** (macOS arm64, `/usr/bin/time -l`, empty cache, scratch artifact dir):
+```text
+$ score --start 2026-11-11 --fetch-311            (via uv; includes 850 MB download)
+exit 0; rows_per_day {"2026-11-11": 2930}; 311 sha256 7318fc5d…1ebf, last_day 2026-11-10
+       55.26 real        12.02 user         3.57 sys
+$ build_interim on the downloaded CSV               (venv python directly)
+       10.62 real   1121468416  maximum resident set size   1591576592  peak memory footprint
+$ score --start 2026-11-11                          (from aggregates, no 311 download)
+        4.98 real    946569216  maximum resident set size    868124040  peak memory footprint
+$ score --start 2026-11-11 --end 2026-11-12   (first version; now exit 0 + notice, see run A)
+SCORE FAILED (inputs incomplete; nothing written): 2026-11-12: 311 data ends 2026-11-10 < 2026-11-11
+exit 1
+$ (one byte appended to the joblib)
+SCORE FAILED (artifact/registry; nothing written): artifact sha256 mismatch … != registry 4c916346…6546
+exit 2
+$ MODEL_ARTIFACT_DIR=<empty>
+SCORE FAILED (artifact/registry; nothing written): artifact missing: …
+exit 2
+```
+Peak about 1.1 GB RSS (1.6 GB footprint) during aggregation, and about 55 s wall time, most of it the download.
+
+**311 publication timing (observed once, not a guarantee):** at 12:44 on 2026-11-11 the file's max `DDS_DATE_CREATION` was 2026-11-10 21:57:12, with no rows for 11-11. So the job can score D once the file contains D-1. The readiness rule cannot prove D-1 is complete (an export before midnight would cut it short); this is unchanged from before and stated, not solved.
+
+**API path never deserialises pickle/joblib:** `grep -rnE "joblib|pickle|dill|shelve|read_pickle|allow_pickle|torch\.load|np\.load"` over `services/api`, `services/routing` and `services/data` gave no matches (exit 1). In `services/ml` the only `joblib.load` is in `score.py` (batch job; it is now imported lazily after the sha check). `evaluate.py` only dumps. `inference.py` reads JSON and parquet only (pyarrow 26.0.1, past the CVE-2023-47248 fix in 14.0.1). New test `test_no_unpickle_api_path.py` runs `load_provider()` plus `cell_risk`, `edge_risk` and `status` in a fresh interpreter. It has a `pickle.find_class` audit hook and denies `pickle.load(s)`:
+```text
+{"provider": "HeuristicRiskProvider", "joblib": false, "sklearn": false, "events": []}
+```
+Negative control (same hook around `joblib.load` of the heuristic artifact): `caught pickle.find_class ('winterpath_ml.models', 'Calibrated')`.
+
+**Checks (after the exit-policy revision):** `uv run pytest -q` → `58 passed, 1 skipped`. `uvx ruff check .` → `All checks passed!` `gate_logreg_2026 --check` → `pins OK; coverage list OK`. `scripts/check-ownership.sh ml` → `ownership OK for agent/ml`.
+
+**Not done (Platform/coordinator):** the GitHub Actions workflow file itself (`.github/` is not ML-owned). That includes where the two git-ignored artifacts come from, where written score tables go so the API can read them, and the cron time. Network access from GitHub runners to donnees.montreal.ca has not been tested.
+
+## Contract v1.7: `wp.risk_cell_score` writer + PostGIS provider, 2026-11-11
+
+**Merges:** integration 5238c45 (cc9d330), then Data's migration 0007 at the exact commit 360fdd4 (4ba9c7d). Both were `git merge --no-edit` and clean. 360fdd4 is not in integration yet, so `scripts/check-ownership.sh ml` flags Data's 7 files. `git diff --name-only 360fdd4 HEAD`, restricted to non-ML paths, is empty: those files are byte-identical to Data's commit.
+
+**Artifacts committed** (integration's `.gitignore` allows exactly these two). Their sha256 values match `models/registry.json`:
+```text
+4c9163461c21042c44a5ce80b57759e08c4bbc066fc3f35f223cb6b58de86546  models/artifacts/v2-8d19aa86/winter311-heuristic-v1.joblib
+f7519df54d64d5d8734add8b4c3aa0631093007ffdd29de62432b729f8dc12cd  models/artifacts/v2-8d19aa86/coverage_cells.parquet
+```
+
+**Writer** (`score --write-db`, `score_db.write_scores`). One transaction does all of the following:
+1. Inserts the `wp.ingest_run` row as `running`.
+2. Per scored day, DELETEs the (`day`, `model_id`) partition and COPYs the new rows (`ingest_run_id` set, `data_through` = start of D local).
+3. Deletes all rows with `day < today(America/Montreal) − 30 days`.
+4. Marks the run `succeeded` with `record_count` and a provenance `log`.
+
+On any error the transaction rolls back, so the previous partition stays intact. A `failed` ingest_run row is recorded separately, and the job exits **5**. Staleness (exit 4) is then checked against `max(day)` in the table for the model_id.
+- `source_id` is `mtl-311` (FK to `wp.source`; scores derive from 311 history plus ECCC), overridable with `WP_ML_SCORE_SOURCE_ID`.
+- `input_checksum` is namespaced `winterpath_ml.score:<sha256>`. Data's loader skips a source when (source_id, input_checksum) has already succeeded (`db_load._already_loaded`), and the namespace means an ML run can never make it skip a 311 load.
+- `wp.source.last_success_at` is not touched.
+
+**Provider** (`RISK_SCORE_SOURCE=postgis`): `inference.load_provider(engine=<SQLAlchemy engine>)` / `api_provider(engine=...)`.
+- It reads `SELECT h3, p, data_through, scored_at FROM wp.risk_cell_score WHERE day=:day AND model_id=:model_id` for the requested **local** day, cached for 5 min per day.
+- No row, a cell outside coverage, or a database error all mean `unknown` (never `low`).
+- Heuristic probability stays `null`.
+- No engine, or an unknown source value, gives `NullRiskProvider`.
+- `file` (the default) is unchanged.
+
+**API-side change needed (services/api, not ML-owned):** `adapters.load_risk_provider` calls `factory()` with no arguments. With `RISK_SCORE_SOURCE=postgis` it must call `factory(engine=db_engine)`, using the engine `state.py` already creates. Until then a deployed API gets `NullRiskProvider` (all unknown) and logs `risk_score_engine_missing`.
+
+**Tested against a real DB at 0007.** `wp_ml` (ML's own DB) was migrated with Data's Alembic and seeded with Data's `db_load.upsert_sources`; `wp_data` was not touched:
+```text
+$ uv run alembic -c ../../db/alembic.ini -x url=<wp_ml> current
+0007_risk_cell_score (head)
+$ WP_ML_TEST_DB_URL=<wp_ml> uv run --extra db pytest -q tests/test_risk_cell_score_db.py
+9 passed in 1.31s
+```
+The live tests use a unique SYNTHETIC model_id and clean up after themselves (`count(*)` afterwards is 0 in both tables). They check:
+- partition replacement and ingest_run rows;
+- 30-day retention;
+- a run violating 0007's `p` CHECK (`CheckViolation`) that rolls back, leaves the old partition intact and records `failed`;
+- the provider through a real SQLAlchemy engine: local-day boundary at 04:59/05:00 UTC, another model_id's row ignored, a day with no rows → unknown.
+
+Real end-to-end, two identical runs (`score --start 2026-11-11 --end 2026-11-12 --write-db`):
+```text
+NOTICE: 2026-11-12 not scored yet: 311 data ends 2026-11-10 < 2026-11-11. Will be scored on a later run.
+run 1: "rows_written": 2930, "rows_replaced": {"2026-11-11": 0},    5.60 real   854392832 max RSS
+run 2: "rows_written": 2930, "rows_replaced": {"2026-11-11": 2930}, 5.99 real   780419072 max RSS
+table: 2026-11-11|winter311-heuristic-v1|heuristic|2930|0.00120|0.06016|2026-11-11 05:00:00+00|1 run id
+ingest_run: succeeded|2930|mtl-311|winterpath_ml.score:3e917eb742… (×2)
+provider (RISK_SCORE_SOURCE=postgis): HeuristicRiskProvider Counter({'low': 2560, 'moderate': 369, 'elevated': 1})
+  low None model_estimate 2026-11-11T05:00:00+00:00 2026-11-11T18:16:48+00:00
+  2026-11-12 (no rows): Counter({'unknown': 2930}); outside coverage: unknown
+```
+
+**Checks:** without DB env `63 passed, 5 skipped`. With `WP_ML_TEST_DB_URL=<wp_ml>`: `67 passed, 1 skipped` (the skip is the `wp_data` reader test, which has its own env var). `uvx ruff check .` → `All checks passed!` `gate_logreg_2026 --check` → `pins OK; coverage list OK`. `sqlalchemy>=2.0` was added to the optional `db` extra (locks 2.1.8, same as services/api).
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|

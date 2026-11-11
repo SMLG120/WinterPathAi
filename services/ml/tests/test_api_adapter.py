@@ -58,7 +58,7 @@ def test_edge_id_protocol_shape_and_unknown_ids():
 def test_api_provider_factory_without_artifacts(tmp_path, monkeypatch):
     monkeypatch.setattr(inference.config, "REGISTRY_PATH", tmp_path / "none.json")
     monkeypatch.setattr(
-        inference, "load_provider", lambda: inference.NullRiskProvider()
+        inference, "load_provider", lambda **k: inference.NullRiskProvider()
     )
     monkeypatch.setenv("WP_EDGES_GEOJSON", str(tmp_path / "nope.geojson"))
     p = inference.api_provider()

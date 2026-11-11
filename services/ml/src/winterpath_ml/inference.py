@@ -159,17 +159,23 @@ class _ScoreTableProvider:
     )  # columns: h3, day, p (calibrated), scored_at, data_through
     coverage: frozenset[str] = field(repr=False)
 
+    db: PostgisScores | None = field(default=None, repr=False)
+
     def __post_init__(self) -> None:
         self.thresholds = self.registry["levels"]["thresholds"]
         s = self.scores.copy()
         s["day"] = pd.to_datetime(s["day"]).dt.normalize()
-        self._lookup = {
-            (h, d): (p, (obs, at))
-            for h, d, p, obs, at in zip(
-                s["h3"], s["day"], s["p"], s["data_through"], s["scored_at"]
-            )
-        }
-        self._days = frozenset(s["day"])
+        self._by_day: dict[pd.Timestamp, dict[str, tuple]] = {}
+        for h, d, p, obs, at in zip(
+            s["h3"], s["day"], s["p"], s["data_through"], s["scored_at"]
+        ):
+            self._by_day.setdefault(d, {})[h] = (p, (obs, at))
+
+    def _day_table(self, day: pd.Timestamp) -> dict[str, tuple] | None:
+        """{h3: (p, (data_through, scored_at))} for a local day; None/empty = not scored."""
+        if self.db is not None:
+            return self.db.day(day)
+        return self._by_day.get(day)
 
     # -- subclass hooks
     def _estimate(
@@ -180,11 +186,15 @@ class _ScoreTableProvider:
     def _cell(self, h3_cell: str, day: pd.Timestamp) -> RiskEstimate | float:
         if day.month not in self.registry["season_months"]:
             return unknown("Outside the Nov–Apr season the layer is defined for.")
-        if h3_cell not in self.coverage:
+        if self.coverage is not None and h3_cell not in self.coverage:
             return unknown("Cell outside model coverage (no 311 history).")
-        if day not in self._days:
+        try:
+            table = self._day_table(day)
+        except ScoreSourceError:
+            return unknown("Risk scores unavailable (score store unreachable).")
+        if not table:
             return unknown("No score computed for this day (inputs not yet available).")
-        hit = self._lookup.get((h3_cell, day))
+        hit = table.get(h3_cell)
         if hit is None or pd.isna(hit[0]):
             return unknown("No score for this cell and day.")
         return self._estimate(float(hit[0]), hit[1])
@@ -307,12 +317,14 @@ def model_status(registry: dict) -> dict:
     }
 
 
-def _read_scores(d: Path) -> pd.DataFrame:
+def _read_scores(d: Path, quiet: bool = False) -> pd.DataFrame:
     files = sorted(d.glob("*.parquet")) if d.exists() else []
     if not files:
-        log.warning(
-            "risk_scores_missing: no score tables in %s; every edge will be unknown", d
-        )
+        if not quiet:
+            log.warning(
+                "risk_scores_missing: no score tables in %s; every edge will be unknown",
+                d,
+            )
         return pd.DataFrame(
             {
                 "h3": [],
@@ -331,8 +343,80 @@ def _coverage(registry: dict) -> frozenset[str]:
     )
 
 
-def load_provider(registry_path: Path = config.REGISTRY_PATH) -> RiskProvider:
-    """Provider for the registry's active layer; NullRiskProvider if registry/artifacts are missing."""
+class ScoreSourceError(RuntimeError):
+    """The score store could not be read; lookups return unknown."""
+
+
+class PostgisScores:
+    """Reads one local day of `wp.risk_cell_score` (contract v1.7) through a SQLAlchemy engine.
+
+    No row for (h3, day, model_id) means unknown. Each day is cached for `ttl_s` seconds, so a
+    newly written day becomes visible without a restart. Plain SQL, no deserialisation.
+    """
+
+    SQL = (
+        "SELECT h3, p, data_through, scored_at FROM {table}"
+        " WHERE day = :day AND model_id = :model_id"
+    )
+
+    def __init__(
+        self,
+        engine,
+        model_id: str,
+        table: str = "wp.risk_cell_score",
+        ttl_s: float = 300.0,
+    ) -> None:
+        self.engine, self.model_id, self.ttl_s = engine, model_id, ttl_s
+        self.sql = self.SQL.format(table=table)
+        self._cache: dict[pd.Timestamp, tuple[float, dict[str, tuple]]] = {}
+
+    def day(self, day: pd.Timestamp) -> dict[str, tuple]:
+        import time
+
+        from sqlalchemy import text
+
+        hit = self._cache.get(day)
+        if hit and time.monotonic() - hit[0] < self.ttl_s:
+            return hit[1]
+        try:
+            with self.engine.connect() as conn:
+                rows = conn.execute(
+                    text(self.sql), {"day": day.date(), "model_id": self.model_id}
+                ).all()
+        except Exception as e:  # any DB error -> unknown, never low
+            log.warning("risk_scores_db_error: %s", type(e).__name__)
+            raise ScoreSourceError(str(e)) from e
+        table = {
+            h: (p, (_iso(obs), _iso(at))) for h, p, obs, at in rows if p is not None
+        }
+        self._cache[day] = (time.monotonic(), table)
+        return table
+
+
+def _iso(v) -> str | None:
+    return v.isoformat() if hasattr(v, "isoformat") else v
+
+
+def load_provider(
+    registry_path: Path = config.REGISTRY_PATH,
+    *,
+    engine=None,
+    score_source: str | None = None,
+) -> RiskProvider:
+    """Provider for the registry's active layer; NullRiskProvider if registry/artifacts are missing.
+
+    `score_source` (default env `RISK_SCORE_SOURCE`, else `file`):
+    - `file`: per-day parquet score tables under MODEL_ARTIFACT_DIR (local dev).
+    - `postgis`: `wp.risk_cell_score` through `engine` (a SQLAlchemy engine passed by the API).
+      Without an engine every lookup is unknown.
+    """
+    source = (score_source or os.environ.get("RISK_SCORE_SOURCE") or "file").lower()
+    if source not in ("file", "postgis"):
+        log.warning(
+            "risk_score_source_invalid: %r; using NullRiskProvider (all unknown)",
+            source,
+        )
+        return NullRiskProvider()
     try:
         reg = load_registry(registry_path)
     except FileNotFoundError:
@@ -341,6 +425,21 @@ def load_provider(registry_path: Path = config.REGISTRY_PATH) -> RiskProvider:
             registry_path,
         )
         return NullRiskProvider()
+    if source == "postgis":
+        if engine is None:
+            log.warning(
+                "risk_score_engine_missing: RISK_SCORE_SOURCE=postgis but no engine was passed;"
+                " using NullRiskProvider (all unknown)"
+            )
+            return NullRiskProvider()
+        layer = reg["active_layer"]
+        try:
+            cov = _coverage(reg)
+        except FileNotFoundError:
+            cov = None  # rows define coverage: no row -> unknown
+        cls = ModelRiskProvider if layer == "model" else HeuristicRiskProvider
+        db = PostgisScores(engine, reg["layers"][layer]["id"])
+        return cls(reg, layer, _read_scores(Path("/nonexistent"), quiet=True), cov, db)
     try:
         cov = _coverage(reg)
     except FileNotFoundError:
@@ -434,10 +533,10 @@ class EdgeIdRiskProvider:
         return self.inner.status()
 
 
-def api_provider() -> EdgeIdRiskProvider:
+def api_provider(*, engine=None, score_source: str | None = None) -> EdgeIdRiskProvider:
     """Factory for the API's RISK_PROVIDER setting. Edge geometry from WP_EDGES_GEOJSON (default: pilot_mini)."""
     path = Path(os.environ.get("WP_EDGES_GEOJSON", DEFAULT_EDGES_GEOJSON))
-    inner = load_provider()
+    inner = load_provider(engine=engine, score_source=score_source)
     if not path.exists():
         return EdgeIdRiskProvider(inner, {})  # every edge -> unknown, never low
     return EdgeIdRiskProvider.from_geojson(inner, path)
