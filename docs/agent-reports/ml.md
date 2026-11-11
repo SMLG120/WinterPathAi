@@ -228,8 +228,23 @@ $ uv run python -m winterpath_ml.gate_logreg_2026 --check
 pins OK; coverage list OK
 ```
 
+### Contract v1.6.0 (CR-ML-2 approved) — merged a292b63, clean
+- **Reader updated:** `report_cells_db.read_report_cells` now filters on `nature = ANY(['requete','plainte']) AND category = ANY(LABEL_CATEGORIES)`.
+  - `LABEL_CATEGORIES` is derived from `config.WINTER_CATEGORIES`: `sidewalk_slippery`, `roadway_slippery`, `snow_clearing`, `snow_dumping`.
+  - So the v1.6 alley categories (`snow_clearing_alley`, `snow_dumping_alley`) are excluded.
+  - The `--compare` diagnostics now map the alley activities to their v1.6 category names.
+- **Expected after Data's v1.6 reload:** 0 cell-days differ from the CSV labels.
+- **Not yet verified, by instruction.** The coordinator will send Data's new SHA. `wp_data` still holds the ee5f1fc load, where alley rows sit inside `snow_clearing`/`snow_dumping`; a comparison now would still show the old 18 and prove nothing.
+- Migration 0006 will change in Data's next commit (v1.6 folds the alley categories into it). This branch has ee5f1fc's 0006 unmodified, so merging Data's new SHA will bring their version in cleanly.
+```text
+$ cd services/ml && uv run pytest -q
+43 passed, 1 skipped
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+
 ### Open items
-- CR-ML-2: user decision.
+- **Waiting for Data's v1.6 SHA:** merge that exact commit, confirm `wp_data` has been reloaded with alley categories, then run `report_cells_db --compare`. Expected `db_vs_csv_label` = 0 / 0 / 0 and `v2_panel_label_flips` = 0.
 - Integration still lacks 0006. This branch now contains `agent/data` ee5f1fc, so merging `agent/ml` also brings that commit; the coordinator may prefer to merge Data first.
 - **`scripts/check-ownership.sh ml` currently reports violations, all caused by that authorised merge** (data/fixtures, data/qa, db/migrations/0006, services/ingestion, docs/agent-reports/data.md). Proof that ML edited none of them:
 ```text

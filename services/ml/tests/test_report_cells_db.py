@@ -37,12 +37,18 @@ class _FakeConn:
 def test_reader_filters_label_natures_and_sums():
     conn = _FakeConn([("892baa441b3ffff", date(2024, 1, 10), "sidewalk_slippery", 3)])
     df = rdb.read_report_cells(conn)
-    assert conn.cur.params == {"natures": ["requete", "plainte"]}
-    assert (
-        "SUM(n)" in conn.cur.sql
-        and "nature = ANY" in conn.cur.sql
-        and "GROUP BY h3, day, category" in conn.cur.sql
-    )
+    assert conn.cur.params == {
+        "natures": ["requete", "plainte"],
+        # v1.6 (CR-ML-2): alley categories excluded from the label
+        "categories": [
+            "sidewalk_slippery",
+            "roadway_slippery",
+            "snow_clearing",
+            "snow_dumping",
+        ],
+    }
+    assert "SUM(n)" in conn.cur.sql and "GROUP BY h3, day, category" in conn.cur.sql
+    assert "nature = ANY" in conn.cur.sql and "category = ANY" in conn.cur.sql
     assert list(df.columns) == ["h3", "day", "category", "n"] and df["n"].iloc[0] == 3
 
 
@@ -105,9 +111,4 @@ def test_compare_attributes_difference_to_alley_categories():
 def test_live_db_reader_shape():
     with rdb.connect(os.environ["WP_ML_TEST_REPORT_DB_URL"]) as conn:
         df = rdb.read_report_cells(conn)
-    assert len(df) > 0 and set(df["category"]) <= {
-        "sidewalk_slippery",
-        "roadway_slippery",
-        "snow_clearing",
-        "snow_dumping",
-    }
+    assert len(df) > 0 and set(df["category"]) <= set(rdb.LABEL_CATEGORIES)

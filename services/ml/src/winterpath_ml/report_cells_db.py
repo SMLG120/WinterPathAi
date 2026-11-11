@@ -1,13 +1,11 @@
-"""Reader for the Data agent's `wp.report_311_cell` (contract v1.5.0, CR-ML-1).
+"""Reader for the Data agent's `wp.report_311_cell` (contract v1.6.0; CR-ML-1, CR-ML-2).
 
-The table is keyed (h3, day, category, nature). ML labels use only `nature IN ('requete','plainte')`,
-summed over natures. This returns the same (h3, day, category, n) frame as
-`data_311.aggregate_report_cells`.
-
-Known, measured difference from the CSV label of record (CR-ML-2, pending): Data maps the alley
-activities `Déneigement ruelle` / `Dépôt neige-ruelle` into `snow_clearing` / `snow_dumping`, which
-ML's frozen label set excludes. The table cannot separate them. The CSV aggregation therefore stays
-the label of record for v2 and `models/gate-logreg-2026.md`.
+The table is keyed (h3, day, category, nature). ML labels SUM `n` over
+`nature IN ('requete','plainte')` AND `category IN` the four label categories
+(`config.WINTER_CATEGORIES`: sidewalk_slippery, roadway_slippery, snow_clearing, snow_dumping).
+Since v1.6 the alley activities have their own categories (`snow_clearing_alley`,
+`snow_dumping_alley`) and are excluded here, matching the CSV label of record.
+Returns the same (h3, day, category, n) frame as `data_311.aggregate_report_cells`.
 
     uv run --extra db python -m winterpath_ml.report_cells_db --compare --database-url "$URL"
 """
@@ -24,15 +22,18 @@ import pandas as pd
 from . import config, data_311
 
 LABEL_NATURES = ("requete", "plainte")
+LABEL_CATEGORIES = tuple(dict.fromkeys(config.WINTER_CATEGORIES.values()))
+# v1.6 alley categories: not part of the label; used only to diagnose differences.
 EXTRA_ALLEY_ACTIVITIES = {
-    "Déneigement ruelle": "snow_clearing",
-    "Dépôt neige-ruelle": "snow_dumping",
+    "Déneigement ruelle": "snow_clearing_alley",
+    "Dépôt neige-ruelle": "snow_dumping_alley",
 }
 
 SQL = """
 SELECT h3, day, category, SUM(n)::int AS n
   FROM wp.report_311_cell
  WHERE nature = ANY(%(natures)s)
+   AND category = ANY(%(categories)s)
  GROUP BY h3, day, category
 """
 
@@ -45,9 +46,13 @@ def connect(url: str | None = None):
     return psycopg.connect(url.replace("postgresql+psycopg://", "postgresql://", 1))
 
 
-def read_report_cells(conn, natures: tuple[str, ...] = LABEL_NATURES) -> pd.DataFrame:
+def read_report_cells(
+    conn,
+    natures: tuple[str, ...] = LABEL_NATURES,
+    categories: tuple[str, ...] = LABEL_CATEGORIES,
+) -> pd.DataFrame:
     with conn.cursor() as cur:
-        cur.execute(SQL, {"natures": list(natures)})
+        cur.execute(SQL, {"natures": list(natures), "categories": list(categories)})
         rows = cur.fetchall()
     df = pd.DataFrame(rows, columns=["h3", "day", "category", "n"])
     df["day"] = pd.to_datetime(df["day"])
@@ -129,7 +134,8 @@ def main(argv: list[str] | None = None) -> int:
     with connect(a.database_url) as conn:
         db = read_report_cells(conn)
     print(
-        f"db rows (h3, day, category) with nature in {LABEL_NATURES}: {len(db)}, sum n = {int(db['n'].sum())}"
+        f"db rows (h3, day, category) with nature in {LABEL_NATURES}, category in {LABEL_CATEGORIES}: "
+        f"{len(db)}, sum n = {int(db['n'].sum())}"
     )
     if a.compare:
         raw = data_311.read_raw_311(config.RAW_311_CSV)
