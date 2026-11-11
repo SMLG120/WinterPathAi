@@ -1,7 +1,18 @@
-"""Routing engine: snapping, exclusions, costing, Dijkstra/A*, route assembly."""
+"""Routing engine: snapping, exclusions, costing, Dijkstra/A*, route assembly.
+
+Performance (cycle 14): everything that does not depend on the request is computed once per
+engine — the adjacency (in networkx's own iteration order, so tie-breaking is unchanged), the
+per-profile set of statically allowed edges and each edge's default cost (risk unknown, no
+hazard). Per request only hazards, closures and known risk estimates are applied on top, and
+the two searches run in a specialised loop that performs exactly the same pushes, in the same
+order, with the same floating-point arithmetic as :func:`winterpath_routing.search.astar`, so
+routes are identical to the generic implementation (tests/test_routing_golden.py).
+"""
 
 from __future__ import annotations
 
+import heapq
+import itertools
 import math
 from collections.abc import Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -24,8 +35,8 @@ from .models import (
     Variant,
     _iso,
 )
-from .risk import RiskProvider
-from .search import NoPathError, SearchResult, astar, dijkstra
+from .risk import NullRiskProvider, RiskProvider
+from .search import NoPathError, SearchResult
 from .steps import Piece, Step, build_steps
 
 Weight = Literal["distance", "time", "generalized"]
@@ -34,6 +45,9 @@ END: Hashable = ("__end__",)
 #: Planar distance in EPSG:32188 vs. edge length_m — keep the A* heuristic strictly below.
 HEURISTIC_SAFETY = 0.999
 MIN_OD_SEPARATION_M = 2.0
+#: Up to this many per-request cost overrides are applied eagerly to a copy of the static
+#: weights; beyond it weights are computed lazily, only for edges the search reaches.
+_MAX_EAGER_OVERRIDES = 2048
 
 
 class RoutingError(Exception):
@@ -136,16 +150,85 @@ class _Context:
     disruptions: dict[str, list[str]]  # edge_id -> hazard ids (confirmed, passable)
     possible: dict[str, list[str]]  # edge_id -> hazard ids (blocking, activity unknown)
     reports: dict[str, list[str]]  # edge_id -> hazard ids (unverified)
+    #: the provider's estimates for allowed edges; a missing edge means unknown
     risk: Mapping[str, RiskEstimate]
     speed: float
     any_simulated_risk: bool
+    static: _ProfileStatic
+    #: allowed edges whose cost may differ from the static default (hazard or known risk)
+    overrides: frozenset[str]
     _costs: dict[str, EdgeCost] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class _ProfileStatic:
+    """Request-independent data for one profile (computed once per engine)."""
+
+    #: edges not excluded by foot access, the step-free rule or the main-component rule
+    allowed: frozenset[str]
+    allowed_sorted: tuple[str, ...]
+    #: cost with risk unknown and no hazard — what edge_cost() returns in that case
+    costs: dict[str, EdgeCost]
+    #: costs[eid].total_s
+    generalized: dict[str, float]
+
+
+class _LazyWeights(dict):
+    """eid → weight, computed on first use (only edges the search actually reaches)."""
+
+    __slots__ = ("_f",)
+
+    def __init__(self, f) -> None:
+        super().__init__()
+        self._f = f
+
+    def __missing__(self, eid: str) -> float:
+        w = self._f(eid)
+        self[eid] = w
+        return w
 
 
 class RoutingEngine:
     def __init__(self, graph: PedestrianGraph, config: CostConfig | None = None) -> None:
         self.graph = graph
         self.config = config or CostConfig()
+        g = graph.g
+        # Same order as ``g.out_edges(n, keys=True)`` at search time (the graph is never mutated
+        # after load), so arcs are relaxed in the same order as before.
+        self._adj: dict[Hashable, tuple[tuple[Hashable, str], ...]] = {
+            n: tuple((v, k) for _, v, k in g.out_edges(n, keys=True)) for n in g.nodes
+        }
+        self._length: dict[str, float] = {eid: e.length_m for eid, e in graph.edges.items()}
+        self._static: dict[Profile, _ProfileStatic] = {p: self._build_static(p) for p in Profile}
+
+    def _build_static(self, profile: Profile) -> _ProfileStatic:
+        g, cfg = self.graph, self.config
+        allowed = frozenset(
+            eid
+            for eid, e in g.edges.items()
+            if exclusion_reason(e, profile, main_component_edge_ids=g.main_component_edge_ids)
+            is None
+        )
+        unknown = RiskEstimate.unknown()
+        costs = {
+            eid: edge_cost(
+                g.edges[eid],
+                profile,
+                unknown,
+                n_confirmed_disruptions=0,
+                n_unverified_reports=0,
+                avoid_unverified_reports=True,
+                config=cfg,
+                n_possible_closures=0,
+            )
+            for eid in allowed
+        }
+        return _ProfileStatic(
+            allowed=allowed,
+            allowed_sorted=tuple(sorted(allowed)),
+            costs=costs,
+            generalized={eid: c.total_s for eid, c in costs.items()},
+        )
 
     # ------------------------------------------------------------------ context
     def _context(
@@ -176,21 +259,29 @@ class RoutingEngine:
             # other evidence states (unknown/model/simulated hazards) do not affect routing
 
         closed_ids = {eid for eids in closures.values() for eid in eids}
-        allowed = frozenset(
-            eid
-            for eid, e in g.edges.items()
-            if exclusion_reason(
-                e,
-                req.profile,
-                closed_edge_ids=closed_ids,
-                main_component_edge_ids=g.main_component_edge_ids,
-            )
-            is None
+        # Static exclusions (foot access, step-free rule, main component) are precomputed per
+        # profile; confirmed closures active at this time are removed on top.
+        st = self._static[req.profile]
+        if closed_ids:
+            allowed = st.allowed - closed_ids
+            ids = [eid for eid in st.allowed_sorted if eid not in closed_ids]
+        else:
+            allowed = st.allowed
+            ids = list(st.allowed_sorted)
+        if isinstance(risk_provider, NullRiskProvider) or not ids:
+            # NullRiskProvider answers "unknown" (never simulated) for every edge: same as no
+            # estimate at all, without building and scanning a dict over every edge.
+            raw: Mapping[str, RiskEstimate] = {}
+        else:
+            raw = risk_provider.edge_risk(ids, req.at)
+        # Unknown and missing estimates cost the same and are reported the same (unknown, never
+        # zero risk), so only *known* estimates for allowed edges are kept.
+        any_sim = any(
+            r and r.evidence.state is EvidenceState.SIMULATED and eid in allowed
+            for eid, r in raw.items()
         )
-        ids = sorted(allowed)
-        raw = risk_provider.edge_risk(ids, req.at) if ids else {}
-        risk = {eid: raw.get(eid) or RiskEstimate.unknown() for eid in ids}
-        any_sim = any(r.evidence.state is EvidenceState.SIMULATED for r in risk.values())
+        risk = {eid: r for eid, r in raw.items() if r and not r.is_unknown and eid in allowed}
+        overrides = (disruptions.keys() | possible.keys() | reports.keys() | risk.keys()) & allowed
         return _Context(
             req,
             allowed,
@@ -201,10 +292,22 @@ class RoutingEngine:
             risk,
             cfg.speed_for(req.profile),
             any_sim,
+            st,
+            frozenset(overrides),
         )
 
     def _cost(self, ctx: _Context, eid: str) -> EdgeCost:
         c = ctx._costs.get(eid)
+        if c is None:
+            r = ctx.risk.get(eid)
+            if (
+                (r is None or r.is_unknown)
+                and eid not in ctx.disruptions
+                and eid not in ctx.possible
+                and eid not in ctx.reports
+            ):
+                # identical to edge_cost(...) with risk unknown and no hazard on the edge
+                c = ctx.static.costs.get(eid)
         if c is None:
             c = edge_cost(
                 self.graph.edges[eid],
@@ -224,6 +327,22 @@ class RoutingEngine:
             return self.graph.edges[eid].length_m
         c = self._cost(ctx, eid)
         return c.base_s if weight == "time" else c.total_s
+
+    def _weights(self, ctx: _Context, weight: Weight) -> Mapping[str, float]:
+        """eid → arc weight; equal to ``_weight(ctx, eid, weight)`` for every allowed edge."""
+        if weight == "distance":
+            return self._length
+        if weight == "time":
+            return _LazyWeights(lambda eid: self._cost(ctx, eid).base_s)
+        if not ctx.overrides:
+            return ctx.static.generalized
+        if len(ctx.overrides) <= _MAX_EAGER_OVERRIDES:
+            w = dict(ctx.static.generalized)  # C-level copy, then the few hazard/risk edges
+            for eid in ctx.overrides:
+                w[eid] = self._cost(ctx, eid).total_s
+            return w
+        # e.g. a risk layer with an estimate on most edges: cost only what the search reaches
+        return _LazyWeights(lambda eid: self._cost(ctx, eid).total_s)
 
     # ------------------------------------------------------------------ snapping
     def _snap(self, which: str, lonlat: LonLat, allowed: frozenset[str]) -> _Snap:
@@ -273,36 +392,96 @@ class RoutingEngine:
             if ft is not None and ft >= fo:
                 start_arcs.append((END, (ft - fo) * w(ctx, eid, weight), (eid, fo, ft)))
 
-        out_edges = g.g.out_edges
-
-        def neighbors(n: Hashable):
-            if n == START:
-                yield from start_arcs
-                return
-            if n == END:
-                return
-            for _, v, eid in out_edges(n, keys=True):
-                if eid in allowed:
-                    yield v, w(ctx, eid, weight), (eid, 0.0, 1.0)
-            yield from end_arcs.get(n, ())
-
         if algorithm == "dijkstra":
-            return dijkstra(START, END, neighbors)
+            return self._run(start_arcs, end_arcs, allowed, self._weights(ctx, weight), None, 0.0)
 
         # Admissible heuristic: straight-line metric distance to the nearest *snapped* destination
         # point (on the network), converted to the weight's unit. Every arc costs at least its
         # metric length / speed, so this never overestimates.
-        targets = t.points
         per_m = (1.0 if weight == "distance" else 1.0 / ctx.speed) * HEURISTIC_SAFETY
-        node_xy = g.node_xy
+        return self._run(start_arcs, end_arcs, allowed, self._weights(ctx, weight), t.points, per_m)
+
+    def _run(
+        self,
+        start_arcs: list[tuple[Hashable, float, tuple]],
+        end_arcs: Mapping[Hashable, list[tuple[Hashable, float, tuple]]],
+        allowed: frozenset[str],
+        weights: Mapping[str, float],
+        targets: Sequence[tuple[float, float]] | None,
+        per_m: float,
+    ) -> SearchResult:
+        """:func:`search.astar` from START to END, specialised for this graph.
+
+        Same relaxation order (start arcs; then, per node, its out-arcs in networkx order
+        followed by its end arcs), same ``(priority, counter)`` heap keys and the same
+        arithmetic, so it settles the same nodes and returns the same path. ``targets=None``
+        is Dijkstra (heuristic 0).
+        """
+        adj = self._adj
+        xy = self.graph._node_xy
+        hypot = math.hypot
+        heappush, heappop = heapq.heappush, heapq.heappop
+        inf = math.inf
+        single = targets[0] if targets is not None and len(targets) == 1 else None
 
         def h(n: Hashable) -> float:
-            if n == END or n == START:
+            if targets is None or n is END:
                 return 0.0
-            x, y = node_xy(n)  # type: ignore[arg-type]
-            return min(math.hypot(x - tx, y - ty) for tx, ty in targets) * per_m
+            x, y = xy[n]  # type: ignore[index]
+            if single is not None:
+                return hypot(x - single[0], y - single[1]) * per_m
+            return min(hypot(x - tx, y - ty) for tx, ty in targets) * per_m
 
-        return astar(START, END, neighbors, h)
+        counter = itertools.count()
+        dist: dict[Hashable, float] = {START: 0.0}
+        parent: dict[Hashable, tuple[Hashable, Any]] = {}
+        closed: set[Hashable] = set()
+        heap: list[tuple[float, int, Hashable]] = [(0.0, next(counter), START)]
+        no_end: tuple = ()
+        while heap:
+            _, _, u = heappop(heap)
+            if u in closed:
+                continue
+            if u is END:
+                nodes = [u]
+                labels: list[Any] = []
+                while u in parent:
+                    u, lab = parent[u]
+                    labels.append(lab)
+                    nodes.append(u)
+                nodes.reverse()
+                labels.reverse()
+                return SearchResult(dist[END], nodes, labels, len(closed) + 1)
+            closed.add(u)
+            du = dist[u]
+            if u is START:
+                arcs: Iterable[tuple[Hashable, float, tuple]] = start_arcs
+            else:
+                for v, eid in adj[u]:
+                    if eid not in allowed:
+                        continue
+                    w = weights[eid]
+                    if w < 0:
+                        raise ValueError(f"negative edge cost {w} on arc {u}->{v}")
+                    if v in closed:
+                        continue
+                    nd = du + w
+                    if nd < dist.get(v, inf):
+                        dist[v] = nd
+                        parent[v] = (u, (eid, 0.0, 1.0))
+                        heappush(heap, (nd + h(v), next(counter), v))
+                arcs = end_arcs.get(u, no_end)
+            for v, w, lab in arcs:
+                if w < 0:
+                    raise ValueError(f"negative edge cost {w} on arc {u}->{v}")
+                if v in closed:
+                    continue
+                nd = du + w
+                if nd < dist.get(v, inf):
+                    dist[v] = nd
+                    parent[v] = (u, lab)
+                    heappush(heap, (nd + h(v), next(counter), v))
+        raise NoPathError(f"no path from {START!r} to {END!r}")
 
     def shortest_path(
         self,

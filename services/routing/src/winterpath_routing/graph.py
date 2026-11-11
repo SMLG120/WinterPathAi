@@ -128,7 +128,10 @@ class PedestrianGraph:
         candidates. ``([], inf, p)`` when none qualifies.
         """
         p = point_to_metric(lon, lat)
-        allowed_set = set(allowed) if allowed is not None else None
+        if allowed is None or isinstance(allowed, (set, frozenset)):
+            allowed_set = allowed  # no per-request copy of a 16k-edge set
+        else:
+            allowed_set = set(allowed)
         idx = self._tree.query(p, predicate="dwithin", distance=max_m)
         best: list[tuple[float, str]] = []
         for i in idx:
