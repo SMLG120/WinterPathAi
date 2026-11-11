@@ -298,6 +298,21 @@ pins OK; coverage list OK
 $ git diff --name-only f6eb3b2 HEAD | grep -v -E '^(services/ml/|models/|docs/agent-reports/ml.md)'
 (no output)
 ```
+- **Resolved 2026-11-11:** integration/winterpath (6a712e9, all five agents) merged into agent/ml with `git merge --no-edit` (fast-forward 2e4d5fa → 6a712e9; no file under `services/ml/` or `models/` changed). Checks re-run:
+```text
+$ git merge-base --is-ancestor f6eb3b2 HEAD && echo "f6eb3b2 in HEAD"
+f6eb3b2 in HEAD
+$ scripts/check-ownership.sh ml
+ownership OK for agent/ml
+$ uv run pytest -q
+43 passed, 1 skipped in 4.03s
+$ uvx ruff check . && uvx ruff format --check .
+All checks passed!
+28 files already formatted
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+date guard: pre-registered earliest run date is 2027-05-08; today is 2026-11-11. Test winter not evaluable.
+```
 
 ### Open items
 - None blocking. The logistic-regression gate runs on or after 2027-05-08. The daily `winterpath_ml.score` job is still unscheduled (Platform/coordinator).
