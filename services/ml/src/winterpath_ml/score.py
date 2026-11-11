@@ -43,8 +43,10 @@ def score_days(start: date, end: date, layer: str | None = None) -> list[str]:
     entry = reg["layers"][layer]
     if layer == "model" and not entry["enabled"]:
         raise inference.ModelDisabledError("model layer is disabled in the registry")
-    scorer = joblib.load(config.REPO_ROOT / entry["artifact"]["path"])
-    cells = pd.read_parquet(config.REPO_ROOT / reg["coverage"]["path"])["h3"].tolist()
+    scorer = joblib.load(inference.artifact_path(reg, entry["artifact"]))
+    cells = pd.read_parquet(inference.artifact_path(reg, reg["coverage"]))[
+        "h3"
+    ].tolist()
     rc = pd.read_parquet(config.INTERIM_DIR / "report_311_cell.parquet")
     ac = pd.read_parquet(config.INTERIM_DIR / "all_requests_cell.parquet")
     wd = weather.load_weather(date(2021, 10, 1), end)
