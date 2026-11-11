@@ -174,6 +174,10 @@ class Hazard:
     title_en: str | None = None
     title_fr: str | None = None
     report_count: int | None = None
+    #: Source-rule activity at the query time (``wp.closure_active_at``, data-model v1.4):
+    #: True = active, None = unknown (e.g. no usable weekly schedule). Rows the rule reports as
+    #: inactive are not returned at all. Unknown is never treated as clear.
+    active: bool | None = True
 
     def active_at(self, at: datetime) -> bool:
         if self.valid_from is not None and at < self.valid_from:
@@ -182,8 +186,22 @@ class Hazard:
 
     @property
     def is_hard_closure(self) -> bool:
-        """Only a *confirmed* closure explicitly blocking passage is a hard exclusion."""
-        return self.blocks_passage is True and self.evidence.state is EvidenceState.CONFIRMED
+        """Only a *confirmed* closure explicitly blocking passage **and active** is excluded."""
+        return (
+            self.blocks_passage is True
+            and self.active is True
+            and self.evidence.state is EvidenceState.CONFIRMED
+        )
+
+    @property
+    def is_possible_closure(self) -> bool:
+        """Confirmed passage-blocking permit whose activity at the query time is unknown:
+        penalised and flagged, never excluded and never treated as clear."""
+        return (
+            self.blocks_passage is True
+            and self.active is None
+            and self.evidence.state is EvidenceState.CONFIRMED
+        )
 
 
 def _iso(dt: datetime | None) -> str | None:

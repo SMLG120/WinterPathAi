@@ -18,6 +18,7 @@ EvidenceStateT = Literal["confirmed", "unverified_report", "model_estimate", "un
 ErrorCode = Literal[
     "VALIDATION_ERROR",
     "OUTSIDE_COVERAGE",
+    "OFF_NETWORK",
     "BBOX_TOO_LARGE",
     "NO_ROUTE",
     "NOT_FOUND",
