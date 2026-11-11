@@ -217,6 +217,17 @@ No known vulnerabilities found
 ```
 - The first pip-audit attempt failed with "Request failed after 3 retries" (network); the retry above succeeded.
 
+### Merge of integration eb92007 (frontend, platform, v1.5.0 clarification) — 4c69b5b, clean
+- No ML-relevant contract change: the clarification covers explanation-code evidence only.
+- **Platform harness ran without artifacts** (risk layer `none`): the expected `NullRiskProvider` path. With 4a88459, artifacts mounted anywhere work through `MODEL_ARTIFACT_DIR`, and a missing directory now logs `risk_artifacts_missing` instead of failing silently.
+- `agent/data` ee5f1fc is still **not** in integration, so the ownership-check note above still applies.
+```text
+$ cd services/ml && uv run pytest -q
+43 passed, 1 skipped
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+
 ### Open items
 - CR-ML-2: user decision.
 - Integration still lacks 0006. This branch now contains `agent/data` ee5f1fc, so merging `agent/ml` also brings that commit; the coordinator may prefer to merge Data first.
