@@ -1,7 +1,7 @@
 # Agent report — routing
 
 - **Status:** READY FOR REVIEW, **including for a combined merge with `agent/data` @ `4254dd7`** (migration 0006 and the regenerated Geofabrik pilot_mini): 302 passed on both. Cycle 7 fixes API-NULL-1 and makes the tests fixture-independent. Cycle 6 adopted contract **v1.5.0**: 311 natures, CR-ROUTING-4 and CR-ROUTING-9 accepted. Cycle 5 added v1.4.0 closure activity and `terminal_at`; cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
-- **Branch / SHA:** `agent/routing` @ `31651e5` (code: contract v1.6.0), on merge `5af6145` of `integration/winterpath` `a292b63`. Previously `517186d` (cycle 7). It fast-forwarded to `integration/winterpath` `eb92007` (the contract v1.5.0 evidence-mapping clarification), then `92150c1` (API-NULL-1) and `517186d` (fixture-derived tests). This report is committed on top. `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
+- **Branch / SHA:** `agent/routing` @ `31651e5` (code: contract v1.6.0), on merge `5af6145` of `integration/winterpath` `a292b63`. Earlier code checkpoints: `517186d` (cycle 7), `864aa80` (cycle 6), `b6b62c4` (cycle 5). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
