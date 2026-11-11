@@ -70,8 +70,36 @@ pins OK; coverage list OK
 exit=2
 ```
 
+### API interface mismatch found and fixed on the ML side
+- **The mismatch:** `services/api` and `services/routing` define `RiskProvider` as `risk_layer` + `edge_risk(edge_ids, at) -> {edge_id: RiskEstimate}`. My providers take edge **geometry** and return one estimate. If wired directly, the API's `NormalisingRiskProvider` would have caught the error and silently returned `unknown` for everything.
+- **The fix:** added `inference.EdgeIdRiskProvider` + factory `inference.api_provider`. It looks edge geometry up from a GeoJSON (`WP_EDGES_GEOJSON`, default `data/fixtures/pilot_mini/edges.geojson`), returns explicit `unknown` for ids it can't find, and exposes `model_status()`. No Routing/API files were edited.
+- **Verified** against the real API adapter code, read-only, in a temporary env:
+```text
+$ cd services/api && uv run --with-editable ../ml python - <<'EOF' ... load_risk_provider("winterpath_ml.inference:api_provider") ...
+NormalisingRiskProvider risk_layer= heuristic
+2026-01-15 201 {'elevated': 60, 'moderate': 140, 'unknown': 1} prob non-null: 0
+2026-07-01 201 {'unknown': 201} prob non-null: 0
+evidence: model_estimate ('mtl-311', 'eccc-geomet') 2026-01-15 05:00:00+00:00
+{'risk_layer': 'heuristic', 'enabled': False, 'model_id': 'winter311-hgb-v1'}
+```
+  - 201 ids = the 200 pilot edges + one deliberately bogus id, which comes back `unknown`.
+- **Needed from Routing/API (not done by ML):**
+  - add `winterpath-ml` (path dependency) to `services/api/pyproject.toml`;
+  - set `RISK_PROVIDER=winterpath_ml.inference:api_provider` (and `WP_EDGES_GEOJSON` if the graph isn't pilot_mini);
+  - artifacts must exist (`evaluate` + `score`), otherwise everything stays `unknown`.
+- Tests after this change:
+```text
+$ cd services/ml && uv run pytest -q
+.....................................                                    [100%]
+37 passed in 11.68s
+$ uv run --with ruff ruff check . && uv run --with ruff ruff format --check .
+All checks passed!
+25 files already formatted
+```
+
 ### Open items
 - CR-ML-1 is pending a user decision. No Data-owned files were touched.
+- Routing/API: wire `api_provider` as described above.
 - **2027-05-08 or later:** run `uv run python -m winterpath_ml.gate_logreg_2026` once. If the decision is PASS, open a reviewed commit that promotes `winter311-logreg-v1` in the registry, as the gate document describes.
 - Daily `winterpath_ml.score` scheduling is still unassigned (Platform/coordinator).
 
