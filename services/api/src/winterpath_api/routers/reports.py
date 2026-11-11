@@ -35,7 +35,7 @@ def _not_found() -> ApiError:
 
 
 def _parse_uuid(raw: str) -> uuid.UUID:
-    """Malformed id → 422 (declared since contract v1.1.0); reveals nothing about existence."""
+    """Admin endpoints: malformed id → 422 (declared since contract v1.1.0)."""
     try:
         return uuid.UUID(raw)
     except ValueError as exc:
@@ -89,14 +89,15 @@ def delete_own_report(
     x_deletion_token: str | None = Header(None, alias="X-Deletion-Token"),
     state: AppState = Depends(get_state),
 ) -> Response:
-    rid = _parse_uuid(reportId)
-    now = datetime.now(UTC)
-    # Malformed token → 422 (syntactic, says nothing about the report). A well-formed but wrong
-    # token → 404, indistinguishable from a missing report.
+    # Contract v1.5 (CR-ROUTING-4): a wrong, missing or malformed token, or an unknown/non-UUID
+    # id, is 404 NOT_FOUND — the response never reveals whether a report exists.
+    try:
+        rid = uuid.UUID(reportId)
+    except ValueError:
+        raise _not_found() from None
     if not x_deletion_token or not 32 <= len(x_deletion_token) <= 128:
-        raise ApiError(
-            422, "VALIDATION_ERROR", "X-Deletion-Token header (32–128 chars) is required."
-        )
+        raise _not_found()
+    now = datetime.now(UTC)
     r = state.reports.get(rid, now)
     if r is None or r.status == "deleted":
         raise _not_found()

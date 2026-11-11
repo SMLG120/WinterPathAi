@@ -355,3 +355,57 @@ def test_terminal_at_written_and_drives_30_day_purge(db) -> None:
     assert terminal(rej.id) is not None and terminal(dele.id) is not None
     repo.purge(now + timedelta(days=30))
     assert terminal(rej.id) is None and terminal(dele.id) is None
+
+
+# ----------------------------------------------------------------------------- 311 natures (v1.5)
+# No migration adds report_311_cell.nature yet, so the v1.5 SQL is exercised on a session TEMP
+# table with the v1.5 shape (single-connection engine). TEST cells only; nothing persists.
+def test_311_sums_natures_then_applies_floor() -> None:
+    from datetime import UTC, date, datetime
+
+    import h3
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.pool import StaticPool
+
+    from winterpath_api.repositories.hazards import PostgisHazardRepository
+    from winterpath_api.repositories.reports import InMemoryReportRepository
+
+    eng = create_engine(os.environ["DATABASE_URL"], poolclass=StaticPool)
+    a, b, c = (h3.latlng_to_cell(45.5043, -73.5760 + i * 0.003, 9) for i in range(3))
+    d = date(2026, 12, 15)
+    rows = [
+        # cell a: 1 requete + 2 plainte = 3 on one day → shown (floor after summing)
+        (a, d, "sidewalk_slippery", "requete", 1),
+        (a, d, "sidewalk_slippery", "plainte", 2),
+        # cell b: 2 requete + 5 information → 2 public → suppressed (information not counted)
+        (b, d, "sidewalk_slippery", "requete", 2),
+        (b, d, "sidewalk_slippery", "information", 5),
+        # cell c: 2 + 2 on two different days → each day < 3 → suppressed (floor is per day)
+        (c, d, "snow_clearing", "requete", 2),
+        (c, date(2026, 12, 14), "snow_clearing", "plainte", 2),
+    ]
+    with eng.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TEMP TABLE report_311_cell (h3 text, day date, category text,"
+                " nature text, n int, PRIMARY KEY (h3, day, category, nature))"
+            )
+        )
+        conn.execute(
+            text("INSERT INTO pg_temp.report_311_cell VALUES (:h, :d, :c, :na, :n)"),
+            [dict(zip(("h", "d", "c", "na", "n"), r, strict=True)) for r in rows],
+        )
+    try:
+        repo = PostgisHazardRepository(
+            eng, InMemoryReportRepository(), report_311_table="pg_temp.report_311_cell"
+        )
+        at = datetime(2026, 12, 15, 18, tzinfo=UTC)
+        got = {h.hazard_id: h for h in repo.list(at) if h.hazard_id.startswith("311:")}
+        assert set(got) == {f"311:{a}:sidewalk_slippery"}
+        h = got[f"311:{a}:sidewalk_slippery"]
+        assert h.report_count == 3
+        assert h.evidence.state.value == "unverified_report"
+        assert h.title_en == "311 reports: slippery sidewalk"
+        assert h.title_fr == "Requêtes 311 : trottoir glissant"
+    finally:
+        eng.dispose()
