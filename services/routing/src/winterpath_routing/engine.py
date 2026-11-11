@@ -482,6 +482,15 @@ class RoutingEngine:
                 if fr
                 else "No risk layer: risk is unknown along the whole route."
             )
+        elif risk_layer == "heuristic":
+            w.append(
+                "Niveaux de risque heuristiques (fréquence historique des requêtes 311 "
+                "hivernales × météo observée) : ce ne sont ni des probabilités ni l'état des "
+                "trottoirs."
+                if fr
+                else "Risk levels are a heuristic (historical winter 311 report frequency × "
+                "observed weather): not probabilities and not sidewalk conditions."
+            )
         for label_en, label_fr, s in (("Origin", "Le départ", o), ("Destination", "L'arrivée", t)):
             if s.distance_m > 25:
                 d = round(s.distance_m)
