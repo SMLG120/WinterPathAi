@@ -41,5 +41,17 @@ months outside Nov–Apr, days without a score table, and edges touching any suc
 The heuristic layer always returns `probability = null`. `ModelRiskProvider` refuses to load a model
 the registry marks disabled.
 
-To swap the CSV aggregation for the Data agent's table: `data_311.read_report_cells_sql(conn)`
-returns the same `(h3, day, category, n)` frame as `data_311.aggregate_report_cells`.
+**Do not use `data_311.read_report_cells_sql`.** It predates contract v1.5.0 (`nature` in the PK) and doesn't filter natures. It is left unchanged only because `data_311.py` is pinned by `models/gate-logreg-2026.md`. A nature-summing reader will be added in a separate module once Data's v1.5 migration reaches integration. The CSV aggregation remains the label of record.
+
+## Wiring into services/api (edge-id protocol)
+
+`winterpath_routing.RiskProvider` takes edge ids, not geometry. Use the adapter:
+
+```bash
+RISK_PROVIDER=winterpath_ml.inference:api_provider
+WP_EDGES_GEOJSON=data/fixtures/pilot_mini/edges.geojson   # default; must match the graph the API routes on
+```
+
+`api_provider()` returns an `EdgeIdRiskProvider` exposing `risk_layer`, `edge_risk(edge_ids, at)` and `model_status()`.
+Edge ids missing from the GeoJSON come back as `unknown`. The API package must list `winterpath-ml` as a dependency;
+that is a Routing/API-owned change.
