@@ -81,9 +81,10 @@ def test_aggregate_rule():
 
 
 # ---------------------------------------------------------------- 311
-def _row(acti, lat="45.5", lon="-73.57", err="0", date="2025-01-15T10:00:00"):
+def _row(acti, lat="45.5", lon="-73.57", err="0", date="2025-01-15T10:00:00", nature="Requete"):
     return {
         "ACTI_NOM": acti,
+        "NATURE": nature,
         "LOC_LAT": lat,
         "LOC_LONG": lon,
         "LOC_ERREUR_GDT": err,
@@ -110,9 +111,46 @@ def test_311_filters_and_aggregates():
     assert sum(counts.values()) == 3
     keys = sorted(counts)
     assert all(len(k[0]) == 15 for k in keys)  # H3 res-9 cell string
-    assert {(k[1], k[2]) for k in keys} == {
-        ("2025-01-15", "sidewalk_slippery"),
-        ("2025-01-16", "snow_clearing"),
+    assert {(k[1], k[2], k[3]) for k in keys} == {
+        ("2025-01-15", "sidewalk_slippery", "requete"),
+        ("2025-01-16", "snow_clearing", "requete"),
+    }
+
+
+def test_311_nature_kept_separate_and_never_guessed():
+    """Contract v1.5.0 (CR-ML-1): nature is part of the key; unknown natures are skipped."""
+    rows = [
+        _row("Trottoir glissant", nature="Requete"),
+        _row("Trottoir glissant", nature="Requête"),  # accent variant → requete
+        _row("Trottoir glissant", nature="Plainte"),
+        _row("Trottoir glissant", nature="Information"),
+        _row("Trottoir glissant", nature="COMMENTAIRE"),
+        _row("Trottoir glissant", nature="Autre chose"),  # synthetic unseen value
+        _row("Trottoir glissant", nature=""),
+    ]
+    counts, reasons = r311.aggregate_rows(rows)
+    by_nature = {k[3]: n for k, n in counts.items()}
+    assert by_nature == {"requete": 2, "plainte": 1, "information": 1, "commentaire": 1}
+    assert reasons["unknown_nature"] == 2
+    assert set(by_nature) <= set(r311.NATURE_VALUES)
+    assert {k[2] for k in counts} <= set(r311.CATEGORY_VALUES)
+    assert set(r311.WINTER_CATEGORIES.values()) == set(r311.CATEGORY_VALUES)
+
+
+def test_311_alley_categories_are_separate():
+    """Contract v1.6.0 (CR-ML-2)."""
+    rows = [
+        _row("Déneigement ruelle"),
+        _row("Dépôt neige-ruelle"),
+        _row("Opération déneigement"),
+        _row("Dépôt Illégal - Neige"),
+    ]
+    counts, _ = r311.aggregate_rows(rows)
+    assert {k[2] for k in counts} == {
+        "snow_clearing_alley",
+        "snow_dumping_alley",
+        "snow_clearing",
+        "snow_dumping",
     }
 
 

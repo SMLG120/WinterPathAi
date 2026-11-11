@@ -10,6 +10,7 @@ dependencies = [
     "geopandas>=1.2.0",
     "h3>=4.5.0",
     "networkx>=3.7",
+    "osmium>=4.3.2",
     "osmnx>=2.1.1",
     "psycopg[binary]>=3.3.8",
     "pyogrio>=0.13.0",

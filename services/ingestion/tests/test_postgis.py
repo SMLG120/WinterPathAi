@@ -92,6 +92,21 @@ def active_at_end_exclusive(url) -> bool:
     return "t >= c.valid_to" in src
 
 
+def report_311_pk(url) -> list[str]:
+    with psycopg.connect(url) as c:
+        return [
+            r[0]
+            for r in c.execute(
+                "SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid=i.indrelid "
+                "AND a.attnum = ANY(i.indkey) WHERE i.indrelid='wp.report_311_cell'::regclass "
+                "AND i.indisprimary ORDER BY array_position(i.indkey, a.attnum)"
+            )
+        ]
+
+
+V15_PK = ["h3", "day", "category", "nature"]
+
+
 def has_v14(url) -> bool:
     with psycopg.connect(url) as c:
         fn = c.execute("SELECT to_regprocedure('wp.closure_active_at(wp.closure,timestamptz)')")
@@ -142,6 +157,14 @@ def test_migration_up_down_up(test_url):
     assert V12_CLOSURE_COLS <= columns(test_url, "closure")
     assert has_v13(test_url) == {True}
     assert has_v14(test_url) and active_at_end_exclusive(test_url)
+    assert report_311_pk(test_url) == V15_PK
+    # one step down: 0006 removed (nature collapsed), 0005 intact
+    alembic(test_url, "downgrade", "0005_closure_active_excl_end")
+    assert report_311_pk(test_url) == ["h3", "day", "category"]
+    assert "nature" not in columns(test_url, "report_311_cell")
+    assert active_at_end_exclusive(test_url)
+    alembic(test_url, "upgrade", "head")
+    assert report_311_pk(test_url) == V15_PK
     # one step down: 0005 → 0004's inclusive body
     alembic(test_url, "downgrade", "0004_closure_status")
     assert has_v14(test_url) and not active_at_end_exclusive(test_url)
@@ -276,6 +299,43 @@ def test_closure_status_and_active_at(test_url):
                 (t, f"syn:{cid}"),
             ).fetchone()[0]
     assert got == {cid: exp for cid, *_, exp in ACTIVE_CASES}
+
+
+def test_report_311_nature_constraints_and_exact_downgrade(test_url):
+    """CR-ML-1: nature in the PK; canonical categories; downgrade = SUM over natures.
+    Rows are SYNTHETIC."""
+    alembic(test_url, "upgrade", "head")
+    ins = "INSERT INTO wp.report_311_cell (h3, day, category, nature, n) VALUES (%s,%s,%s,%s,%s)"
+    with psycopg.connect(test_url, autocommit=True) as c:
+        c.execute(
+            "INSERT INTO wp.source (source_id, name, publisher, license, license_url, "
+            "commercial_use, attribution, url, status) VALUES ('mtl-311','SYNTHETIC','t','t','t',"
+            "'unverified','t','t','disabled') ON CONFLICT DO NOTHING"
+        )
+        c.execute("DELETE FROM wp.report_311_cell")
+        for nat, n in (("requete", 2), ("plainte", 1), ("information", 5)):
+            c.execute(ins, ("syn-cell", "2026-01-05", "sidewalk_slippery", nat, n))
+        with pytest.raises(psycopg.errors.CheckViolation):
+            c.execute(ins, ("syn-cell", "2026-01-05", "sidewalk_slippery", "autre", 1))
+        with pytest.raises(psycopg.errors.CheckViolation):
+            c.execute(ins, ("syn-cell", "2026-01-05", "Trottoir glissant", "requete", 1))
+        for alley in ("snow_clearing_alley", "snow_dumping_alley"):  # v1.6.0 (CR-ML-2)
+            c.execute(ins, ("syn-alley", "2026-01-05", alley, "requete", 1))
+        c.execute("DELETE FROM wp.report_311_cell WHERE h3='syn-alley'")
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            c.execute(ins, ("syn-cell", "2026-01-05", "sidewalk_slippery", "requete", 1))
+        # consumer pattern from the contract: SUM over label natures, k-anon after summing
+        labels = c.execute(
+            "SELECT sum(n) FROM wp.report_311_cell WHERE nature IN ('requete','plainte') "
+            "GROUP BY h3, day, category"
+        ).fetchone()[0]
+        assert labels == 3  # each nature alone is < 3; the sum passes the floor
+    alembic(test_url, "downgrade", "0005_closure_active_excl_end")
+    with psycopg.connect(test_url) as c:
+        assert c.execute("SELECT n FROM wp.report_311_cell").fetchall() == [(8,)]
+    alembic(test_url, "upgrade", "head")
+    with psycopg.connect(test_url) as c:  # mixed-nature aggregates cannot be split → removed
+        assert c.execute("SELECT count(*) FROM wp.report_311_cell").fetchone()[0] == 0
 
 
 def test_loader_atomic_and_idempotent(test_url, tmp_path):
