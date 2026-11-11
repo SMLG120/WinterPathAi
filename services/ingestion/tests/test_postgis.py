@@ -82,6 +82,16 @@ V12_CLOSURE_COLS = {"attrs", "backsidewalk_blocks_passage"}
 V13_COLS = {("edge", "name"), ("community_report", "terminal_at")}
 
 
+def active_at_end_exclusive(url) -> bool:
+    """True when wp.closure_active_at returns false at exactly t = valid_to (migration 0005)."""
+    with psycopg.connect(url) as c:
+        src = c.execute(
+            "SELECT prosrc FROM pg_proc WHERE oid = "
+            "to_regprocedure('wp.closure_active_at(wp.closure,timestamptz)')"
+        ).fetchone()[0]
+    return "t >= c.valid_to" in src
+
+
 def has_v14(url) -> bool:
     with psycopg.connect(url) as c:
         fn = c.execute("SELECT to_regprocedure('wp.closure_active_at(wp.closure,timestamptz)')")
@@ -131,7 +141,12 @@ def test_migration_up_down_up(test_url):
     assert V12_EDGE_COLS <= columns(test_url, "edge")
     assert V12_CLOSURE_COLS <= columns(test_url, "closure")
     assert has_v13(test_url) == {True}
-    assert has_v14(test_url)
+    assert has_v14(test_url) and active_at_end_exclusive(test_url)
+    # one step down: 0005 → 0004's inclusive body
+    alembic(test_url, "downgrade", "0004_closure_status")
+    assert has_v14(test_url) and not active_at_end_exclusive(test_url)
+    alembic(test_url, "upgrade", "head")
+    assert active_at_end_exclusive(test_url)
     # one step down: 0004 removed, v1.3 intact
     alembic(test_url, "downgrade", "0003_contract_v1_3_0")
     assert not has_v14(test_url)
@@ -190,6 +205,9 @@ ACTIVE_CASES = [
     ("allday", "permit_issued", "2026-11-01", "2026-12-01", _DAY, "2026-11-16T15:00Z", True),
     ("before", "permit_issued", "2026-11-20", "2026-12-01", _DAY, "2026-11-16T15:00Z", False),
     ("ended", "permit_issued", "2026-11-01", "2026-11-10", _DAY, "2026-11-16T15:00Z", False),
+    # contract v1.4.0: t < valid_to (exclusive). valid_to = 2026-11-17 00:00 local = 05:00Z
+    ("at_end", "permit_issued", "2026-11-01", "2026-11-17", _DAY, "2026-11-17T05:00Z", False),
+    ("pre_end", "permit_issued", "2026-11-01", "2026-11-17", _DAY, "2026-11-17T04:59Z", True),
     ("win_in", "permit_issued", "2026-11-01", "2026-12-01", _WIN, "2026-11-16T15:00Z", True),
     # 08:30 local = 13:30Z → before the 09:00 window
     ("win_out", "permit_issued", "2026-11-01", "2026-12-01", _WIN, "2026-11-16T13:30Z", False),
