@@ -63,11 +63,13 @@ function buildRoute(
     hazards_avoided: variant === 'winter_aware' ? ['demo-hz-1'] : [],
     hazards_on_route: [],
     explanation: [
-      { code: 'SIMULATED_DEMO', text: t.sim, evidence_state: 'simulated' },
+      // Canonical routing codes + evidence mapping (openapi v1.5, CR-ROUTING-9). The demo
+      // closure is invented, so it stays `simulated` rather than `confirmed`.
+      { code: 'SIMULATED_DATA', text: t.sim, evidence_state: 'simulated' },
       variant === 'winter_aware'
-        ? { code: 'AVOIDS_SIMULATED_CLOSURE', text: t.closure, evidence_state: 'simulated' }
-        : { code: 'SHORTEST_BASELINE', text: t.shortest, evidence_state: 'simulated' },
-      { code: 'UNKNOWN_CONDITIONS', text: t.unknown, evidence_state: 'unknown' },
+        ? { code: 'AVOIDS_POSSIBLE_CLOSURE', text: t.closure, evidence_state: 'simulated' }
+        : { code: 'SHORTEST_DISTANCE', text: t.shortest, evidence_state: 'unknown' },
+      { code: 'RISK_LAYER_UNAVAILABLE', text: t.unknown, evidence_state: 'unknown' },
     ],
     steps: [
       ...legs.map((d, i) => ({

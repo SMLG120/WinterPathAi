@@ -1,5 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+
+type PlanCopy = { results: { identical: string; riskLayer: Record<'model' | 'heuristic' | 'none', string> } };
+const planCopy = (lang: 'en' | 'fr'): PlanCopy =>
+  JSON.parse(readFileSync(new URL(`../src/i18n/locales/${lang}/plan.json`, import.meta.url), 'utf8')) as PlanCopy;
 
 const API = process.env.E2E_API_BASE_URL ?? 'http://localhost:8104/api/v1';
 const ADMIN_TOKEN = process.env.E2E_ADMIN_TOKEN; // plain token whose sha256 is the API's API_ADMIN_TOKEN_HASH
@@ -30,15 +35,36 @@ for (const lang of ['en', 'fr'] as const) {
     await page.goto(`/${lang}/plan`);
     await setPoint(page, 'origin', A);
     await setPoint(page, 'destination', B);
-    await page.getByTestId('compare').click();
+    // Assert against what the API actually returned (risk layer differs by deployment:
+    // RISK_PROVIDER=none → 'none', ML heuristic layer → 'heuristic', validated model → 'model').
+    const [resp] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/routes/compare') && r.request().method() === 'POST'),
+      page.getByTestId('compare').click(),
+    ]);
+    expect(resp.status()).toBe(200);
+    const body = (await resp.json()) as {
+      risk_layer: 'model' | 'heuristic' | 'none';
+      identical?: boolean;
+      routes: { explanation: { evidence_state: string }[] }[];
+    };
+    const copy = planCopy(lang).results;
     const card = page.getByTestId('compare-card');
     await expect(card.getByTestId('route-shortest')).toBeVisible();
     await expect(card.getByTestId('route-winter_aware')).toBeVisible();
-    // No risk layer → explanations are 'unknown', never simulated, and routes are identical.
+    // Real data is never labelled simulated.
     await expect(card.locator('[data-evidence="simulated"]')).toHaveCount(0);
-    await expect(card.locator('[data-evidence="unknown"]').first()).toBeVisible();
-    await expect(card).toContainText(lang === 'en' ? 'Both routes are the same' : 'Les deux trajets sont identiques');
-    await expect(card).toContainText(lang === 'en' ? 'None — risk is unknown' : 'Aucune — risque inconnu');
+    // The card shows the risk layer the API reported — not a hard-coded one.
+    await expect(card).toContainText(copy.riskLayer[body.risk_layer]);
+    for (const other of (['model', 'heuristic', 'none'] as const).filter((k) => k !== body.risk_layer)) {
+      await expect(card).not.toContainText(copy.riskLayer[other]);
+    }
+    // Every evidence state the API used is rendered as a badge.
+    const states = new Set(body.routes.flatMap((r) => r.explanation.map((e) => e.evidence_state)));
+    for (const st of states) await expect(card.locator(`[data-evidence="${st}"]`).first()).toBeVisible();
+    if (body.risk_layer === 'none') await expect(card.locator('[data-evidence="unknown"]').first()).toBeVisible();
+    // "Both routes are the same" appears exactly when the API says so.
+    if (body.identical) await expect(card).toContainText(copy.identical);
+    else await expect(card).not.toContainText(copy.identical);
     await expect(card.getByTestId('steps-winter_aware').getByRole('listitem').first()).toBeVisible();
     // Freshness lists the real source id from the API.
     await expect(card).toContainText('osm');

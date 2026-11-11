@@ -187,6 +187,17 @@ describe('mock honesty invariants', () => {
     if (r.status !== 200) throw new Error('expected 200');
     for (const route of r.body.routes) for (const e of route.explanation) expect(['simulated', 'unknown']).toContain(e.evidence_state);
   });
+  it('route explanation codes are canonical routing codes (openapi v1.5 mapping)', () => {
+    // Codes emitted by services/routing; the demo must not invent a parallel vocabulary.
+    const canonical = new Set(['SIMULATED_DATA', 'SHORTEST_DISTANCE', 'RISK_LAYER_UNAVAILABLE', 'AVOIDS_POSSIBLE_CLOSURE']);
+    const r = mockCompare({ origin: IN_A, destination: IN_B });
+    if (r.status !== 200) throw new Error('expected 200');
+    for (const route of r.body.routes) {
+      for (const e of route.explanation) expect(canonical).toContain(e.code);
+      const shortest = route.explanation.find((e) => e.code === 'SHORTEST_DISTANCE');
+      if (shortest) expect(shortest.evidence_state).toBe('unknown');
+    }
+  });
   it('sources are not reported as active in demo', () => {
     for (const s of fx.dataSources()) {
       expect(s.status).not.toBe('active');
