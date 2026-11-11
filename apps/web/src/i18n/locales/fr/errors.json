@@ -11,10 +11,14 @@
     "NOT_FOUND": "Introuvable.",
     "UNAUTHORIZED": "Vous n'êtes pas autorisé à effectuer cette action.",
     "RATE_LIMITED": "Trop de demandes. Veuillez patienter un instant.",
-    "UPSTREAM_UNAVAILABLE": "Une source de données est indisponible pour le moment.",
+    "UPSTREAM_UNAVAILABLE": "Un fournisseur de données externe (par exemple la météo d'Environnement Canada) est indisponible pour le moment. Rien n'est affiché à sa place : aucune valeur ancienne ou inventée.",
     "INTERNAL": "Le serveur a rencontré un problème.",
     "NETWORK": "Impossible de joindre le serveur.",
-    "UNKNOWN": "Réponse inattendue du serveur."
+    "UNKNOWN": "Réponse inattendue du serveur.",
+    "WRITES_DISABLED": "L'envoi est désactivé dans cette démo publique.",
+    "TIMEOUT": "Le serveur a mis trop de temps à répondre.",
+    "WAKE_TIMEOUT": "Le serveur ne s'est pas réveillé à temps. Il est sur une offre gratuite qui se met en veille quand elle est inactive ; réessayez dans un instant.",
+    "INCOMPLETE": "La réponse du serveur était incomplète ; rien n'est affiché plutôt qu'un résultat partiel."
   },
   "boundary": {
     "title": "Cette partie de la page n'a pas pu se charger",

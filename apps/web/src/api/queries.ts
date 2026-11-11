@@ -62,7 +62,13 @@ export const useSegments = (bbox: string | null) =>
 
 export const useCompareRoutes = () =>
   useMutation({
-    mutationFn: (body: RouteCompareRequest) => unwrap(api.POST('/routes/compare', { body })),
+    // Both variants with drawable geometry, or it is an incomplete answer (never render half a comparison).
+    mutationFn: (body: RouteCompareRequest) =>
+      unwrap(api.POST('/routes/compare', { body }), (d) =>
+        Array.isArray(d?.routes) &&
+        d.routes.length >= 1 &&
+        d.routes.every((r) => Array.isArray(r?.geometry?.coordinates) && r.geometry.coordinates.length >= 2 && Array.isArray(r.explanation)),
+      ),
   });
 
 export const useCreateReport = () =>

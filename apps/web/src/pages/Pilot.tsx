@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FieldError, Input, Label, Select, Textarea } from '@/components/ui/input';
 import { PILOT_SEGMENTS, pilotSchema, toPilotRequest, type PilotFormValues } from '@/features/pilotSchema';
+import { WritesDisabled } from '@/features/WritesDisabled';
+import { PUBLIC_WRITES } from '@/lib/env';
 import { useLang } from '@/lib/i18n-routing';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
@@ -90,7 +92,9 @@ export default function Pilot() {
       <Section id="request" title={t('form.title')} className="pt-0">
         <div className="max-w-2xl">
           <DemoBadge className="mb-4" />
-          {send.isSuccess ? (
+          {!PUBLIC_WRITES || (isApiError(send.error) && send.error.code === 'WRITES_DISABLED') ? (
+            <WritesDisabled form="pilot" />
+          ) : send.isSuccess ? (
             <Alert variant="success" role="status" data-testid="pilot-success">
               <CheckCircle2 aria-hidden="true" />
               <span>{t('form.success')}</span>

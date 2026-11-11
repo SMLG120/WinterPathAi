@@ -1,9 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { isApiError, type ApiRequestError } from '@/api/client';
 
-const KNOWN = ['NO_ROUTE', 'OUTSIDE_COVERAGE', 'RATE_LIMITED'] as const;
+const KNOWN = ['NO_ROUTE', 'OUTSIDE_COVERAGE', 'RATE_LIMITED', 'WAKE_TIMEOUT', 'UPSTREAM_UNAVAILABLE', 'INCOMPLETE'] as const;
+/** No answer from a live API (the cold-start window is reported separately as WAKE_TIMEOUT). */
+const UNREACHABLE = ['NETWORK', 'TIMEOUT'];
 
 /**
  * A snap failure: v1.3 sends OFF_NETWORK; earlier API builds sent OUTSIDE_COVERAGE
@@ -18,12 +21,16 @@ function snapDetails(e: ApiRequestError) {
   return { which, max: num(d.max_snap_distance_m) ?? 75, nearest: num(d.nearest_network_m) };
 }
 
-/** Helpful copy for 404 NO_ROUTE / 422 OUTSIDE_COVERAGE / 422 OFF_NETWORK / 429 / anything else. */
-export function RouteError({ error }: { error: unknown }) {
+/**
+ * Distinct copy per failure: no route (404), outside coverage / off network (422), rate limited,
+ * backend still asleep after the cold-start window, unreachable, external data source down (503),
+ * incomplete answer, anything else. Never shows a route alongside an error.
+ */
+export function RouteError({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { t } = useTranslation(['plan', 'errors']);
   const code = isApiError(error) ? error.code : 'UNKNOWN';
   const snap = isApiError(error) ? snapDetails(error) : null;
-  const key = snap ? 'OFF_NETWORK' : (KNOWN as readonly string[]).includes(code) ? code : 'generic';
+  const key = snap ? 'OFF_NETWORK' : (KNOWN as readonly string[]).includes(code) ? code : UNREACHABLE.includes(code) ? 'unreachable' : 'generic';
   const retry = isApiError(error) && error.retryAfterS ? t('errors:retryAfter', { seconds: error.retryAfterS }) : null;
   const point = snap?.which ? t(`points.${snap.which}`).toLowerCase() : t('points.origin').toLowerCase() + ' / ' + t('points.destination').toLowerCase();
   return (
@@ -33,8 +40,13 @@ export function RouteError({ error }: { error: unknown }) {
         <AlertTitle>{t(`errors.${key}.title`)}</AlertTitle>
         <p className="mt-1">{snap ? t('errors.OFF_NETWORK.body', { point, max: snap.max }) : t(`errors.${key}.body`)}</p>
         {snap?.nearest != null && <p className="mt-1">{t('errors.OFF_NETWORK.nearest', { nearest: snap.nearest })}</p>}
-        {key === 'generic' && <p className="mt-1 text-muted-foreground">{t(`errors:codes.${code}`)}</p>}
+        {key === 'generic' && <p className="mt-1">{t(`errors:codes.${code}`)}</p>}
         {retry && <p className="mt-1">{retry}</p>}
+        {onRetry && key !== 'OFF_NETWORK' && key !== 'OUTSIDE_COVERAGE' && key !== 'NO_ROUTE' && (
+          <Button variant="outline" size="sm" className="mt-2" onClick={onRetry} data-testid="route-retry">
+            {t('errors.retry')}
+          </Button>
+        )}
       </div>
     </Alert>
   );

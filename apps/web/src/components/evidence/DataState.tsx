@@ -48,7 +48,7 @@ export function DataState<T>({ query, isEmpty, skeleton, emptyText, children }: 
           <AlertTriangle aria-hidden="true" />
           <div className="flex flex-col gap-2">
             <span>{t('states.error')}</span>
-            <span className="text-muted-foreground">{t(`errors:codes.${code}`)}</span>
+            <span data-testid="error-detail">{t(`errors:codes.${code}`)}</span>
             <Button variant="outline" size="sm" className="w-fit" onClick={() => void query.refetch()}>
               {t('states.retry')}
             </Button>

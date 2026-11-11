@@ -2,7 +2,7 @@
 
 - **Status:** READY FOR REVIEW
 - **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
-- **Date (UTC):** 2026-11-11 (update 7: explainer wording fixes from review; merged integration 3aa6438)
+- **Date (UTC):** 2026-11-11 (update 8: v1.7.0 free-tier deployment work; merged integration 07a1f29)
 - **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts. Contract **v1.4.0/v1.5.0** + routing/data/platform merged after 249570b — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
@@ -466,6 +466,54 @@ npx playwright test           →  104 passed (3.0m)
 real-API (RISK_PROVIDER=none) →  16 passed (58.5s)
 ```
 The heuristic-layer real-API run was not repeated, because no API or ML code changed since update 6.
+
+## Update 8 — contract v1.7.0, free-tier deployment (Cloudflare Pages): read-only mode, cold start, headers
+**Merge:** `git merge --no-edit integration/winterpath` (07a1f29) → `9bd9672`, no conflicts. `npm run gen:api` adds `WRITES_DISABLED` to the `Error.code` union (`schema.d.ts`). Nothing was pushed or deployed, and no external resource was created.
+
+**(1) Read-only demo.** `VITE_PUBLIC_WRITES=false` (`src/lib/env.ts` `PUBLIC_WRITES`) replaces the report and pilot forms with a notice, "Not available in this public demo" / "Non disponible dans cette démo publique" (`src/features/WritesDisabled.tsx`, copy in `common.json`). The same notice replaces a form when the API answers 503 `WRITES_DISABLED`, in builds where writes are on. Reads are unaffected.
+
+**(2) Timeout, cold start and distinct failure states.**
+- `src/api/resilientFetch.ts` (used through openapi-fetch's `fetch` option): each attempt has an AbortController timeout (`VITE_API_TIMEOUT_MS`, default 15000).
+- Network errors, timeouts and 502/503/504 **without** a WinterPath error body (Render's proxy while the host sleeps) are retried with backoff (1, 2, 4, 8, then every 10 s), within a 90 s budget. Meanwhile a `role="status"` banner says "The server is waking up… about a minute", and the planner says "Waking the server". After the budget, a clear error appears with a retry button.
+- A 503 that carries an API code (`UPSTREAM_UNAVAILABLE`, `WRITES_DISABLED`, `INTERNAL`) is a live API and is returned as is.
+- Writes that **timed out** are never resent automatically, because the request may still land once the host wakes (no duplicate reports). Writes rejected by the sleeping proxy (502/503 with no body) are retried.
+- Caller aborts pass straight through.
+- New client codes: `TIMEOUT`, `WAKE_TIMEOUT`, `INCOMPLETE` (a 2xx with an unparsable body, or a compare answer without drawable routes; nothing partial is rendered). EN/FR copy is in `errors.json` and `plan.json`.
+- The planner (`RouteError`) has distinct titles for: no route, outside coverage / off network, rate limited, server still asleep, unreachable, data source unavailable (503 `UPSTREAM_UNAVAILABLE`), incomplete answer, and other failures. A retry button appears where a retry can help. "No risk data" (`risk_layer=none`) is unchanged: it is a successful answer with explicit copy.
+- Data views (`DataState`) show the code-specific reason plus Retry. Weather 503 now says an external provider is down and shows no values.
+- The TanStack Query retry policy no longer stacks on the fetch-layer retries: one extra try, only for a live API's `INTERNAL`/`UNKNOWN` 5xx.
+
+**(3) Cloudflare Pages.**
+- `public/_headers` is a template filled at build time by `build/cloudflarePages.ts`:
+  - CSP: `default-src 'self'`; `script-src 'self'` plus the sha256 of index.html's inline theme script (no unsafe-inline/eval); `connect-src 'self'`, the API origin from `VITE_API_BASE_URL`, OpenFreeMap and any custom style origin; img `data: blob:` plus map origins; `worker-src 'self' blob:` for MapLibre; `object-src 'none'`; `base-uri 'self'`; `form-action 'self'`; `frame-ancestors 'none'`.
+  - Also nosniff, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy `geolocation=(self)` (camera, microphone, payment, usb and browsing-topics off), COOP same-origin, HSTS, and `/assets/*` `Cache-Control: public, max-age=31536000, immutable`.
+- The build fails on any `.map` file or a `404.html`. Non-mock builds drop `mockServiceWorker.js`. `.node-version` = 24.
+- `vite preview` serves the generated headers, so **all mock, read-only and real-API e2e now run under the production CSP**.
+- zod is set to `jitless`, so its `new Function` probe never triggers a CSP violation.
+- `style-src` keeps `'unsafe-inline'`: MapLibre, Motion and React `style` attributes need it.
+- Verified production build (`VITE_API_BASE_URL=https://winterpath-api.example.onrender.com/api/v1 VITE_PUBLIC_WRITES=false`, placeholder host): dist = `_headers assets favicon.svg index.html robots.txt`; connect-src = `'self' https://winterpath-api.example.onrender.com https://tiles.openfreemap.org`; the mock-only wake-budget override is not in the bundle.
+
+**(4) Tests.**
+- Unit: `resilientFetch.test.ts` (9), `build/cloudflarePages.test.ts` (4), new RouteError cases.
+- Mock e2e: `e2e/resilience.spec.ts` covers cold start then recovery; never-ending cold start then bounded give-up, error and working retry (EN planner, FR data view); weather upstream down; compare upstream down then incomplete answer; API `WRITES_DISABLED` on both forms; production headers served, plus zero `securitypolicyviolation` events across landing, planner (MapLibre), the 3D explainer and a zod form. Failures are driven by mock-only localStorage switches in `src/mocks/handlers.ts`.
+- `e2e-readonly/` runs with `playwright.readonly.config.ts` (build with `VITE_PUBLIC_WRITES=false`, port 5174) and covers EN/FR notices, no form and no POST, axe on both pages, and the planner still working.
+
+**Accessibility fixes found by these runs (pre-existing, now fixed):**
+- The active nav link (`--accent-text` #087f8c) on the ice background was 4.44:1. Light-mode `--accent-text` is now #067380 (≥ 4.76:1 on white, ice and muted); brand fills are unchanged.
+- In error alerts, muted grey text on the danger tint was 4.04:1. Error detail text now uses the foreground colour.
+
+**Not verified:** the API has no `API_PUBLIC_WRITES` / `WRITES_DISABLED` implementation on integration yet (`grep -rl WRITES_DISABLED services/` → no match), so that path is tested against mocks only. The cold-start behaviour is tested against simulated proxy responses, not a real sleeping Render instance. The `_headers` file is tested by parsing it and by vite preview, not on Cloudflare itself.
+
+Literal results (tree = `9bd9672` + this commit):
+```
+npm run lint                     → eslint . --max-warnings 0 (exit 0)
+npx vitest run                   →  Test Files  15 passed (15) /  Tests  131 passed (131)
+npm run build && npm run size    → ✓ built in 6.43s / TOTAL initial JS: 147.6 KB gz (budget 250 KB, excludes map + 3D chunks)
+npx playwright test              →  118 passed (3.7m)
+npm run e2e:readonly             →  10 passed (28.8s)
+real-API (RISK_PROVIDER=none)    →  16 passed (54.9s)   [under the CSP; connect-src 'self' http://localhost:8104 https://tiles.openfreemap.org data:]
+```
+Earlier in this cycle, before the fixes above: read-only axe failed 3/3 on the nav-link contrast; real-API 14/16 (stale UPSTREAM copy in the test, and the error-detail contrast). Both are fixed, and the green runs are listed above.
 
 ## Acceptance criteria
 | Criterion | Met? | Evidence |

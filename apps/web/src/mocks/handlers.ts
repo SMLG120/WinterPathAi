@@ -40,6 +40,7 @@ function randomToken(): string {
 export function resetMockState() {
   reports.clear();
   reportCount = 0;
+  firstCallAt = null;
 }
 
 const requireAdmin = (req: Request) => {
@@ -47,7 +48,35 @@ const requireAdmin = (req: Request) => {
   return /^Bearer .{8,}$/.test(h);
 };
 
+/**
+ * E2E-only failure switches (mock builds only; read from localStorage in the page).
+ *  wp-mock-asleep-ms   — act like a sleeping free-tier host for N ms after the first API call:
+ *                        HTML 503 from the "proxy", no WinterPath error body.
+ *  wp-mock-writes=off  — POST /reports and /pilot-requests → 503 WRITES_DISABLED (v1.7).
+ *  wp-mock-upstream    — comma list of `weather`, `compare` → 503 UPSTREAM_UNAVAILABLE.
+ *  wp-mock-incomplete=compare — 200 with a truncated JSON body.
+ */
+const flag = (k: string): string | null => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+};
+let firstCallAt: number | null = null;
+const upstream = (what: string) => (flag('wp-mock-upstream') ?? '').split(',').includes(what);
+const upstreamDown = () => err(503, 'UPSTREAM_UNAVAILABLE', 'Upstream data source unavailable');
+
 export const handlers = [
+  http.all(`${BASE}/*`, () => {
+    const asleepMs = Number(flag('wp-mock-asleep-ms'));
+    if (!(asleepMs > 0)) return undefined;
+    firstCallAt ??= Date.now();
+    if (Date.now() - firstCallAt < asleepMs) {
+      return new HttpResponse('<html><body>Service is waking up</body></html>', { status: 503, headers: { 'Content-Type': 'text/html' } });
+    }
+    return undefined; // awake: fall through to the real mock handlers
+  }),
   http.get(`${BASE}/health`, () => HttpResponse.json(fx.health())),
   http.get(`${BASE}/coverage`, async () => {
     await delay(LATENCY);
@@ -58,10 +87,12 @@ export const handlers = [
     return HttpResponse.json(fx.dataSources());
   }),
   http.get(`${BASE}/weather/current`, async () => {
+    if (upstream('weather')) return upstreamDown();
     await delay(LATENCY);
     return HttpResponse.json(fx.weatherCurrent(new Date()));
   }),
   http.get(`${BASE}/weather/forecast`, async ({ request }) => {
+    if (upstream('weather')) return upstreamDown();
     await delay(LATENCY);
     const h = Number(new URL(request.url).searchParams.get('hours') ?? 24);
     if (!Number.isInteger(h) || h < 1 || h > 48) return err(400, 'VALIDATION_ERROR', 'hours must be 1..48');
@@ -89,6 +120,10 @@ export const handlers = [
   }),
   http.post(`${BASE}/routes/compare`, async ({ request }) => {
     await delay(LATENCY * 2);
+    if (upstream('compare')) return upstreamDown();
+    if (flag('wp-mock-incomplete') === 'compare') {
+      return new HttpResponse('{"request_id":"mock","routes":[{"variant":"shortest","geometry":', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     const body = (await request.json()) as RouteCompareRequest;
     if (!body?.origin || !body?.destination) return err(400, 'VALIDATION_ERROR', 'origin and destination required');
     const r = mockCompare(body);
@@ -96,6 +131,7 @@ export const handlers = [
   }),
   http.post(`${BASE}/reports`, async ({ request }) => {
     await delay(LATENCY);
+    if (flag('wp-mock-writes') === 'off') return err(503, 'WRITES_DISABLED', 'Public writes are disabled in this deployment');
     const body = (await request.json()) as ReportCreate;
     if (reportCount >= REPORT_RATE_LIMIT) {
       return err(429, 'RATE_LIMITED', 'Too many reports from this client', { 'Retry-After': '600' });
@@ -152,6 +188,7 @@ export const handlers = [
   }),
   http.post(`${BASE}/pilot-requests`, async ({ request }) => {
     await delay(LATENCY);
+    if (flag('wp-mock-writes') === 'off') return err(503, 'WRITES_DISABLED', 'Public writes are disabled in this deployment');
     const body = (await request.json()) as PilotRequest;
     if (body.consent !== true || !body.organization || !body.contact_email) {
       return err(422, 'VALIDATION_ERROR', 'Missing required fields');

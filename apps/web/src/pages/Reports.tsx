@@ -16,6 +16,8 @@ import { FieldError, Input, Label, Select, Textarea } from '@/components/ui/inpu
 import { REPORT_CATEGORIES, MAX_DESCRIPTION, reportSchema, toReportCreate, type ReportFormValues } from '@/features/reportSchema';
 import { formatDateTime } from '@/lib/format';
 import { getCurrentLonLat, type GeoFailure } from '@/lib/geolocation';
+import { WritesDisabled } from '@/features/WritesDisabled';
+import { PUBLIC_WRITES } from '@/lib/env';
 import { useLang } from '@/lib/i18n-routing';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
@@ -126,6 +128,7 @@ export default function Reports() {
   const onSubmit = handleSubmit((v) => create.mutate(toReportCreate(v, lang)));
   const err = create.error;
   const rateLimited = isApiError(err) && err.code === 'RATE_LIMITED';
+  const writesDisabled = isApiError(err) && err.code === 'WRITES_DISABLED';
   const statuses = ['pending', 'approved', 'rejected', 'expired', 'deleted'] as const;
 
   return (
@@ -135,7 +138,9 @@ export default function Reports() {
       </PageHeader>
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 lg:grid-cols-[1.4fr_1fr]">
         <div>
-          {create.isSuccess && create.data ? (
+          {!PUBLIC_WRITES || writesDisabled ? (
+            <WritesDisabled form="reports" />
+          ) : create.isSuccess && create.data ? (
             <Receipt
               r={create.data}
               onReset={() => {

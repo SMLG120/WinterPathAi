@@ -1,4 +1,7 @@
 import { z } from 'zod';
+
+// The production CSP has no 'unsafe-eval': skip zod's `new Function` probe (it would log a CSP violation).
+z.config({ jitless: true });
 import type { TFunction } from 'i18next';
 import type { ReportCategory, ReportCreate } from '@/api/types';
 import { isInPilot } from '@/lib/geo';

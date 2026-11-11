@@ -158,7 +158,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Community report. Stored as `pending`; never shown as guidance until approved. Expires automatically. */
+        /** @description v1.7 — returns 503 WRITES_DISABLED when the deployment disables public writes (API_PUBLIC_WRITES=false). Community report. Stored as `pending`; never shown as guidance until approved. Expires automatically. */
         post: operations["createReport"];
         delete?: never;
         options?: never;
@@ -224,7 +224,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Business/pilot enquiry form. Minimal personal data; retention 12 months. */
+        /** @description Business/pilot enquiry form. Minimal personal data; retention 12 months. v1.7 — returns 503 WRITES_DISABLED when API_PUBLIC_WRITES=false. */
         post: operations["createPilotRequest"];
         delete?: never;
         options?: never;
@@ -238,7 +238,7 @@ export interface components {
     schemas: {
         Error: {
             /** @enum {string} */
-            code: "VALIDATION_ERROR" | "OUTSIDE_COVERAGE" | "OFF_NETWORK" | "BBOX_TOO_LARGE" | "NO_ROUTE" | "NOT_FOUND" | "UNAUTHORIZED" | "RATE_LIMITED" | "UPSTREAM_UNAVAILABLE" | "INTERNAL";
+            code: "VALIDATION_ERROR" | "OUTSIDE_COVERAGE" | "OFF_NETWORK" | "BBOX_TOO_LARGE" | "NO_ROUTE" | "NOT_FOUND" | "UNAUTHORIZED" | "RATE_LIMITED" | "UPSTREAM_UNAVAILABLE" | "WRITES_DISABLED" | "INTERNAL";
             message: string;
             details?: {
                 [key: string]: unknown;
@@ -935,6 +935,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
+            503: components["responses"]["Unavailable"];
         };
     };
     deleteOwnReport: {
@@ -1050,6 +1051,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
+            503: components["responses"]["Unavailable"];
         };
     };
 }
