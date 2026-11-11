@@ -63,6 +63,17 @@ $ ruff (routing / api): All checks passed! 20 / 30 files already formatted
 ```
 Latencies are 2–7× the previous run with no code change; the host was shared with other agents' jobs at the time, so this reads as machine load, not a regression (API p95 assertion < 2 s still held; one 2.3 s outlier).
 
+Third re-merge request, same day: `integration/winterpath` still `a292b63` (`Already up to date.`); `wp_routing` at `0006_report_311_nature (head)`; load average ≈13.
+```text
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=10.7 ms p95=54.8 ms max=78.7 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=56.7 ms p95=152.0 ms max=244.3 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.7 ms p95=3.3 ms max=5.9 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=7.2 ms p95=36.2 ms max=144.5 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=5.9 ms p95=10.5 ms max=42.6 ms
+======================= 303 passed, 1 warning in 32.60s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+```
+
 ### 0g. Cycle 9 — merge of `agent/data` `f6eb3b2`, DB re-migrated, full rerun
 **Order** (0006 was edited in place, so the applied version had to be undone with its own downgrade):
 1. **Downgrade with the applied 0006.** My scratchpad export of `agent/data`'s `db/` (identical to `4254dd7`'s 0006: `diff` empty) against **my own** DB:
