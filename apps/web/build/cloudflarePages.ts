@@ -98,6 +98,13 @@ export function cloudflarePages(env: Record<string, string | undefined>): Plugin
       );
       if (!useMocks) rmSync(join(out, 'mockServiceWorker.js'), { force: true });
       const files = walk(out);
+      // Prebuilt dependencies (e.g. MapLibre's worker) keep a sourceMappingURL comment to a map we
+      // don't ship: strip it so nothing points at sourcemaps.
+      for (const f of files.filter((x) => /\.(m?js|css)$/.test(x))) {
+        const text = readFileSync(f, 'utf8');
+        const stripped = text.replace(/\n?\/[/*][#@] sourceMappingURL=[^\n]*?(\*\/)?(?=\n|$)/g, '');
+        if (stripped !== text) writeFileSync(f, stripped);
+      }
       const maps = files.filter((f) => f.endsWith('.map'));
       if (maps.length) throw new Error(`public sourcemaps are not allowed: ${maps.join(', ')}`);
       if (existsSync(join(out, '404.html'))) throw new Error('404.html would disable the Cloudflare Pages SPA fallback');

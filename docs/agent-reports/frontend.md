@@ -2,7 +2,7 @@
 
 - **Status:** READY FOR REVIEW
 - **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
-- **Date (UTC):** 2026-11-11 (update 8: v1.7.0 free-tier deployment work; merged integration 07a1f29)
+- **Date (UTC):** 2026-11-11 (update 9: production-bundle guard; merged integration 5238c45)
 - **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts. Contract **v1.4.0/v1.5.0** + routing/data/platform merged after 249570b — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
@@ -514,6 +514,38 @@ npm run e2e:readonly             →  10 passed (28.8s)
 real-API (RISK_PROVIDER=none)    →  16 passed (54.9s)   [under the CSP; connect-src 'self' http://localhost:8104 https://tiles.openfreemap.org data:]
 ```
 Earlier in this cycle, before the fixes above: read-only axe failed 3/3 on the nav-link contrast; real-API 14/16 (stale UPSTREAM copy in the test, and the error-detail contrast). Both are fixed, and the green runs are listed above.
+
+## Update 9 — merge of integration `5238c45`; production-bundle guard (`npm run build:pages`)
+**Merge:** `git merge --no-edit integration/winterpath` (5238c45) → `92a88e4`, no conflicts. It brought deployment docs (`docs/SECURITY.md`, `ENVIRONMENT_VARIABLES.md`, `FREE_TIER_LIMITS.md`, `RECOVERY.md`, `DATA_COMPLIANCE.md`) and `.gitignore`. There was no contract, fixture or app change, so `gen:api` was not needed. The docs' description of the frontend (env names, `_headers` contents, waking state, SPA fallback, `.node-version`) matches what update 8 built.
+
+**Gap closed:** `docs/SECURITY.md` says the mock-free production build is "not yet enforced by a CI check". `npm run build:pages` (`build/pagesCheck.ts`, run directly by Node 24) now does two things:
+- **Before building**, it refuses `VITE_USE_MOCKS=true`, a `VITE_API_BASE_URL` that isn't absolute https ending in `/api/v1`, `VITE_PUBLIC_WRITES` other than `false` (the read-only decision), a non-numeric timeout, and any `VITE_*` value that looks like a secret.
+- **After building**, it scans `dist` for the MSW worker or mock switches (`setupWorker`, `mockServiceWorker`, `wp-mock-`), `.map` files or `sourceMappingURL` comments, a `404.html`, unfilled or test-only `_headers` (needs an https API origin, no `data:` in connect-src, `frame-ancestors 'none'`, nosniff, `geolocation=(self)`, immutable `/assets/*`), and secret-like strings (postgres URL, private key, JWT, `service_role`, `API_ADMIN_TOKEN`, `DATABASE_URL`).
+
+It prints rule ids and file names, never the matched values. A CI job could call it, but CI isn't in my owned paths; this is a suggestion for the platform agent or coordinator.
+
+**Found by the guard:** MapLibre's prebuilt worker kept `//# sourceMappingURL=maplibre-gl-worker.mjs.map` (the map file isn't shipped). The Pages plugin now strips `sourceMappingURL` comments from emitted JS and CSS.
+
+Literal results:
+```
+VITE_USE_MOCKS=true npm run build:pages
+  → pages-check env: FAILED
+      - VITE_USE_MOCKS must be unset/false for a production build
+      - VITE_API_BASE_URL must be an absolute https:// URL (the Render API)
+      - VITE_PUBLIC_WRITES must be "false" (user decision: read-only public demo)
+VITE_API_BASE_URL=https://winterpath-api.example.onrender.com/api/v1 VITE_PUBLIC_WRITES=false npm run build:pages
+  → pages-check env: OK / ✓ built in 8.27s / pages-check dist: OK
+  (before the comment strip: pages-check dist: FAILED - assets/maplibre-gl-worker-CZtFQQIV.mjs: sourceMappingURL comment)
+node build/pagesCheck.ts dist dist-mock   → FAILED (as intended: mockServiceWorker.js, msw chunk, mock switches, data: connect-src, no https API origin)
+npm run lint                     → exit 0
+npx vitest run                   →  Test Files  16 passed (16) /  Tests  135 passed (135)
+npm run build && npm run size    → ✓ built in 7.16s / TOTAL initial JS: 147.6 KB gz
+npx playwright test              →  118 passed (4.0m)
+npm run e2e:readonly             →  10 passed (34.8s)
+```
+`https://winterpath-api.example.onrender.com` is a placeholder; there is no real service URL yet. The real-API e2e was not re-run in this update: no API or client code changed, and the only build change strips comments.
+
+**Suggestion for `docs/RECOVERY.md` step 5 (not my file):** "Build `apps/web` with `npm run build:pages` and production `VITE_*` values, then upload `dist`."
 
 ## Acceptance criteria
 | Criterion | Met? | Evidence |

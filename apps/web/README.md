@@ -39,7 +39,11 @@ falls back to `none` and logs `risk_artifacts_missing`; check `GET /models/statu
 ## Free-tier deployment (contract v1.7) — Cloudflare Pages
 Nothing here deploys anything; the coordinator does that with the user's approval.
 
-- **Pages settings:** root directory `apps/web`, build command `npm ci && npm run build`, output `dist`.
+- **Build for upload:** `npm ci && npm run build:pages` in `apps/web` (output `dist`). It refuses an unsafe
+  environment before building (`VITE_USE_MOCKS=true`, a non-https or non-`/api/v1` `VITE_API_BASE_URL`,
+  `VITE_PUBLIC_WRITES` not `false`, a secret-looking `VITE_*` value), then scans `dist` (no MSW worker or
+  mock switches, no sourcemaps or `sourceMappingURL` comments, no `404.html`, filled `_headers` with an https API
+  origin, no secret-like strings). It prints rule ids and file names only. For a Pages Git build, use the same command.
   Node comes from `.node-version` (24). There is deliberately no `404.html`, so Pages serves the SPA
   fallback; the build fails if one appears, or if any sourcemap is emitted.
 - **Build env (public, baked into the bundle):** `VITE_API_BASE_URL` (the Render API, e.g.
