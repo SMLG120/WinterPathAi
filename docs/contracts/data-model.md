@@ -1,5 +1,7 @@
-# Data model — PostGIS contract v1.3.0
+# Data model — PostGIS contract v1.5.0
 
+> v1.5.0 (2026-11-10, CR-ML-1 + user decisions): `wp.report_311_cell` gains `nature` in the PK; canonical 311 category names; OSM source = Geofabrik; path-type inclusion policy.
+> v1.4.0 (2026-11-10, CR-ROUTING-7): `wp.closure.status` vocabulary + `wp.closure_active_at(c wp.closure, t timestamptz)` (three-valued: true/false/null = unknown) (migration 0004).
 > v1.3.0 (2026-11-10, CR-ROUTING-5/6/8): `wp.edge.name`; `wp.community_report.terminal_at`; canonical source ids.
 > v1.2.0 (2026-11-10, CR-DATA-1/2/3/5): additive columns on `wp.edge` and `wp.closure`; new `wp.weather_daily`.
 
@@ -20,6 +22,11 @@ Canonical `source_id`s (v1.3): `osm`, `mtl-voirie`, `mtl-311`, `mtl-entraves`, `
 
 ### `wp.ingest_run`
 `ingest_run_id uuid PK`, `source_id FK`, `started_at`, `finished_at`, `status (running|succeeded|failed)`, `input_checksum text`, `record_count int`, `log jsonb`. Failed runs never replace current data (load into staging, swap in a transaction).
+
+### OSM source & path-type policy (v1.5, user decision 2026-11-10)
+- **Source:** Geofabrik `quebec-latest.osm.pbf` (download.geofabrik.de), clipped to the pilot bbox; record file date, MD5/SHA and download URL in `wp.ingest_run`. The public Overpass instance is **no longer used by the pipeline** (its policy directs commercial use to self-hosted/paid servers). Overpass may be used only for ad-hoc developer checks.
+- **Included highway types:** unchanged (footway incl. sidewalk/crossing, path, pedestrian, steps, living_street, residential, tertiary, secondary, primary) **plus** `service` and `cycleway` **only when** `foot ∈ {yes, designated, permissive}` is explicitly tagged.
+- **Excluded:** `corridor` / indoor (RÉSO) until opening hours and public access are verified from a cited source; `service`/`cycleway` without explicit foot permission; `foot=no|use_sidepath`, `access=private|no` everywhere.
 
 ### `wp.node`
 `node_id text PK`, `geom geometry(Point,4326)`, `osm_id bigint null`, `kind (street_node|crossing|entrance|synthetic)`, `crossing_type`, `kerb`, `source_id`, `ingest_run_id`. GiST(`geom`).
@@ -56,8 +63,10 @@ Indexes: GiST(geom), btree(from_node_id), btree(to_node_id), btree(component_id)
 ### `wp.closure` — Entraves
 `closure_id text PK` (`entrave:<id>`), `geom geometry(Geometry,4326)` (Entraves publishes the **permit point**; edge matching is approximate), `sidewalk_blockedtype text`, `blocks_passage boolean null`, `backsidewalk_blocks_passage boolean null` (v1.2; same rule applied to `backsidewalk_blockedtype`), `attrs jsonb` (v1.2; permit id and named affected street sections — never geocoded into certainty) (true **only** if `sidewalk_blockedtype` explicitly indicates blocked pedestrian passage; mapping table documented by Data agent), `valid_from`, `valid_to`, `status`, `source_id`, `ingest_run_id`. GiST. Evidence state: `confirmed` (official permit data).
 
+**Closure status (v1.4):** `status` is the publisher lifecycle only — `permit_issued` (from `Permis émis`) · `cancelled` · `completed` · `unknown` (CHECK constraint; unmapped raw values → `unknown`, raw kept in `attrs.currentstatus`). Time-derived states are **never stored**. Consumers call `wp.closure_active_at(c wp.closure, t timestamptz)` (three-valued: true/false/null = unknown): `status='permit_issued'` AND `valid_from <= t` AND (`valid_to` IS NULL OR `t < valid_to`) AND the weekly schedule in `attrs.weekly_schedule` (America/Montreal local weekday; partial-day windows respected) permits `t`. A `null` schedule flag means **unknown activity** — routing must flag or penalise it, never treat it as clear. Routing excludes an edge only when the closure is active at `t` **and** `blocks_passage` is true. Evidence (2026-11-10 file): 1 974 permits all `Permis émis`; 347 already ended and 80 not started despite the feed title; 942 partial-day.
+
 ### `wp.report_311_cell` — aggregated, privacy-preserving
-`h3 text`, `day date`, `category text` (normalised winter category), `n int`, PK(h3, day, category). **No raw rows stored in the DB**; raw CSV stays in git-ignored `data/raw/`. Cells with n<3 per day are kept for training but suppressed in public API output (k-anonymity floor; ML agent may use them).
+`h3 text`, `day date`, `category text` (canonical: `sidewalk_slippery`, `roadway_slippery`, `snow_clearing`, `snow_dumping`), `nature text` (v1.5: `requete`, `plainte`, `information`, `commentaire` from 311 `NATURE`), `n int`, PK(h3, day, category, nature). **Consumers must `SUM(n)` over the natures they need**: ML labels use `nature IN ('requete','plainte')`; public counts and hazard aggregates use the same two natures unless stated. The k-anonymity floor (n<3 suppressed) applies **after** summing. **No raw rows stored in the DB**; raw CSV stays in git-ignored `data/raw/`. Cells with n<3 per day are kept for training but suppressed in public API output (k-anonymity floor; ML agent may use them).
 
 ### `wp.weather_obs`
 `station_id`, `observed_at`, `temperature_c`, `precip_mm`, `snow_depth_cm`, `wind_kmh`, `source_collection` (`climate-hourly|swob-realtime`), `ingest_run_id`. PK(station_id, observed_at).

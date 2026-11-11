@@ -167,8 +167,10 @@ class InMemoryReportRepository:
 class PostgisReportRepository:
     """``wp.community_report`` (schema owned by the Data agent's migrations).
 
-    ``terminal_at`` is not a contract column; the 30-day hard delete uses ``moderated_at`` for
-    moderated rows and ``expires_at`` for expired/deleted rows (see change request in the report).
+    ``terminal_at`` (data-model v1.3, migration 0003) is written when a report reaches
+    rejected / expired / deleted (expiry uses ``expires_at``, the moment it expired) and drives the
+    30-day hard delete. On databases without the column, the hard delete falls back to
+    ``COALESCE(moderated_at, expires_at)``.
     """
 
     COLS = (
@@ -178,6 +180,21 @@ class PostgisReportRepository:
 
     def __init__(self, engine) -> None:
         self.engine = engine
+        self._has_terminal: bool | None = None
+
+    def _terminal(self, conn) -> bool:
+        from sqlalchemy import text
+
+        if self._has_terminal is None:
+            self._has_terminal = bool(
+                conn.execute(
+                    text(
+                        "SELECT 1 FROM information_schema.columns WHERE table_schema = 'wp'"
+                        " AND table_name = 'community_report' AND column_name = 'terminal_at'"
+                    )
+                ).first()
+            )
+        return self._has_terminal
 
     @staticmethod
     def _row(m) -> StoredReport:
@@ -199,9 +216,10 @@ class PostgisReportRepository:
     def _expire_sql(self, conn, now) -> None:
         from sqlalchemy import text
 
+        term = ", terminal_at = expires_at" if self._terminal(conn) else ""
         conn.execute(
             text(
-                "UPDATE wp.community_report SET status='expired' "
+                f"UPDATE wp.community_report SET status='expired'{term} "  # noqa: S608
                 "WHERE status IN ('pending','approved') AND expires_at <= :now"
             ),
             {"now": now},
@@ -256,12 +274,13 @@ class PostgisReportRepository:
         from sqlalchemy import text
 
         with self.engine.begin() as conn:
+            term = ", terminal_at = :now" if self._terminal(conn) else ""
             res = conn.execute(
                 text(
-                    "UPDATE wp.community_report SET status='deleted', description=NULL "
+                    f"UPDATE wp.community_report SET status='deleted', description=NULL{term} "  # noqa: S608
                     "WHERE report_id=:id AND status <> 'deleted'"
                 ),
-                {"id": report_id},
+                {"id": report_id, "now": now},
             )
         return res.rowcount == 1
 
@@ -290,13 +309,18 @@ class PostgisReportRepository:
         from sqlalchemy import text
 
         with self.engine.begin() as conn:
+            term = (
+                ", terminal_at = CASE WHEN :st = 'rejected' THEN CAST(:now AS timestamptz) END"
+                if self._terminal(conn)
+                else ""
+            )
             m = (
                 conn.execute(
                     text(
-                        # COLS is a class constant (no user input); values are bound params.
+                        # COLS/term are constants (no user input); values are bound params.
                         "UPDATE wp.community_report SET status=:st, moderated_at=:now,"  # noqa: S608
-                        " moderation_note=:note WHERE report_id=:id AND status <> 'deleted'"
-                        " RETURNING " + self.COLS
+                        " moderation_note=:note" + term + " WHERE report_id=:id"
+                        " AND status <> 'deleted' RETURNING " + self.COLS
                     ),
                     {"st": DECISION_STATUS[decision], "now": now, "note": note, "id": report_id},
                 )
@@ -327,10 +351,15 @@ class PostgisReportRepository:
 
         with self.engine.begin() as conn:
             self._expire_sql(conn, now)
+            since = (
+                "COALESCE(terminal_at, moderated_at, expires_at)"
+                if self._terminal(conn)
+                else "COALESCE(moderated_at, expires_at)"
+            )
             res = conn.execute(
                 text(
-                    "DELETE FROM wp.community_report WHERE status IN ('rejected','expired',"
-                    "'deleted') AND COALESCE(moderated_at, expires_at) + interval '30 days' <= :now"
+                    "DELETE FROM wp.community_report WHERE status IN ('rejected','expired',"  # noqa: S608
+                    f"'deleted') AND {since} + interval '30 days' <= :now"
                 ),
                 {"now": now},
             )

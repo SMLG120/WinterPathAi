@@ -52,13 +52,13 @@ Hard exclusions (edge removed, never penalised): `foot=no`, access private/no, c
 Algorithms: Dijkstra baseline (shortest distance, shortest time), A* with haversine heuristic for winter-aware. All weights ≥ 0, unit = seconds.
 
 ## 6. Evidence states (used everywhere)
-`confirmed` · `unverified_report` · `model_estimate` · `unknown` · `simulated`. Defined in OpenAPI `EvidenceState`. UI must render each with a distinct icon + text label (not colour only).
+`confirmed` · `unverified_report` · `model_estimate` · `unknown` · `simulated`. Defined in OpenAPI `EvidenceState`. UI must render each with a distinct icon + text label (not colour only). Route explanation codes map to states as documented in OpenAPI `Route.explanation` (v1.5). OSM accessibility tags are community-mapped and count as `unverified_report`, never `confirmed`.
 
 ## 7. ADRs
 - **ADR-1 Vite over Next.js** — greenfield, SPA + separate FastAPI; no SSR requirement; spec preference. 
 - **ADR-2 Own repo** — avoids entangling the uncommitted `~/Projects` mega-repo; worktrees isolated.
 - **ADR-3 Basemap = OpenFreeMap** for dev/pilot (verified: free, commercial use allowed, attribution required, no SLA). Production fallback: self-hosted Protomaps PMTiles (ODbL produced work). Never `tile.openstreetmap.org` as a CDN.
-- **ADR-4 Graph source of truth = OSM** (ways with legal foot access + crossings). Montréal Voirie sidewalk **polygons** enrich edges (sidewalk presence/width/material) by spatial join; they never create connectivity on their own.
+- **ADR-4 Graph source of truth = OSM** from the **Geofabrik Québec extract** (user decision 2026-11-10; public Overpass not used in the pipeline) — ways with legal foot access + crossings; `service`/`cycleway` only with explicit foot permission; indoor RÉSO corridors excluded until access/hours are verified. Montréal Voirie sidewalk **polygons** enrich edges (sidewalk presence/width/material) by spatial join; they never create connectivity on their own.
 - **ADR-5 ML target** = P(≥1 winter-related 311 report in H3 res-9 cell, next 24 h). Not physical ice probability. Disabled in UI unless evaluation passes the gate in `docs/agents/ml.md`.
 - **ADR-6 Weather** = ECCC GeoMet OGC API (`climate-hourly`, `swob-realtime`, `citypageweather-realtime`, `weather-alerts`). Alerts reproduced without alteration (licence clause).
 - **ADR-7 No auth provider in v1**: moderator/admin routes use a single bearer token whose hash is in env; replaceable later.
