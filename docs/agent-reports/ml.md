@@ -1,11 +1,163 @@
 # Agent report — ml
 
-- **Status:** READY FOR REVIEW
-- **Branch / SHA:** agent/ml @ bb74a7061474de3f7ab64912c5ccd2d1605aaa20 (code). This report is committed on top of it.
-- **Integration merges:** `integration/winterpath` merged twice with `git merge --no-edit` (56a9f96: contract v1.1.0 + platform; 3aae499: contract v1.2.0 + data). Both merges were clean.
+- **Status:** MERGED (fa8b4ea into `integration/winterpath`). Follow-up work since then: READY FOR REVIEW.
+- **Branch / SHA:** agent/ml @ dd191742b842369e5ef23e74d5a9c3b731b65360 (pre-registration). Gate runner and Addendum 1 are in the following commit; this report update is committed on top of them.
+- **Integration merges:** `integration/winterpath` merged three times with `git merge --no-edit`, all clean:
+  - 56a9f96: contract v1.1.0 + platform.
+  - 3aae499: contract v1.2.0 + data.
+  - fa8b4ea: contract v1.3.0 + routing + the ML merge; fast-forward.
 - **Date (UTC):** 2026-11-10
 
-## Summary
+## Update after merge (contract v1.3.0) — 2026-11-10
+
+### What was done
+- Merged `integration/winterpath` at fa8b4ea (contract v1.3.0). The merge was a fast-forward with no conflicts.
+- **Canonical source ids (v1.3):** ML already used `mtl-311` and `eccc-geomet` (`inference.SOURCE_IDS`), so no code change was needed.
+- **Pre-registered a new gate:** `models/gate-logreg-2026.md`, for "logistic regression as model", committed in dd19174 at 2026-11-10 16:46:50 −05:00. That is before the first test day of winter 2026-27.
+  - **Not evaluated:** no metric of the candidate on 2026-27 exists, and none can until the winter ends.
+  - The earliest allowed run is 2027-05-08.
+  - The 2025-26 result that motivated it is treated as hypothesis-generating only.
+- **Frozen by the gate document:**
+  - Labels: unchanged, ML's own aggregation, independent of CR-ML-1.
+  - Coverage: the v2 file, by sha256.
+  - Holdout: the same 5 res-6 blocks.
+  - Splits: train winters 2021–2024, isotonic calibration on 2025, test on 2026 (chrono + spatial).
+  - Candidate: `models.Logistic`, pinned via sha256 of 6 source files.
+  - Gating comparators: (a) and (b); HGB is report-only.
+- **Gate criteria:**
+  - ΔPR-AUC ≥ 0.010.
+  - Bootstrap CI lower bound > 0.
+  - Brier below both comparators.
+  - New: per-borough calibration ratio within [0.5, 2] for boroughs with ≥ 100 positives.
+- The document also lists the conditions that void a run, and what happens to the registry on pass or fail.
+- `models/registry.json` is **unchanged**: the active layer is still `heuristic`, and `model.enabled = false`.
+
+### Checks run on the merged tree
+```text
+$ grep -rn "vmtl-\|eccc-climate" services/ml/src services/ml/tests models/registry.json || echo "no stale source ids"
+no stale source ids
+$ cd services/ml && uv run pytest -q
+............................                                             [100%]
+28 passed in 1.66s
+$ uv run python -c "...FEATURES / coverage / holdout_blocks..."   # facts cited in the gate document
+24
+2930 5
+```
+
+### Gate runner (follow-up, same day)
+- `services/ml/src/winterpath_ml/gate_logreg_2026.py` implements the pre-registered protocol. It **refuses** to run before 2027-05-08 or if any pinned file or the coverage list differs from its recorded sha256. There is no override flag.
+  - It downloads a fresh 311 snapshot into a separate path and rejects snapshots dated before 2027-05-08.
+  - It applies the void rules and the four gate criteria (`decide()`, a pure function), and writes `models/evaluation/logreg-2026-<sha8>.json`.
+  - It does **not** edit the registry; a PASS is promoted through a separate reviewed commit.
+- Frozen coverage list committed as `models/coverage-v2-8d19aa86-cells.txt` (2,930 ids, sha256 `3e80a04b…5e58`). `models/artifacts/` is git-ignored, so a clean 2027 checkout would otherwise lack it.
+  - The root `.gitignore` ignores `coverage/` directories, so it is a flat file, not `models/coverage/…`.
+- Addendum 1 in `models/gate-logreg-2026.md` records the above. It is a clarification only; no criterion, split, data rule or pinned file changed.
+- `test_pinned_files_unchanged` runs in CI, so an edit to a frozen file fails the build.
+
+```text
+$ uv run --with ruff ruff check . && uv run --with ruff ruff format --check .
+All checks passed!
+24 files already formatted
+$ uv run pytest -q
+...................................                                      [100%]
+35 passed in 4.37s
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+date guard: pre-registered earliest run date is 2027-05-08; today is 2026-11-10. Test winter not evaluable.
+$ uv run python -m winterpath_ml.gate_logreg_2026; echo "exit=$?"
+REFUSED: pre-registered earliest run date is 2027-05-08; today is 2026-11-10. Test winter not evaluable.
+pins OK; coverage list OK
+exit=2
+```
+
+### API interface mismatch found and fixed on the ML side
+- **The mismatch:** `services/api` and `services/routing` define `RiskProvider` as `risk_layer` + `edge_risk(edge_ids, at) -> {edge_id: RiskEstimate}`. My providers take edge **geometry** and return one estimate. If wired directly, the API's `NormalisingRiskProvider` would have caught the error and silently returned `unknown` for everything.
+- **The fix:** added `inference.EdgeIdRiskProvider` + factory `inference.api_provider`. It looks edge geometry up from a GeoJSON (`WP_EDGES_GEOJSON`, default `data/fixtures/pilot_mini/edges.geojson`), returns explicit `unknown` for ids it can't find, and exposes `model_status()`. No Routing/API files were edited.
+- **Verified** against the real API adapter code, read-only, in a temporary env:
+```text
+$ cd services/api && uv run --with-editable ../ml python - <<'EOF' ... load_risk_provider("winterpath_ml.inference:api_provider") ...
+NormalisingRiskProvider risk_layer= heuristic
+2026-01-15 201 {'elevated': 60, 'moderate': 140, 'unknown': 1} prob non-null: 0
+2026-07-01 201 {'unknown': 201} prob non-null: 0
+evidence: model_estimate ('mtl-311', 'eccc-geomet') 2026-01-15 05:00:00+00:00
+{'risk_layer': 'heuristic', 'enabled': False, 'model_id': 'winter311-hgb-v1'}
+```
+  - 201 ids = the 200 pilot edges + one deliberately bogus id, which comes back `unknown`.
+- **Needed from Routing/API (not done by ML):**
+  - add `winterpath-ml` (path dependency) to `services/api/pyproject.toml`;
+  - set `RISK_PROVIDER=winterpath_ml.inference:api_provider` (and `WP_EDGES_GEOJSON` if the graph isn't pilot_mini);
+  - artifacts must exist (`evaluate` + `score`), otherwise everything stays `unknown`.
+- Tests after this change:
+```text
+$ cd services/ml && uv run pytest -q
+.....................................                                    [100%]
+37 passed in 11.68s
+$ uv run --with ruff ruff check . && uv run --with ruff ruff format --check .
+All checks passed!
+25 files already formatted
+```
+
+### Contract v1.5.0 (CR-ML-1 accepted) — merged
+- Merged `integration/winterpath` @ bbae7d3, clean.
+- **Category names aligned** to the canonical `wp.report_311_cell` names (`sidewalk_slippery`, `roadway_slippery`, `snow_clearing`, `snow_dumping`) in `config.WINTER_CATEGORIES`.
+  - `config.py` is not pinned by the logistic-regression gate; `data_311.py` is pinned and **unchanged**.
+- **v2 results unchanged:** I rebuilt the aggregates and panel with the renamed categories and compared them to the evaluated artifact. I did not re-run or re-commit the evaluation; the registry, card and gate are untouched.
+```text
+categories: ['roadway_slippery', 'sidewalk_slippery', 'snow_clearing', 'snow_dumping']
+interim identical after rename: True
+panel identical to evaluated v2 features.parquet: True (2385020, 28) (2385020, 28)
+$ uv run pytest -q
+37 passed in 2.92s
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+- **Nature-summing reader: not yet added.**
+  - The coordinator's instruction is to add it once Data's migration is on integration. As of bbae7d3 there is no migration adding `nature` (the last is `0004_closure_status.py`).
+  - `data_311.read_report_cells_sql` is now known-wrong: it doesn't filter or sum natures. It stays unchanged because `data_311.py` is gate-pinned; the README says not to use it. The new reader will live in a separate module.
+- **Predicted difference** between the future DB reader (`SUM(n) WHERE nature IN ('requete','plainte')`) and the CSV labels. Measured now from the same 311 file:
+```text
+extra rows in Data's mapping (Requete/Plainte): 24 geolocated & valid: 24
+Déneigement ruelle  Plainte     3
+                    Requete     1
+Dépôt neige-ruelle  Requete    20
+in v2 panel: 24 of 24
+would flip 0->1: 18 already positive: 6
+  valid 10 · train 4 · test_chrono 4
+```
+  - Cause: Data maps `Déneigement ruelle` → `snow_clearing` and `Dépôt neige-ruelle` → `snow_dumping`. ML's frozen label set (v2 and `gate-logreg-2026.md`) excludes them. The table cannot separate them, so the DB reader **cannot reproduce the CSV labels exactly**: 18 of 2,385,020 cell-days would differ.
+
+### CR-ML-2 (proposed) — keep alley categories separable in `wp.report_311_cell`
+- **Request:** give the two alley activities their own canonical categories (e.g. `snow_clearing_alley`, `snow_dumping_alley`), or add the raw `acti_nom` to the key.
+- **Effect:** consumers that want the current definitions can still `SUM` them together, and ML can exclude them, so the DB path reproduces the label of record exactly.
+- **Alternative:** the coordinator accepts the 18-cell-day difference, and the CSV aggregation stays the label of record for v2 and the 2026-27 gate.
+- ML continues other work and does not depend on the outcome.
+
+### Merge of integration d04da54 (data 0005, routing ML/weather wiring, platform)
+- Merged clean (e3f0df3).
+- **Migration 0005 is the closure exclusive-end fix, not `report_311_cell.nature`.** `db/` and `services/ingestion` contain no `nature` change yet, so the nature-summing reader is **still pending** per the coordinator's instruction.
+- **Routing wired ML differently from my adapter:** `RISK_PROVIDER=winterpath_ml.inference:load_provider`, adapted in the API, which calls my `cell_risk`/`edge_risk(coords)`/`status`. My `api_provider` is compatible but unused; either works.
+- **Compatibility re-checked** against my current ML code, which is newer than the coordinator's verified 28-test ML run:
+```text
+$ cd services/api && uv run pytest -q          # uses services/ml from this branch (editable path dep)
+71 passed, 8 skipped, 1 warning
+  all 8 skips: "DATABASE_URL not set" (PostGIS tests); test_api_ml_risk.py ran and passed
+$ cd services/routing && uv run pytest -q
+210 passed, 1 skipped
+$ cd services/ml && uv run pytest -q
+37 passed
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+
+### Open items
+- Nature-summing reader: waiting for Data's `report_311_cell.nature` migration (not in d04da54).
+- CR-ML-2 (above): coordinator decision.
+- After Data's v1.5 migration lands: add the nature-summing reader and compare it with the CSV labels. The difference must equal the 18 cell-days predicted above.
+- Routing/API: wire `api_provider` as described above.
+- **2027-05-08 or later:** run `uv run python -m winterpath_ml.gate_logreg_2026` once. If the decision is PASS, open a reviewed commit that promotes `winter311-logreg-v1` in the registry, as the gate document describes.
+- Daily `winterpath_ml.score` scheduling is still unassigned (Platform/coordinator).
+
+## Summary (original delivery)
 - **Gate decision: FAIL.** The model is disabled (`layers.model.enabled = false`). The active layer is `heuristic`: baseline (b), historical frequency × a fixed weather multiplier. It reports levels only, with `probability = null`.
 - HistGradientBoosting did **not** beat the strongest baseline, logistic regression (c), on either holdout. The PR-AUC difference vs that baseline was −0.0033 (most recent winter) and −0.0011 (held-out areas), with 95% CIs spanning 0.
 - The target is P(≥1 winter-related 311 report in an H3 res-9 cell during local day D). It measures **reporting behaviour, not sidewalk safety**.

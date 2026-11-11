@@ -1,0 +1,23 @@
+{
+  "generic": "Something went wrong. Please try again.",
+  "network": "We couldn't reach the server. Check your connection and try again.",
+  "retryAfter": "Try again in {{seconds}} seconds.",
+  "codes": {
+    "VALIDATION_ERROR": "Some of the information sent was invalid.",
+    "OUTSIDE_COVERAGE": "This location is outside the pilot area.",
+    "OFF_NETWORK": "This point is too far from the mapped walking network.",
+    "BBOX_TOO_LARGE": "The map area is too large. Zoom in.",
+    "NO_ROUTE": "No route was found with these settings.",
+    "NOT_FOUND": "Not found.",
+    "UNAUTHORIZED": "You're not authorised to do this.",
+    "RATE_LIMITED": "Too many requests. Please wait a moment.",
+    "UPSTREAM_UNAVAILABLE": "A data source is unavailable right now.",
+    "INTERNAL": "The server had a problem.",
+    "NETWORK": "We couldn't reach the server.",
+    "UNKNOWN": "Unexpected response from the server."
+  },
+  "boundary": {
+    "title": "This part of the page failed to load",
+    "reload": "Reload page"
+  }
+}

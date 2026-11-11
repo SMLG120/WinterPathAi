@@ -1,11 +1,109 @@
 # Agent report — platform
 
-- **Status:** READY FOR REVIEW (local DB boot and contract-vs-stub verified; CI never run on GitHub — repo has no remote and nothing was pushed)
-- **Branch / SHA:** agent/platform — code at 5ce5c9f (contract v1.1.0 adoption), on top of merge 11e525f of `integration/winterpath` f191fce. Original implementation: b6daddf. Report updates: 8b89803 (v1.1.0 outputs) and the commit after it (stale-wording fixes only; no code or test changes).
-- **Contract:** v1.1.0 (CR-PLAT-1 and CR-PLAT-2 implemented by the coordinator)
-- **Date (UTC):** 2026-11-10
+- **Status:** READY FOR REVIEW (harness verified against the stub **and the live merged real API**; CI never run on GitHub — no remote, nothing pushed)
+- **Branch / SHA:** agent/platform — fast-forwarded to `integration/winterpath` 2d37f32 (d04da54 + one `.env.example` commit); this checkpoint's harness changes and report are in the commit after it. Earlier: 5ce5c9f (v1.1.0 adoption), b6daddf (original).
+- **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
+- **Date (UTC):** 2026-11-11
 
-## Update 2026-11-10 — contract v1.1.0 adopted
+## Update 2026-11-11 — merged integration/winterpath; harness run against the real API
+Coordinator instruction: merge `integration/winterpath` (d04da54) at the next checkpoint, no rebase/force, and continue.
+
+1. `git merge --no-edit integration/winterpath` → **fast-forward** to 2d37f32 (`.env.example: weather adapter names (routing CR)`, one commit past d04da54; it only adds 4 lines to `.env.example`). 146 files changed upstream; **none under platform-owned paths** (`git diff --stat 89477f5 HEAD -- infra .github tests/integration docker-compose.yml Makefile` → empty). Contract now `version: 1.5.0`; `services/{ingestion,routing,ml,api}` now exist, so `make test`/`make lint` exercise them instead of printing SKIP.
+2. **Real API run (closes the "not run against the real API" blocker).** Entry point `winterpath_api.main:app` is confirmed (`services/api/src/winterpath_api/main.py`). Launched locally on my assigned port 8105, then stopped:
+   `API_CORS_ORIGINS=http://localhost:5175 API_ADMIN_TOKEN_HASH=<sha256 of a throwaway token in the session scratchpad> RISK_PROVIDER=winterpath_ml.inference:load_provider ROUTING_GRAPH_SOURCE=fixture API_STORE_BACKEND=memory WEATHER_SOURCE=none uv run uvicorn winterpath_api.main:app --host 127.0.0.1 --port 8105 --no-access-log`
+   ```text
+   $ curl -sS http://127.0.0.1:8105/api/v1/health
+   {"status":"ok","version":"0.1.0 (contract 1.3.0)","checks":{"graph":{"status":"ok"},"database":{"status":"disabled","detail":"In-memory stores (no DATABASE)."},"risk":{"status":"disabled","detail":"No risk layer; risk reported as unknown."},"weather":{"status":"disabled","detail":"No ECCC adapter configured."}}}
+   $ curl -sS http://127.0.0.1:8105/api/v1/models/status
+   {"risk_layer":"none","enabled":false,"model_id":null,...}
+   weather/current 503
+   ```
+   **Not reproduced here:** the coordinator's "heuristic risk on" configuration. `models/artifacts/` in this worktree holds only `.gitkeep` (artifacts are not in Git), so the risk layer came up disabled and every segment's risk is `unknown`. My run covers the contract surface, not the ML layer.
+3. **Defect found in the real API — API-NULL-1 (routing-owned, not fixed here).** At `CONTRACT_MAX_EXAMPLES=150`, Schemathesis failed `test_negative[POST /pilot-requests]`:
+   ```text
+   - ST201 Schema-violating request accepted
+       Invalid data should have been rejected
+       Expected: 400, 401, 403, 404, 405, 406, 409, 415, 422, 428, 429, 5xx
+       Invalid component: in body - locale: Incorrect type
+   [201] Created:
+       <EMPTY>
+   1 failed, 22 passed, 5 skipped, 31 deselected in 28.06s
+   ```
+   Manual reproduction (in-memory store only):
+   ```text
+   POST /pilot-requests  locale: null  -> 201      (contract: string enum [en, fr], not nullable)
+   POST /pilot-requests  no locale     -> 201
+   POST /pilot-requests  locale: "de"  -> 422      (control)
+   POST /reports  baseline             -> 201
+   POST /reports  locale: null         -> 201      (contract: string enum, not nullable)
+   POST /reports  description: null    -> 201      (contract: string, maxLength 280, not nullable)
+   ```
+   Cause: `services/api/src/winterpath_api/schemas.py` declares optional fields as `X | None = None` (e.g. lines 132, 134, 337, 338), so pydantic accepts an explicit `null`. Suggested fix for Routing: make them non-nullable when present (e.g. a validator that rejects explicit `None`, or `Field(default=None)` without `| None` in the type plus `exclude_unset`). The default 40-example run also hit it once, so contract runs against the real API were **flaky** until it is contained.
+4. **Harness changes (owned paths only):**
+   - `test_smoke.py::test_explicit_null_rejected_for_non_nullable_optional`: a deterministic check over 5 fields (`/pilot-requests` contact_name/message/locale, `/reports` description/locale). It must give 400/422 `VALIDATION_ERROR`. Passes against the stub. Against the real API it is a **strict** xfail (`API-NULL-1`), so it turns red as soon as the API is fixed, which forces the marker's removal.
+   - `test_contract.py::test_negative`: a **non-strict** xfail for `POST /pilot-requests` and `POST /reports` only, and only against the real API. Whether Schemathesis generates a `null` body depends on the data, so a strict marker would flap. Remove it together with the strict one.
+5. Note for Routing: `/health` reports `contract 1.3.0` (`CONTRACT_VERSION` in `services/api/src/winterpath_api/__init__.py`) while the merged contract is 1.5.0. This is an observation only; I don't know whether v1.4/v1.5 changed anything the API must implement.
+
+Literal outputs:
+```text
+$ (real API) API_BASE_URL=http://127.0.0.1:8105/api/v1 API_LOG_FILE=<scratch>/api.log API_ADMIN_TOKEN=<scratch token> CORS_ALLOWED_ORIGIN=http://localhost:5175 uv run pytest -q -rxX
+XFAIL test_contract.py::test_negative[POST /pilot-requests]
+XFAIL test_smoke.py::test_explicit_null_rejected_for_non_nullable_optional[/pilot-requests-base0-contact_name]
+XFAIL test_smoke.py::test_explicit_null_rejected_for_non_nullable_optional[/pilot-requests-base1-message]
+XFAIL test_smoke.py::test_explicit_null_rejected_for_non_nullable_optional[/pilot-requests-base2-locale]
+XFAIL test_smoke.py::test_explicit_null_rejected_for_non_nullable_optional[/reports-base3-description]
+XFAIL test_smoke.py::test_explicit_null_rejected_for_non_nullable_optional[/reports-base4-locale]
+XPASS test_contract.py::test_negative[POST /reports]
+52 passed, 5 skipped, 6 xfailed, 1 xpassed in 48.21s
+[exit 0]
+
+$ (real API, CONTRACT_MAX_EXAMPLES=150, same env)
+52 passed, 5 skipped, 6 xfailed, 1 xpassed in 97.23s (0:01:37)
+[exit 0]
+
+$ (privacy) log_scan.precise_coordinates over the real API's captured log
+log lines: 11115 | precise coordinate hits: 0
+
+$ make test        (stub; API_BASE_URL unset)
+59 passed, 5 skipped in 10.26s
+== services/ingestion
+42 passed in 25.34s
+== services/routing
+210 passed, 1 skipped in 7.20s
+== services/ml
+28 passed in 2.42s
+== services/api
+68 passed, 11 skipped, 1 warning in 8.25s
+SKIP apps/web: no package.json on this branch
+[make test exit 0]
+
+$ make lint
+All checks passed! / 13 files already formatted        (tests/integration)
+All checks passed! / 26 files already formatted        (services/ingestion)
+All checks passed! / 20 files already formatted        (services/routing)
+All checks passed! / 22 files already formatted        (services/ml)
+All checks passed! / 30 files already formatted        (services/api)
+SKIP apps/web: no package.json on this branch
+compose config OK
+[make lint exit 0]
+
+$ actionlint        -> [exit 0]  (1.7.12)
+$ make config       -> compose config OK [exit 0]
+$ scripts/check-ownership.sh platform
+ownership OK for agent/platform
+$ docker ps --filter name=winterpath-db-1
+winterpath-db-1 Up 10 hours (healthy)
+```
+(`make lint` lines are shown as summary pairs; the per-package ruff output was the two lines shown for each.) The `services/api` warning is a Starlette `httpx` deprecation inside the API's test client, owned by Routing.
+
+Remaining blockers after this checkpoint:
+| Blocker | Next step / who |
+|---|---|
+| CI has never executed on GitHub | Coordinator/user, when a remote exists |
+| API-NULL-1 (null accepted for non-nullable optional fields) | Routing fixes `schemas.py`; Platform then removes both API-NULL-1 markers |
+| ML risk layer not exercised by the platform harness locally (no artifacts in this worktree) | Coordinator's run covered it; Platform can re-run with artifacts if provided |
+
+## Update 2026-11-10 — contract v1.1.0 adopted (superseded by the 2026-11-11 update where they differ)
 The coordinator's instruction was: merge `integration/winterpath` (f191fce), remove the CR-PLAT-1 xfails, and re-verify.
 
 1. `git merge --no-edit integration/winterpath`: merge made by `ort`, merge commit 11e525f, no conflicts, no rebase or force. The merge brought in `docs/contracts/openapi.yaml` 1.1.0, `integration-rules.md` §7 changelog, `.env.example` test-harness names and `scripts/` changes. I reviewed the contract diff and it matches CR-PLAT-1 exactly. **`docs/contracts/` was not edited on this branch.**

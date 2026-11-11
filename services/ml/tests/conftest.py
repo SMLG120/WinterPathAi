@@ -31,7 +31,7 @@ def SYNTHETIC_reports(SYNTHETIC_cells, SYNTHETIC_days) -> pd.DataFrame:
         for c in SYNTHETIC_cells:
             n = rng.poisson(0.15)
             if n:
-                rows.append((c, d, "slippery_sidewalk", int(n)))
+                rows.append((c, d, "sidewalk_slippery", int(n)))
     return pd.DataFrame(rows, columns=["h3", "day", "category", "n"])
 
 
