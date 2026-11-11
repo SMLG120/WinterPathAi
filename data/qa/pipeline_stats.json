@@ -176,19 +176,33 @@
       "702S006"
     ],
     "null_counts": {
-      "precip_mm": 42733,
-      "snow_depth_cm": 84248,
+      "precip_mm": 42734,
+      "snow_depth_cm": 84249,
       "temperature_c": 1,
       "wind_kmh": 33
     },
     "observed_range": [
       "2022-01-01T05:00:00Z",
-      "2026-10-01T12:00:00Z"
+      "2026-11-10T21:00:00Z"
     ],
-    "rows": 84248,
+    "rows": 84249,
     "rows_by_collection": {
       "climate-hourly": 84085,
-      "swob-realtime": 163
+      "swob-realtime": 164
     }
+  },
+  "weather_daily": {
+    "day_range": [
+      "2022-01-01",
+      "2026-11-10"
+    ],
+    "non_null": {
+      "max_temp_c": 3451,
+      "min_temp_c": 3451,
+      "snow_on_ground_cm": 1075,
+      "total_precip_mm": 3472,
+      "total_snow_cm": 1766
+    },
+    "rows": 3550
   }
 }

@@ -12,6 +12,11 @@ Stations (looked up 2026-11-10 via collections/climate-stations, hourly data, ne
     station metadata; carries hourly PRECIP_AMOUNT. Ingested as its own station_id (no merging).
 No downtown station with hourly data was found in the Montréal bbox query.
 
+climate-daily (contract v1.2.0, wp.weather_daily) is ingested for the same stations because
+7025251's hourly precipitation is NULL throughout, while its daily TOTAL_PRECIPITATION /
+TOTAL_SNOW / SNOW_ON_GROUND are populated. SNOW_ON_GROUND is NULL outside winter upstream; it
+stays NULL here (never filled with 0).
+
 Missing values stay NULL (never 0). SWOB uses negative sentinels (e.g. snw_dpth = -1) → NULL.
 climate-hourly has no snow-depth field → NULL.
 """
@@ -44,6 +49,17 @@ COLUMNS = [
     "source_collection",
 ]
 
+DAILY_COLUMNS = [
+    "station_id",
+    "day",
+    "total_precip_mm",
+    "total_snow_cm",
+    "snow_on_ground_cm",
+    "min_temp_c",
+    "max_temp_c",
+    "source_collection",
+]
+
 
 def _num(v, *, nonneg: bool = False):
     if v is None or v == "":
@@ -66,6 +82,19 @@ def climate_hourly_row(p: dict) -> dict:
         "snow_depth_cm": None,
         "wind_kmh": _num(p.get("WIND_SPEED"), nonneg=True),
         "source_collection": "climate-hourly",
+    }
+
+
+def climate_daily_row(p: dict) -> dict:
+    return {
+        "station_id": str(p["CLIMATE_IDENTIFIER"]),
+        "day": str(p["LOCAL_DATE"])[:10],  # station-local calendar day as published
+        "total_precip_mm": _num(p.get("TOTAL_PRECIPITATION"), nonneg=True),
+        "total_snow_cm": _num(p.get("TOTAL_SNOW"), nonneg=True),
+        "snow_on_ground_cm": _num(p.get("SNOW_ON_GROUND"), nonneg=True),
+        "min_temp_c": _num(p.get("MIN_TEMPERATURE")),
+        "max_temp_c": _num(p.get("MAX_TEMPERATURE")),
+        "source_collection": "climate-daily",
     }
 
 
@@ -106,8 +135,9 @@ def _pages(settings: Settings, collection: str, params: dict, tag: str, refresh:
         offset += PAGE
 
 
-def fetch_all(settings: Settings, refresh: bool) -> tuple[list[dict], list[str], dict]:
+def fetch_all(settings: Settings, refresh: bool) -> tuple[list[dict], list[dict], list[str], dict]:
     rows: list[dict] = []
+    daily: list[dict] = []
     shas: list[str] = []
     now = datetime.now(UTC)
     for st in STATIONS:
@@ -122,6 +152,15 @@ def fetch_all(settings: Settings, refresh: bool) -> tuple[list[dict], list[str],
             ):
                 shas.append(raw.sha256)
                 rows.extend(climate_hourly_row(f["properties"]) for f in feats)
+            for raw, feats in _pages(
+                settings,
+                "climate-daily",
+                {"CLIMATE_IDENTIFIER": st, "LOCAL_YEAR": year},
+                f"{st}_{year}",
+                refresh or year == now.year,
+            ):
+                shas.append(raw.sha256)
+                daily.extend(climate_daily_row(f["properties"]) for f in feats)
         for raw, feats in _pages(
             settings,
             "swob-realtime",
@@ -132,7 +171,7 @@ def fetch_all(settings: Settings, refresh: bool) -> tuple[list[dict], list[str],
             shas.append(raw.sha256)
             rows.extend(swob_row(f["properties"]) for f in feats)
             break  # adapter keeps only the latest page (realtime, ≤30 days retained upstream)
-    return rows, shas, {"stations": list(STATIONS)}
+    return rows, daily, shas, {"stations": list(STATIONS)}
 
 
 def dedupe(rows: list[dict]) -> list[dict]:
@@ -149,7 +188,7 @@ def dedupe(rows: list[dict]) -> list[dict]:
 
 
 def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> RunResult:
-    rows, shas, info = fetch_all(settings, refresh)
+    rows, daily, shas, info = fetch_all(settings, refresh)
     checksum = hashlib.sha256("|".join(shas).encode()).hexdigest()
 
     def build(staging: Path, run_id: str) -> dict:
@@ -159,6 +198,24 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
             w.writeheader()
             for r in out:
                 w.writerow({**r, "ingest_run_id": run_id})
+        daily_out = sorted(
+            {(r["station_id"], r["day"]): r for r in daily}.values(),
+            key=lambda r: (r["station_id"], r["day"]),
+        )
+        with (staging / "weather_daily.csv").open("w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=DAILY_COLUMNS + ["ingest_run_id"])
+            w.writeheader()
+            for r in daily_out:
+                w.writerow({**r, "ingest_run_id": run_id})
+        daily_stats = {
+            "rows": len(daily_out),
+            "non_null": {
+                c: sum(1 for r in daily_out if r[c] is not None) for c in DAILY_COLUMNS[2:7]
+            },
+            "day_range": [daily_out[0]["day"], max(r["day"] for r in daily_out)]
+            if daily_out
+            else None,
+        }
         by_coll: dict[str, int] = {}
         for r in out:
             by_coll[r["source_collection"]] = by_coll.get(r["source_collection"], 0) + 1
@@ -176,6 +233,7 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
                 ]
                 if out
                 else None,
+                "daily": daily_stats,
             },
         }
 
