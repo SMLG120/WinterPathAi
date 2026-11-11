@@ -10,14 +10,16 @@ from pathlib import Path
 from ..config import PILOT_BBOX, Settings
 from ..runs import RunResult, run_atomic
 from . import geofabrik
-from .graph import CONDITIONAL_HIGHWAYS, INCLUDED_HIGHWAYS, build_graph
+from .graph import CONDITIONAL_HIGHWAYS, FOOT_PERMITTED, INCLUDED_HIGHWAYS, build_graph
 
 # Part of the run checksum: a policy change must rebuild even if the PBF is unchanged.
 GRAPH_POLICY = (
-    "v1.5.0:"
+    "v1.6.0:"
     + ",".join(sorted(INCLUDED_HIGHWAYS))
     + "|cond:"
     + ",".join(sorted(CONDITIONAL_HIGHWAYS))
+    + "|access_override_by_foot:"
+    + ",".join(sorted(FOOT_PERMITTED))
 )
 
 

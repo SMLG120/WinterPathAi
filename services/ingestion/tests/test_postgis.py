@@ -319,6 +319,9 @@ def test_report_311_nature_constraints_and_exact_downgrade(test_url):
             c.execute(ins, ("syn-cell", "2026-01-05", "sidewalk_slippery", "autre", 1))
         with pytest.raises(psycopg.errors.CheckViolation):
             c.execute(ins, ("syn-cell", "2026-01-05", "Trottoir glissant", "requete", 1))
+        for alley in ("snow_clearing_alley", "snow_dumping_alley"):  # v1.6.0 (CR-ML-2)
+            c.execute(ins, ("syn-alley", "2026-01-05", alley, "requete", 1))
+        c.execute("DELETE FROM wp.report_311_cell WHERE h3='syn-alley'")
         with pytest.raises(psycopg.errors.UniqueViolation):
             c.execute(ins, ("syn-cell", "2026-01-05", "sidewalk_slippery", "requete", 1))
         # consumer pattern from the contract: SUM over label natures, k-anon after summing

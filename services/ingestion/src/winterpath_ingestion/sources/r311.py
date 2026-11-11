@@ -41,9 +41,9 @@ WINTER_CATEGORIES: dict[str, str] = {
     "Trottoir glissant": "sidewalk_slippery",
     "Chaussée glissante": "roadway_slippery",
     "Opération déneigement": "snow_clearing",
-    "Déneigement ruelle": "snow_clearing",
+    "Déneigement ruelle": "snow_clearing_alley",  # v1.6.0 (CR-ML-2)
     "Dépôt Illégal - Neige": "snow_dumping",
-    "Dépôt neige-ruelle": "snow_dumping",
+    "Dépôt neige-ruelle": "snow_dumping_alley",  # v1.6.0 (CR-ML-2)
 }
 
 
@@ -56,7 +56,14 @@ NATURES: dict[str, str] = {
     "information": "information",
     "commentaire": "commentaire",
 }
-CATEGORY_VALUES = ("sidewalk_slippery", "roadway_slippery", "snow_clearing", "snow_dumping")
+CATEGORY_VALUES = (
+    "sidewalk_slippery",
+    "roadway_slippery",
+    "snow_clearing",
+    "snow_dumping",
+    "snow_clearing_alley",  # v1.6.0 (CR-ML-2); SUM into snow_clearing for the v1.5 meaning
+    "snow_dumping_alley",  # v1.6.0 (CR-ML-2); SUM into snow_dumping for the v1.5 meaning
+)
 NATURE_VALUES = ("requete", "plainte", "information", "commentaire")
 LABEL_NATURES = ("requete", "plainte")  # contract v1.5.0 default for ML labels / public counts
 K_ANON = 3

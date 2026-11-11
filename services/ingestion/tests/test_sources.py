@@ -137,6 +137,23 @@ def test_311_nature_kept_separate_and_never_guessed():
     assert set(r311.WINTER_CATEGORIES.values()) == set(r311.CATEGORY_VALUES)
 
 
+def test_311_alley_categories_are_separate():
+    """Contract v1.6.0 (CR-ML-2)."""
+    rows = [
+        _row("Déneigement ruelle"),
+        _row("Dépôt neige-ruelle"),
+        _row("Opération déneigement"),
+        _row("Dépôt Illégal - Neige"),
+    ]
+    counts, _ = r311.aggregate_rows(rows)
+    assert {k[2] for k in counts} == {
+        "snow_clearing_alley",
+        "snow_dumping_alley",
+        "snow_clearing",
+        "snow_dumping",
+    }
+
+
 # ---------------------------------------------------------------- ECCC
 def test_swob_sentinels_are_null_not_zero():
     r = eccc.swob_row(

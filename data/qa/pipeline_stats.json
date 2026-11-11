@@ -29,7 +29,7 @@
     "unmapped": {}
   },
   "fetched_at": "2026-11-11T03:48:34+00:00",
-  "graph_policy": "v1.5.0:footway,living_street,path,pedestrian,primary,residential,secondary,steps,tertiary|cond:cycleway,service",
+  "graph_policy": "v1.6.0:footway,living_street,path,pedestrian,primary,residential,secondary,steps,tertiary|cond:cycleway,service|access_override_by_foot:designated,permissive,yes",
   "osm_snapshot": "2026-11-08T21:21:00Z",
   "osm_source": {
     "bbox": [
@@ -67,19 +67,21 @@
       "requete": "requete"
     },
     "stats": {
-      "cells_rows": 70427,
+      "cells_rows": 70428,
       "day_range": [
         "2022-01-01",
         "2026-11-07"
       ],
       "distinct_cells": 2678,
-      "label_cell_days": 63112,
-      "label_cell_days_n_lt_3_after_sum": 61347,
+      "label_cell_days": 63115,
+      "label_cell_days_n_lt_3_after_sum": 61352,
       "reports_aggregated_by_category": {
         "roadway_slippery": 9159,
         "sidewalk_slippery": 10391,
-        "snow_clearing": 55441,
-        "snow_dumping": 5623
+        "snow_clearing": 55434,
+        "snow_clearing_alley": 7,
+        "snow_dumping": 5603,
+        "snow_dumping_alley": 20
       },
       "reports_by_category_nature": {
         "roadway_slippery/commentaire": 54,
@@ -88,12 +90,16 @@
         "sidewalk_slippery/commentaire": 162,
         "sidewalk_slippery/plainte": 93,
         "sidewalk_slippery/requete": 10136,
-        "snow_clearing/commentaire": 7031,
-        "snow_clearing/plainte": 2520,
-        "snow_clearing/requete": 45890,
+        "snow_clearing/commentaire": 7028,
+        "snow_clearing/plainte": 2517,
+        "snow_clearing/requete": 45889,
+        "snow_clearing_alley/commentaire": 3,
+        "snow_clearing_alley/plainte": 3,
+        "snow_clearing_alley/requete": 1,
         "snow_dumping/commentaire": 79,
         "snow_dumping/plainte": 60,
-        "snow_dumping/requete": 5484
+        "snow_dumping/requete": 5464,
+        "snow_dumping_alley/requete": 20
       },
       "rows_by_reason": {
         "located_at_borough_office": 2773,
@@ -104,9 +110,9 @@
     },
     "winter_categories": {
       "Chaussée glissante": "roadway_slippery",
-      "Déneigement ruelle": "snow_clearing",
+      "Déneigement ruelle": "snow_clearing_alley",
       "Dépôt Illégal - Neige": "snow_dumping",
-      "Dépôt neige-ruelle": "snow_dumping",
+      "Dépôt neige-ruelle": "snow_dumping_alley",
       "Opération déneigement": "snow_clearing",
       "Trottoir glissant": "sidewalk_slippery"
     }
@@ -144,6 +150,10 @@
       "True": 1548
     },
     "total_length_m_undirected": 175206.0,
+    "ways_admitted_by_foot_over_access": {
+      "footway": 6,
+      "service": 6
+    },
     "ways_downloaded": 6853,
     "ways_excluded_by_reason": {
       "access=no": 19,
