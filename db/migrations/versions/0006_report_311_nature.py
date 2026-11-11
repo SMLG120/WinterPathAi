@@ -1,12 +1,16 @@
-"""contract v1.5.0 (CR-ML-1): wp.report_311_cell.nature in the PK; canonical categories.
+"""contract v1.5.0 (CR-ML-1) + v1.6.0 (CR-ML-2): wp.report_311_cell.nature in the PK;
+canonical categories including the alley categories.
 
 Revision ID: 0006_report_311_nature
 Revises: 0005_closure_active_excl_end
 Create Date: 2026-11-10
 
-nature ∈ requete | plainte | information | commentaire (311 `NATURE`). PK becomes
-(h3, day, category, nature). Consumers SUM(n) over the natures they need; the k-anonymity floor
-(n<3) applies after summing.
+nature ∈ requete | plainte | information | commentaire (311 `NATURE`). category ∈
+sidewalk_slippery | roadway_slippery | snow_clearing | snow_dumping | snow_clearing_alley |
+snow_dumping_alley (the two alley categories are folded in here per contract v1.6.0, because
+0006 had not reached integration; databases already at 0006 must downgrade to 0005 first).
+PK becomes (h3, day, category, nature). Consumers SUM(n) over the natures they need; the
+k-anonymity floor (n<3) applies after summing.
 
 Upgrade: rows aggregated before this migration mix all natures and CANNOT be split, so they are
 deleted rather than labelled with a guessed nature. This table holds only derived aggregates; it
@@ -23,7 +27,10 @@ down_revision = "0005_closure_active_excl_end"
 branch_labels = None
 depends_on = None
 
-CATEGORIES = "('sidewalk_slippery','roadway_slippery','snow_clearing','snow_dumping')"
+CATEGORIES = (
+    "('sidewalk_slippery','roadway_slippery','snow_clearing','snow_dumping',"
+    "'snow_clearing_alley','snow_dumping_alley')"
+)
 NATURES = "('requete','plainte','information','commentaire')"
 
 UPGRADE = f"""

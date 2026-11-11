@@ -717,3 +717,77 @@ $ uv run pytest -q
 ................................................                         [100%]
 48 passed in 51.46s
 ```
+
+## Contract v1.6.0 — CR-ML-2 + CR-DATA-7 (2026-11-11)
+`git merge --no-edit integration/winterpath` → `69bd9e6` (integration `a292b63`, tag
+`contract-v1.6.0`). No conflicts. **pilot_mini was not regenerated:** `data/fixtures/` is
+byte-identical to `ee5f1fc`, as the coordinator asked.
+
+### CR-ML-2: alley categories (folded into 0006)
+- `0006_report_311_nature` category CHECK now has six values. The two new ones are
+  `snow_clearing_alley` ← Déneigement ruelle and `snow_dumping_alley` ← Dépôt neige-ruelle.
+  `r311.WINTER_CATEGORIES` and `CATEGORY_VALUES` are updated to match.
+- `wp_data`:
+  - `alembic downgrade 0005_closure_active_excl_end` collapsed to **68 214 rows / 80 614
+    reports**. That is exactly the pre-0006 (v1.4) aggregate, which confirms the downgrade sum.
+  - `alembic upgrade head` → 0006 with the six-value CHECK, then `wp-ingest 311 --force` and
+    `load`.
+- **Per-category counts** (citywide, 2022-01-01 → 2026-11-07; 80 614 geolocated winter reports →
+  70 428 rows in 2 678 cells):
+
+| category | reports (all natures) | requete | plainte | commentaire | DB rows |
+|---|---|---|---|---|---|
+| sidewalk_slippery | 10 391 | 10 136 | 93 | 162 | 9 328 |
+| roadway_slippery | 9 159 | 9 064 | 41 | 54 | 8 299 |
+| snow_clearing | 55 434 | 45 889 | 2 517 | 7 028 | 47 446 |
+| snow_dumping | 5 603 | 5 464 | 60 | 79 | 5 328 |
+| **snow_clearing_alley** | **7** | 1 | 3 | 3 | 7 |
+| **snow_dumping_alley** | **20** | 20 | 0 | 0 | 20 |
+
+  No `information` rows exist in any category; they have no location. Label cell-days
+  (requete + plainte, summed before the k-anon check): 63 115, of which 61 352 have n<3.
+  **Note for ML:** each alley category is too small to train on alone (8 and 20 label reports in
+  ~5 years). Summing them into the parent category restores the v1.5 meaning, per the contract.
+
+### CR-DATA-7: foot permission overrides access
+- `graph.exclusion_reason`: `access=private|no` excludes **unless**
+  `foot ∈ {yes, designated, permissive}`. `foot=no|use_sidepath` (and `private`) still always
+  exclude.
+- **Rule tightened:** the v1.5 code let *any* `foot` tag (for example `foot=customers`) override
+  access. Now only the three explicit permissions do.
+- A new stat `ways_admitted_by_foot_over_access` is reported. Tests cover every combination,
+  including non-permission foot values.
+- **Ways admitted by the rule: 12** (6 `footway` with `access=no, foot=yes`; 6 `service` as listed
+  under CR-DATA-7 above). In this clip no way has `access=private|no` with any foot value other
+  than yes / permissive / no / use_sidepath, so tightening the rule changes no output.
+- `GRAPH_POLICY` (part of the OSM run checksum) is bumped to `v1.6.0` and includes the override
+  set. The rebuild is therefore recorded as a new run: input checksum `1a606553…`, with
+  `wp.ingest_run.log.provenance` unchanged (`quebec-261108.osm.pbf`).
+
+### Edge-ID stability (full graph, v1.5 build → v1.6 build)
+```text
+edges v1.5 16846  v1.6 16846  common 16846  removed 0  added 0
+nodes v1.5 7042   v1.6 7042   common 7042
+attribute/geometry diffs on common edges (excluding ingest_run_id): 0
+ways_included 4975, components 145, gap_count 336 (unchanged)
+```
+
+### Commands (literal)
+```text
+$ alembic downgrade 0005_closure_active_excl_end  → wp.report_311_cell: 68214 rows, sum(n) 80614
+$ alembic upgrade head                            → 0006_report_311_nature; 0 rows
+$ wp-ingest osm --force     → noop false, checksum 1a606553fa4def64…, directed_edges 16846
+$ wp-ingest voirie --force  → all edges 7142/16846 matched (0.424)
+$ wp-ingest 311 --force     → cells_rows 70428, distinct_cells 2678
+$ wp-ingest load
+{"source_id": "osm", "noop": false, "counts": {"node": 7042, "edge": 16846}}
+{"source_id": "mtl-voirie", "noop": false, "counts": {"sidewalk_polygon": 1495}}
+{"source_id": "mtl-entraves", "noop": true}
+{"source_id": "mtl-311", "noop": true}        ← already loaded (70428 rows) by the previous load
+{"source_id": "eccc-geomet", "noop": true}
+$ ruff check . → All checks passed!   $ ruff format --check . → 27 files already formatted
+$ uv run pytest -q
+..................................................                       [100%]
+50 passed in 41.51s
+$ git status --short data/fixtures   → (empty)
+```
