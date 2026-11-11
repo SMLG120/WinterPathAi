@@ -24,7 +24,26 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0i. Cycle 10 — merge of `integration/winterpath` `6a712e9` (all five agents) + `services/api/uv.lock` refresh — current
+### 0j. Cycle 11 — merge of `integration/winterpath` `3aa6438` — current
+This was a fast-forward from `0823006`, because integration already contained it. It changes nothing under `db/` or `services/`; the incoming changes are the frontend explainer, Platform's CI changes and other agents' reports. `wp_routing` stays at `0006_report_311_nature (head)`.
+```text
+$ git merge --no-edit integration/winterpath      # HEAD → 3aa6438
+$ (cd services/api && uv lock --check); echo exit=$?
+exit=0
+$ uv run --project services/api pytest services/routing services/api -rs     # load average ≈15
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=7.9 ms p95=20.6 ms max=87.9 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=47.4 ms p95=110.7 ms max=171.4 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.5 ms p95=2.8 ms max=3.8 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=4.9 ms p95=6.3 ms max=10.9 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=6.1 ms p95=12.0 ms max=55.2 ms
+======================= 303 passed, 1 warning in 22.55s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+$ scripts/check-ownership.sh routing; echo exit=$?
+ownership OK for agent/routing
+exit=0
+```
+
+### 0i. Cycle 10 — merge of `integration/winterpath` `6a712e9` (all five agents) + `services/api/uv.lock` refresh
 The merge commit is `83ee512` (no conflicts; 25 incoming commits). It changes nothing under `services/routing`, `services/api` or `db/`, and `db/` is identical to `f6eb3b2`, so `wp_routing` stays at `0006_report_311_nature (head)` with no re-migration. ML added a `db` extra to `services/ml`, which made `services/api/uv.lock` stale. `uv lock` adds only that metadata (`psycopg[binary]>=3.2` under `extra == 'db'`, `provides-extras = ["db"]`); no resolved package versions change.
 ```text
 $ git merge --no-edit integration/winterpath      # 6a712e9
