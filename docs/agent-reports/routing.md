@@ -24,7 +24,24 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0c. Merge of `integration/winterpath` `d04da54` (Data migration 0005) — current
+### 0d. Merge of `integration/winterpath` `2d37f32` (`.env.example` weather names) — current
+`git merge --no-edit integration/winterpath` → `e98e9de` (`.env.example | 4 ++++`), no conflicts. `wp_routing` is at `0005_closure_active_excl_end (head)`. `uptime`: `load averages: 17.56 19.65 24.68`.
+```text
+$ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider
+======================= 291 passed, 1 warning in 34.28s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+
+### 0c. Merge of `integration/winterpath` `d04da54` (Data migration 0005)
 - `git merge --no-edit integration/winterpath` → `ac80a71`, with no conflicts. It brought migration `0005_closure_active_exclusive_end` and the Data and Platform report updates.
 - `wp_routing` was upgraded: `alembic … current` → `0005_closure_active_excl_end (head)`.
 - I added the boundary case `TEST-RT-ends-at-t` (`valid_to` exactly at `t` → inactive → dropped) to the PostGIS closure-activity test. It passes against the 0005 function.
@@ -376,7 +393,7 @@ Resolved by v1.4.0 and adopted in cycle 5: closure status vocabulary and activit
 Resolved by v1.5.0 and adopted in cycle 6: CR-ROUTING-4 (404 for any bad deletion attempt) and CR-ROUTING-9 (explanation evidence mapping, old #7).
 
 Still open (pending coordinator/user decision; not implemented):
-1. **CR-ROUTING-10 — `.env.example` (names only; the coordinator will add them):**
+1. **CR-ROUTING-10 — RESOLVED** in `2d37f32` (merged as `e98e9de`): `.env.example` now lists the three weather names. They match `settings.py` (empty values fall back to `none` / `180` / no stations). For reference:
    - `WEATHER_SOURCE`: `none` (default, weather endpoints 503) or `postgis` (read `wp.weather_obs` / `wp.weather_daily` via `DATABASE_URL`);
    - `WEATHER_MAX_AGE_MINUTES`: default `180`; an older latest observation is stale → `/weather/current` 503 and `/health` `checks.weather.status = degraded`;
    - `WEATHER_STATION_IDS`: comma-separated ECCC station ids in priority order; empty = most recent across stations.
