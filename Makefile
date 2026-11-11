@@ -38,7 +38,7 @@ test: ## Integration tests: smoke, privacy, CORS, contract (stub unless API_BASE
 	  if [[ -f $$p/pyproject.toml ]]; then echo "== $$p"; (cd $$p && uv run pytest -q); \
 	  else echo "SKIP $$p: no pyproject.toml on this branch"; fi; \
 	done
-	@if [[ -f apps/web/package.json ]]; then (cd apps/web && npm run --if-present test -- --run); \
+	@if [[ -f apps/web/package.json ]]; then (cd apps/web && { [[ -d node_modules ]] || npm ci --no-audit --no-fund; } && npm run --if-present test -- --run); \
 	else echo "SKIP apps/web: no package.json on this branch"; fi
 
 contract: ## Schemathesis contract tests only (API_BASE_URL to target a real API)
@@ -57,7 +57,7 @@ lint-python:
 	done
 
 lint-web:
-	@if [[ -f apps/web/package.json ]]; then (cd apps/web && npm run --if-present lint); \
+	@if [[ -f apps/web/package.json ]]; then (cd apps/web && { [[ -d node_modules ]] || npm ci --no-audit --no-fund; } && npm run --if-present lint); \
 	else echo "SKIP apps/web: no package.json on this branch"; fi
 
 lint-infra: ## actionlint + shellcheck + compose config
