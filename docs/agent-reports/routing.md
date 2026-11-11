@@ -24,7 +24,31 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0h. Cycle 9b — re-merge of `integration/winterpath` (no change) + full rerun — current
+### 0i. Cycle 10 — merge of `integration/winterpath` `6a712e9` (all five agents) + `services/api/uv.lock` refresh — current
+The merge commit is `83ee512` (no conflicts; 25 incoming commits). It changes nothing under `services/routing`, `services/api` or `db/`, and `db/` is identical to `f6eb3b2`, so `wp_routing` stays at `0006_report_311_nature (head)` with no re-migration. ML added a `db` extra to `services/ml`, which made `services/api/uv.lock` stale. `uv lock` adds only that metadata (`psycopg[binary]>=3.2` under `extra == 'db'`, `provides-extras = ["db"]`); no resolved package versions change.
+```text
+$ git merge --no-edit integration/winterpath      # 6a712e9
+$ (cd services/api && uv lock --check)            # before
+The lockfile at `uv.lock` needs to be updated, but `--check` was provided. To update the lockfile, run `uv lock`.
+$ (cd services/api && uv lock)
+Resolved 61 packages in 69ms
+$ (cd services/api && uv lock --check); echo exit=$?
+exit=0
+$ uv run --project services/api pytest services/routing services/api -rs     # load average ≈18
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=9.2 ms p95=32.9 ms max=179.6 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=99.4 ms p95=407.9 ms max=573.5 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=2.0 ms p95=5.5 ms max=13.0 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=11.7 ms p95=61.2 ms max=101.1 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=13.6 ms p95=62.3 ms max=101.6 ms
+======================= 303 passed, 1 warning in 51.62s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+$ scripts/check-ownership.sh routing; echo exit=$?
+ownership OK for agent/routing
+exit=0
+```
+The ownership gate passes again now that integration contains `f6eb3b2`. The latency figures were measured with the host under load and are not a code regression.
+
+### 0h. Cycle 9b — re-merge of `integration/winterpath` (no change) + full rerun
 `integration/winterpath` is still `a292b63` (already merged at `5af6145`), so the merge was a no-op. `wp_routing` unchanged at head.
 ```text
 $ git merge --no-edit integration/winterpath
