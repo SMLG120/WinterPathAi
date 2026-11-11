@@ -49,6 +49,20 @@ CATALOG: dict[str, tuple[EvidenceState, str, str]] = {
         "Passes {n} officially permitted work zone(s); passage is not stated as blocked.",
         "Passe par {n} zone(s) de travaux autorisée(s); le passage n'est pas indiqué comme bloqué.",
     ),
+    "AVOIDS_POSSIBLE_CLOSURE": (
+        E.UNKNOWN,
+        "Avoids {n} officially permitted closure(s) that block pedestrian passage but whose "
+        "schedule at this time is unknown.",
+        "Évite {n} fermeture(s) autorisée(s) officiellement qui bloquent le passage piéton, mais "
+        "dont l'horaire à ce moment est inconnu.",
+    ),
+    "PASSES_POSSIBLE_CLOSURE": (
+        E.UNKNOWN,
+        "Passes {n} officially permitted closure(s) that block pedestrian passage; whether they "
+        "are in effect at this time is unknown.",
+        "Passe par {n} fermeture(s) autorisée(s) officiellement qui bloquent le passage piéton; "
+        "on ignore si elles sont en vigueur à ce moment.",
+    ),
     "AVOIDS_UNVERIFIED_REPORT": (
         E.UNVERIFIED_REPORT,
         "Avoids {n} area(s) with unverified public reports (311 or community).",

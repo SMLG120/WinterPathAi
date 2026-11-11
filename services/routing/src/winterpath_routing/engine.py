@@ -134,6 +134,7 @@ class _Context:
     allowed: frozenset[str]
     closures: dict[str, list[str]]  # hazard_id -> edge ids (hard-excluded)
     disruptions: dict[str, list[str]]  # edge_id -> hazard ids (confirmed, passable)
+    possible: dict[str, list[str]]  # edge_id -> hazard ids (blocking, activity unknown)
     reports: dict[str, list[str]]  # edge_id -> hazard ids (unverified)
     risk: Mapping[str, RiskEstimate]
     speed: float
@@ -153,6 +154,7 @@ class RoutingEngine:
         g, cfg = self.graph, self.config
         closures: dict[str, list[str]] = {}
         disruptions: dict[str, list[str]] = {}
+        possible: dict[str, list[str]] = {}
         reports: dict[str, list[str]] = {}
         for hz in hazards:
             if not hz.active_at(req.at):
@@ -162,6 +164,9 @@ class RoutingEngine:
                 eids = g.edges_near_metric(geom, cfg.closure_match_tolerance_m)
                 if eids:
                     closures[hz.hazard_id] = eids
+            elif hz.is_possible_closure:
+                for eid in g.edges_near_metric(geom, cfg.closure_match_tolerance_m):
+                    possible.setdefault(eid, []).append(hz.hazard_id)
             elif hz.evidence.state is EvidenceState.CONFIRMED:
                 for eid in g.edges_near_metric(geom, cfg.closure_match_tolerance_m):
                     disruptions.setdefault(eid, []).append(hz.hazard_id)
@@ -187,7 +192,15 @@ class RoutingEngine:
         risk = {eid: raw.get(eid) or RiskEstimate.unknown() for eid in ids}
         any_sim = any(r.evidence.state is EvidenceState.SIMULATED for r in risk.values())
         return _Context(
-            req, allowed, closures, disruptions, reports, risk, cfg.speed_for(req.profile), any_sim
+            req,
+            allowed,
+            closures,
+            disruptions,
+            possible,
+            reports,
+            risk,
+            cfg.speed_for(req.profile),
+            any_sim,
         )
 
     def _cost(self, ctx: _Context, eid: str) -> EdgeCost:
@@ -201,6 +214,7 @@ class RoutingEngine:
                 n_unverified_reports=len(ctx.reports.get(eid, ())),
                 avoid_unverified_reports=ctx.req.avoid_unverified_reports,
                 config=self.config,
+                n_possible_closures=len(ctx.possible.get(eid, ())),
             )
             ctx._costs[eid] = c
         return c
@@ -350,7 +364,7 @@ class RoutingEngine:
             routes=[r_short, r_winter],
             identical=identical,
             risk_layer=risk_layer,
-            warnings=self._warnings(ctx, risk_layer, o, t),
+            warnings=self._warnings(ctx, risk_layer, o, t, (r_short, r_winter)),
         )
 
     # ------------------------------------------------------------------ assembly
@@ -395,7 +409,11 @@ class RoutingEngine:
                     edge_ids.append(eid)
                 if part_line.geom_type == "LineString" and len(part_line.coords) >= 2:
                     pieces.append(Piece(e, part_line, plen))
-                for hid in (*ctx.disruptions.get(eid, ()), *ctx.reports.get(eid, ())):
+                for hid in (
+                    *ctx.possible.get(eid, ()),
+                    *ctx.disruptions.get(eid, ()),
+                    *ctx.reports.get(eid, ()),
+                ):
                     if hid not in hz_on:
                         hz_on.append(hid)
         return RouteResult(
@@ -436,19 +454,26 @@ class RoutingEngine:
         if ctx.closures:
             out.append(explain("EXCLUDES_CONFIRMED_CLOSURE", loc, n=len(ctx.closures)))
 
+        on_poss = {h for eid in r.edge_ids for h in ctx.possible.get(eid, ())}
         on_disr = {h for eid in r.edge_ids for h in ctx.disruptions.get(eid, ())}
         on_rep = {h for eid in r.edge_ids for h in ctx.reports.get(eid, ())}
         if shortest is not None:
+            all_poss = {h for hs in ctx.possible.values() for h in hs}
             all_disr = {h for hs in ctx.disruptions.values() for h in hs}
             avoided = set(r.hazards_avoided)
+            n_ap = len(avoided & all_poss)
             n_ad = len(avoided & all_disr)
-            n_ar = len(avoided - all_disr)
+            n_ar = len(avoided - all_disr - all_poss)
+            if n_ap:
+                out.append(explain("AVOIDS_POSSIBLE_CLOSURE", loc, n=n_ap))
             if n_ad:
                 out.append(explain("AVOIDS_CONFIRMED_DISRUPTION", loc, n=n_ad))
             if n_ar:
                 out.append(explain("AVOIDS_UNVERIFIED_REPORT", loc, n=n_ar))
             if risk_layer != "none" and r.risk_cost_s + 1e-6 < shortest.risk_cost_s:
                 out.append(explain("LOWER_MODELED_RISK", loc))
+        if on_poss:
+            out.append(explain("PASSES_POSSIBLE_CLOSURE", loc, n=len(on_poss)))
         if on_disr:
             out.append(explain("PASSES_CONFIRMED_DISRUPTION", loc, n=len(on_disr)))
         if on_rep:
@@ -467,7 +492,14 @@ class RoutingEngine:
             out.append(explain("INCLUDES_STEPS", loc))
         return out
 
-    def _warnings(self, ctx: _Context, risk_layer: str, o: _Snap, t: _Snap) -> list[str]:
+    def _warnings(
+        self,
+        ctx: _Context,
+        risk_layer: str,
+        o: _Snap,
+        t: _Snap,
+        routes: Sequence[RouteResult] = (),
+    ) -> list[str]:
         fr = ctx.req.locale == "fr"
         w: list[str] = []
         if self.graph.metadata.simulated or ctx.any_simulated_risk:
@@ -490,6 +522,14 @@ class RoutingEngine:
                 if fr
                 else "Risk levels are a heuristic (historical winter 311 report frequency × "
                 "observed weather): not probabilities and not sidewalk conditions."
+            )
+        if any(ctx.possible.get(eid) for r in routes for eid in r.edge_ids):
+            w.append(
+                "Une fermeture autorisée du trottoir se trouve sur un trajet, mais son horaire à "
+                "ce moment est inconnu : elle peut être en vigueur."
+                if fr
+                else "A permitted sidewalk closure lies on a route, but its schedule at this time "
+                "is unknown: it may be in effect."
             )
         for label_en, label_fr, s in (("Origin", "Le départ", o), ("Destination", "L'arrivée", t)):
             if s.distance_m > 25:
