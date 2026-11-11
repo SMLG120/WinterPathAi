@@ -1,7 +1,7 @@
 # Agent report — routing
 
 - **Status:** READY FOR REVIEW, **including for a combined merge with `agent/data` @ `4254dd7`** (migration 0006 and the regenerated Geofabrik pilot_mini): 302 passed on both. Cycle 7 fixes API-NULL-1 and makes the tests fixture-independent. Cycle 6 adopted contract **v1.5.0**: 311 natures, CR-ROUTING-4 and CR-ROUTING-9 accepted. Cycle 5 added v1.4.0 closure activity and `terminal_at`; cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
-- **Branch / SHA:** `agent/routing` @ `517186d` (code). It fast-forwarded to `integration/winterpath` `eb92007` (the contract v1.5.0 evidence-mapping clarification), then `92150c1` (API-NULL-1) and `517186d` (fixture-derived tests). This report is committed on top. `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
+- **Branch / SHA:** `agent/routing` @ `31651e5` (code: contract v1.6.0), on merge `5af6145` of `integration/winterpath` `a292b63`. Previously `517186d` (cycle 7). It fast-forwarded to `integration/winterpath` `eb92007` (the contract v1.5.0 evidence-mapping clarification), then `92150c1` (API-NULL-1) and `517186d` (fixture-derived tests). This report is committed on top. `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -24,7 +24,33 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0e. Cycle 7 — DB at migration 0006, API-NULL-1, data+routing preview — current
+### 0f. Cycle 8 — contract v1.6.0 (a292b63) — current
+- **Merge:** `git merge --no-edit integration/winterpath` → `5af6145`, no conflicts; docs only. Just before it, a merge attempt returned `Already up to date.` (integration was still `eb92007`).
+- **CR-ML-2:** `CATEGORY_311_TITLES` gains `snow_clearing_alley` ("311 reports: snow clearing (alley)" / "Requêtes 311 : déneigement (ruelle)") and `snow_dumping_alley` ("311 reports: snow dumping (alley)" / "Requêtes 311 : dépôt de neige (ruelle)"). A new test checks that all six canonical categories have titles.
+- **`CONTRACT_VERSION` = `1.6.0`.**
+- **CR-DATA-7 (foot overrides access): no routing change.** Routing excludes on the Data-resolved `edge.foot_access ∈ {no, private}` only. A way with `access=private` + `foot=yes` arrives as `foot_access=yes` and is routable.
+- **Fixture:** `pilot_mini` is byte-identical at `4254dd7`, `ee5f1fc` and the current `agent/data` head `69bd9e6` (`git diff --stat` is empty). The cycle-7 preview (302 passed on the merged data fixture) therefore already covers `ee5f1fc`'s fixture, and the tests read counts and coordinates from the fixture.
+- **Flaky skip:** one rerun before this cycle showed `301 passed, 1 skipped`. I couldn't reproduce it (3 more runs: 302 passed, 0 skipped), and that run's skip reason wasn't captured, so the cause is unconfirmed. The likely cause is a PostGIS probe timing out under load: probe failures skip rather than fail, and only the weather module's probe would skip exactly one test. Probe `connect_timeout` was raised from 2 s to 10 s in all four test modules.
+```text
+$ uptime → load averages: 14.79 10.34 10.22
+$ alembic … current → 0006_report_311_nature (head)
+$ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider   # run twice
+======================= 303 passed, 1 warning in 22.96s ========================
+======================= 303 passed, 1 warning in 35.86s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+Pending: when Data's commit with the alley categories folded into 0006 lands, I'll re-migrate `wp_routing` (0006 changes in place, so `downgrade 0005` then `upgrade head` with the new files) and rerun.
+
+### 0e. Cycle 7 — DB at migration 0006, API-NULL-1, data+routing preview
 **Merge:** `git merge --no-edit integration/winterpath` **fast-forwarded** to `eb92007`, because integration already contained routing `f63027a`.
 - `eb92007` completes the explanation evidence mapping. It now lists `PASSES/AVOIDS_POSSIBLE_CLOSURE` → `unknown`, `REDUCED_MOBILITY_SPEED` → `model_estimate` and `RISK_UNKNOWN_SHARE` → `unknown`, which is exactly the catalog, so no code change was needed and my cycle-6 questions are resolved.
 - ML's new `EdgeIdRiskProvider` / `api_provider` is an alternative entry point. The API's `CoordinateRiskAdapter` over `load_provider` keeps working (tests pass with the artifacts).
