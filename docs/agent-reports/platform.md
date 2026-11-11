@@ -5,6 +5,21 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (h) — weather job uses Data's per-source load (360fdd4)
+Merged data's exact commit 360fdd4 as merge commit 87c3841; it changed no platform-owned paths. The weather step is now:
+`uv run --locked wp-ingest load --source eccc-geomet --weather-since "$(date -u -d '365 days ago' +%F)"`
+`--weather-since` keeps hosted `wp.weather_obs` bounded (Data's estimate: ~41–51 MB total). The `--help`-based fallback and `WEATHER_LOAD_SOURCE` are removed.
+```text
+$ (services/ingestion) uv run --locked wp-ingest load --help
+usage: wp-ingest [-h] [--refresh] [--force] [--weather-since YYYY-MM-DD]
+                 [--source {osm,mtl-voirie,mtl-entraves,mtl-311,eccc-geomet}]
+                 {osm,fixture,voirie,entraves,311,eccc,all,load}
+$ actionlint   -> [actionlint exit 0]
+$ grep -n "wp-ingest load" .github/workflows/scheduled.yml
+85:        run: uv run --locked wp-ingest load --source eccc-geomet --weather-since "$(date -u -d '365 days ago' +%F)"
+```
+`date -d` is GNU syntax, which matches the ubuntu-latest runner. Not verified: the job has not run on GitHub or against a database (no secret exists).
+
 ## Update 2026-11-11 (g) — coordinator review of 33537fe: scheduled.yml changes
 Merged `integration/winterpath` 5238c45 first, as merge commit 89a0bf4. It changed no platform-owned paths and brought in `.gitignore` rules for the two scoring artifacts plus the deployment docs.
 

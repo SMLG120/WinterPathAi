@@ -46,9 +46,6 @@ jobs:
     concurrency:
       group: scheduled-weather-ingest
       cancel-in-progress: false   # never kill a load mid-transaction; queue the next run
-    env:
-      # Data agent's per-source load (`wp-ingest load --source <name>`); name to be confirmed by Data.
-      WEATHER_LOAD_SOURCE: eccc-geomet
     defaults:
       run:
         working-directory: services/ingestion
@@ -80,22 +77,12 @@ jobs:
       - name: fetch ECCC observations (no database access)
         if: steps.gate.outputs.configured == 'true'
         run: uv run --locked wp-ingest eccc --refresh
-      - name: load weather into PostGIS (per-source load; full-load fallback until Data lands it)
+      - name: load weather into PostGIS (eccc-geomet only, last 365 days)
         if: steps.gate.outputs.configured == 'true'
         env:
           DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
-        run: |
-          help="$(uv run --locked wp-ingest load --help 2>&1 || true)"
-          if printf '%s' "$help" | grep -q -- '--source'; then
-            if ! printf '%s' "$help" | grep -q -- "$WEATHER_LOAD_SOURCE"; then
-              echo "::error title=weather load::wp-ingest load supports --source but does not list '$WEATHER_LOAD_SOURCE' — update WEATHER_LOAD_SOURCE"
-              exit 1
-            fi
-            uv run --locked wp-ingest load --source "$WEATHER_LOAD_SOURCE"
-          else
-            echo "::notice title=weather load fallback::wp-ingest load has no --source yet; running the full load (non-weather sources skip with 'no processed output')"
-            uv run --locked wp-ingest load
-          fi
+        # --weather-since bounds hosted wp.weather_obs (Data's estimate: ~41–51 MB total).
+        run: uv run --locked wp-ingest load --source eccc-geomet --weather-since "$(date -u -d '365 days ago' +%F)"
 
   daily-scoring:
     name: daily risk scoring (-> wp.risk_cell_score)
