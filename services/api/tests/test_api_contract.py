@@ -589,3 +589,26 @@ def test_explicit_null_note_rejected_on_moderation(client, admin) -> None:
     assert r.status_code == 422, r.text
     validate_response(r, "/admin/reports/{reportId}/moderation", "post")
     assert client.post(url, headers=admin, json={"decision": "approve"}).status_code == 200
+
+
+def test_311_titles_cover_every_canonical_category() -> None:
+    """data-model v1.6.0 canonical categories (incl. the CR-ML-2 alley split) all have EN/FR
+    titles; the alley ones say so."""
+    from winterpath_api.repositories.hazards import CATEGORY_311_TITLES
+
+    assert set(CATEGORY_311_TITLES) == {
+        "sidewalk_slippery",
+        "roadway_slippery",
+        "snow_clearing",
+        "snow_dumping",
+        "snow_clearing_alley",
+        "snow_dumping_alley",
+    }
+    assert CATEGORY_311_TITLES["snow_clearing_alley"] == (
+        "311 reports: snow clearing (alley)",
+        "Requêtes 311 : déneigement (ruelle)",
+    )
+    assert CATEGORY_311_TITLES["snow_dumping_alley"] == (
+        "311 reports: snow dumping (alley)",
+        "Requêtes 311 : dépôt de neige (ruelle)",
+    )

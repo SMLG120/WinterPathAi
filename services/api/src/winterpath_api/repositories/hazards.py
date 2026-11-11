@@ -82,12 +82,21 @@ class InMemoryHazardRepository:
 
 
 REPORT_311_NATURES = ("requete", "plainte")
-#: data-model v1.5 canonical categories → (en, fr) titles; unknown names are shown verbatim.
+#: data-model canonical categories (v1.5; alley categories v1.6, CR-ML-2) → (en, fr) titles;
+#: unknown names are shown verbatim.
 CATEGORY_311_TITLES = {
     "sidewalk_slippery": ("311 reports: slippery sidewalk", "Requêtes 311 : trottoir glissant"),
     "roadway_slippery": ("311 reports: slippery roadway", "Requêtes 311 : chaussée glissante"),
     "snow_clearing": ("311 reports: snow clearing", "Requêtes 311 : déneigement"),
     "snow_dumping": ("311 reports: snow dumping", "Requêtes 311 : dépôt de neige"),
+    "snow_clearing_alley": (
+        "311 reports: snow clearing (alley)",
+        "Requêtes 311 : déneigement (ruelle)",
+    ),
+    "snow_dumping_alley": (
+        "311 reports: snow dumping (alley)",
+        "Requêtes 311 : dépôt de neige (ruelle)",
+    ),
 }
 
 

@@ -38,7 +38,7 @@ def _skip_reason() -> str | None:
     try:
         from sqlalchemy import create_engine, text
 
-        with create_engine(url, connect_args={"connect_timeout": 2}).connect() as c:
+        with create_engine(url, connect_args={"connect_timeout": 10}).connect() as c:
             if not c.execute(text("SELECT to_regclass('wp.edge') IS NOT NULL")).scalar():
                 return "wp schema absent (Data agent migrations not applied)"
             if c.execute(text("SELECT count(*) FROM wp.edge")).scalar():
