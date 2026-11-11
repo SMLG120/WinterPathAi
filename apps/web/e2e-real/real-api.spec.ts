@@ -13,9 +13,19 @@ const ADMIN_TOKEN = process.env.E2E_ADMIN_TOKEN; // plain token whose sha256 is 
 // ROUTING_GRAPH_SOURCE=fixture (see src/test/pilotPoints.ts).
 const { A, B, OFF_NET } = PTS_INPUT;
 
+// API_PUBLIC_WRITES=false (v1.7 read-only demo) → write endpoints answer 503 WRITES_DISABLED before
+// body validation. An empty body is the probe: a write-enabled API rejects it with 422, so nothing is stored.
+let writesDisabled = false;
+// Hazard sources (mtl-entraves, mtl-311) as the API reports them; anything not `active` must be disclosed.
+let hazardSourcesComplete = false;
+
 test.beforeAll(async ({ request }) => {
   const r = await request.get(`${API}/health`).catch(() => null);
   if (!r || !r.ok()) throw new Error(`Real API not reachable at ${API} — start it first (apps/web/README.md).`);
+  const probe = await request.post(`${API}/reports`, { data: {} });
+  writesDisabled = probe.status() === 503 && ((await probe.json()) as { code?: string }).code === 'WRITES_DISABLED';
+  const sources = (await (await request.get(`${API}/data-sources`)).json()) as { id: string; status: string }[];
+  hazardSourcesComplete = ['mtl-entraves', 'mtl-311'].every((id) => sources.find((x) => x.id === id)?.status === 'active');
 });
 
 async function setPoint(page: Page, which: 'origin' | 'destination', p: { lat: string; lon: string }) {
@@ -69,6 +79,8 @@ for (const lang of ['en', 'fr'] as const) {
     await expect(card.getByTestId('steps-winter_aware').getByRole('listitem').first()).toBeVisible();
     // Freshness lists the real source id from the API.
     await expect(card).toContainText('osm');
+    // Closure/311 sources not loaded (e.g. API_STORE_BACKEND=memory) → the card says routes couldn't avoid them.
+    await expect(card.getByTestId('hazard-sources-route')).toHaveCount(hazardSourcesComplete ? 0 : 1);
   });
 }
 
@@ -110,7 +122,37 @@ test('how-it-works renders real /data-sources and /coverage', async ({ page, req
   await expect(page.locator('#coverage')).toContainText(String(cov.graph.node_count));
 });
 
+test('hazard overlay never says "none" while closure/311 sources are not loaded', async ({ page }) => {
+  test.skip(hazardSourcesComplete, 'every hazard source is active on this API');
+  await page.goto('/en/plan');
+  await expect(page.getByTestId('hazard-sources-overlay')).toBeVisible();
+  await expect(page.getByTestId('hazard-sources-overlay')).toHaveAttribute('data-state', 'partial');
+  await expect(page.getByText('No closures or reports in this view.')).toHaveCount(0);
+});
+
+test('read-only API (503 WRITES_DISABLED): report and pilot forms turn into the public-demo notice', async ({ page }) => {
+  test.skip(!writesDisabled, 'API accepts writes (start it with API_PUBLIC_WRITES=false)');
+  await page.goto('/en/reports');
+  await page.getByLabel('What did you see?').selectOption('snow');
+  await page.getByLabel('Latitude').fill(A.lat);
+  await page.getByLabel('Longitude').fill(A.lon);
+  await page.getByLabel('I consent to sending this exact location with my report.').check();
+  await page.getByTestId('report-submit').click();
+  await expect(page.getByTestId('writes-disabled')).toContainText('Not available in this public demo');
+  await expect(page.getByTestId('report-receipt')).toHaveCount(0);
+
+  await page.goto('/en/pilot');
+  await page.getByLabel('Organisation', { exact: true }).fill('E2E test organisation');
+  await page.getByLabel('Email', { exact: true }).fill('e2e@example.org');
+  await page.getByLabel('Type of organisation').selectOption('other');
+  await page.getByLabel(/I agree that WinterPath/).check();
+  await page.getByRole('button', { name: 'Send request' }).click();
+  await expect(page.getByTestId('writes-disabled')).toBeVisible();
+  await expect(page.getByTestId('pilot-success')).toHaveCount(0);
+});
+
 test('community report lifecycle against the real API, then moderation', async ({ page }) => {
+  test.skip(writesDisabled, 'API is read-only (API_PUBLIC_WRITES=false)');
   await page.goto('/en/reports');
   await page.getByLabel('What did you see?').selectOption('snow');
   await page.getByLabel('Latitude').fill(A.lat);
@@ -141,6 +183,7 @@ test('admin rejects a wrong token', async ({ page }) => {
 });
 
 test('pilot request 201 against the real API', async ({ page }) => {
+  test.skip(writesDisabled, 'API is read-only (API_PUBLIC_WRITES=false)');
   await page.goto('/en/pilot');
   await page.getByLabel('Organisation', { exact: true }).fill('E2E test organisation');
   await page.getByLabel('Email', { exact: true }).fill('e2e@example.org');

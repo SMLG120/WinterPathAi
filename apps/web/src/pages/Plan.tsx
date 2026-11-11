@@ -13,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CompareCard } from '@/features/plan/CompareCard';
 import { GeolocateButton } from '@/features/plan/GeolocateButton';
 import { HazardList } from '@/features/plan/HazardList';
+import { HazardSourceNotice } from '@/features/plan/HazardSourceNotice';
+import { useHazardCoverage } from '@/features/plan/hazardCoverage';
 import { Legend } from '@/features/plan/Legend';
 import { PointInput } from '@/features/plan/PointInput';
 import { RouteError } from '@/features/plan/RouteError';
@@ -53,6 +55,7 @@ export default function Plan() {
   const overlay = useOverlayBbox();
   const segments = useSegments(showSegments ? overlay.bbox : null);
   const hazards = useHazards(showHazards ? overlay.bbox : null);
+  const hazardCoverage = useHazardCoverage();
 
   const run = useCallback(
     (req: RouteCompareRequest) => {
@@ -190,7 +193,13 @@ export default function Plan() {
         )}
         {compare.isError && <RouteError error={compare.error} onRetry={lastReq ? () => run(lastReq) : undefined} />}
         {compare.isSuccess && compare.data && (
-          <CompareCard ref={resultsHeading} data={compare.data} selected={s.selected} onSelect={s.setSelected} />
+          <CompareCard
+            ref={resultsHeading}
+            data={compare.data}
+            selected={s.selected}
+            onSelect={s.setSelected}
+            notice={<HazardSourceNotice coverage={hazardCoverage} context="route" />}
+          />
         )}
       </div>
 
@@ -218,7 +227,10 @@ export default function Plan() {
         {showHazards && (
           <div>
             <h3 className="mb-2 text-sm font-semibold">{t('overlays.inView')}</h3>
-            <HazardList hazards={hazards.data?.features ?? NO_HAZARDS} />
+            <div className="space-y-2">
+              <HazardSourceNotice coverage={hazardCoverage} context="overlay" />
+              <HazardList hazards={hazards.data?.features ?? NO_HAZARDS} coverage={hazardCoverage} />
+            </div>
           </div>
         )}
       </section>

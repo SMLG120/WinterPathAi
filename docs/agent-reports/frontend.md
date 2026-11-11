@@ -547,6 +547,43 @@ npm run e2e:readonly             →  10 passed (34.8s)
 
 **Suggestion for `docs/RECOVERY.md` step 5 (not my file):** "Build `apps/web` with `npm run build:pages` and production `VITE_*` values, then upload `dist`."
 
+## Update 10 — merge of integration `c9e6c81`; disclose unloaded closure/311 sources; read-only mode verified on the real API
+**Merge:** `git merge --no-edit integration/winterpath` fast-forwarded to `c9e6c81` (it already contained `4ed7c81`). No changes to contracts, fixtures or `apps/web`. The new `docs/DEPLOYMENT.md` and `docs/RECOVERY.md` step 5 use `npm run build:pages` as suggested in update 9.
+
+**Honesty gap found from `docs/PRODUCTION_READINESS.md`:** production runs `API_STORE_BACKEND=memory`, so live routes do **not** avoid closures, and `/hazards` returns an empty list. The planner then said "No closures or reports in this view." That presents *not loaded* as *none*, which breaks "unknown is never zero risk". The API already reports the truth: with the memory store, `/data-sources` comes from the static list, where `mtl-entraves` and `mtl-311` are `disabled` (hazards and sources share one backend switch in `state.py`).
+- `src/features/plan/hazardCoverage.ts`: computes coverage from `/data-sources` for `mtl-entraves` and `mtl-311`.
+  - `complete` only when both are `active`.
+  - `partial` lists every other status (a source missing from the list counts as not loaded).
+  - `unchecked` while `/data-sources` is loading or has failed.
+- `HazardSourceNotice` (Unknown badge, EN/FR) has two forms:
+  - **Map layers:** "Closures and 311 reports may be missing from this map … An empty list does not mean there are none."
+  - **Compare card:** "These routes could not take closures or 311 reports into account … A route may cross a closure that isn't shown. Check conditions on site."
+  - Both name each source with its status (e.g. "Requêtes 311: not loaded").
+- `HazardList` says "No closures or reports in this view." only when coverage is `complete`.
+- Real-API e2e:
+  - asserts the route notice exactly when `/data-sources` shows a hazard source that isn't active;
+  - adds an overlay test;
+  - adds a read-only test. An empty `POST /reports` probe detects `API_PUBLIC_WRITES=false`: 503 `WRITES_DISABLED` comes before validation, and a write-enabled API answers 422, so nothing is stored. The two write tests skip in that mode.
+
+Literal results:
+```
+npx tsc -b                       → (no output)
+npm run lint                     → eslint . --max-warnings 0 (exit 0)
+npx vitest run                   →  Test Files  17 passed (17) /  Tests  143 passed (143)
+npx playwright test              →  118 passed (4.2m)
+real API, writes enabled (memory store, fixture graph, RISK_PROVIDER=none):
+  E2E_ADMIN_TOKEN=… npx playwright test -c playwright.real.config.ts → 1 skipped / 17 passed (52.0s)
+real API, API_PUBLIC_WRITES=false (same otherwise):
+  curl -X POST -d '{}' …/reports  → {"code":"WRITES_DISABLED","message":"This deployment is read-only: public submissions are disabled.",…} [503]
+  E2E_ADMIN_TOKEN=… npx playwright test -c playwright.real.config.ts → 2 skipped / 16 passed (54.9s)
+VITE_API_BASE_URL=https://winterpath-api.example.onrender.com/api/v1 VITE_PUBLIC_WRITES=false npm run build:pages
+  → pages-check env: OK / pages-check dist: OK
+bash scripts/check-ownership.sh frontend → ownership OK for agent/frontend
+```
+The read-only UI path (update 8) was previously tested only against mocks; it is now verified against the real API. Not checked against the live Render service or a Pages deploy (none exists from my side).
+
+**Note for routing/API (no contract change needed):** route `warnings` don't mention that closures weren't considered. The frontend now derives that from `/data-sources`. A server-side warning would also cover non-web clients.
+
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
 |---|---|---|
