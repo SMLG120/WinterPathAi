@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: WinterPath AI API
-  version: 1.5.0
-  summary: Montréal pedestrian winter-routing API (contract v1.3.0; v1.0.0 frozen 2026-11-10; v1.1.0 declared 4xx per CR-PLAT-1; v1.3.0 adds 503 on data-backed endpoints and OFF_NETWORK per CR-ROUTING-2/3; v1.5.0 documents deletion-token semantics (CR-ROUTING-4) and the explanation-code evidence mapping (CR-ROUTING-9)).
+  version: 1.6.0
+  summary: Montréal pedestrian winter-routing API (contract v1.3.0; v1.0.0 frozen 2026-11-10; v1.1.0 declared 4xx per CR-PLAT-1; v1.3.0 adds 503 on data-backed endpoints and OFF_NETWORK per CR-ROUTING-2/3; v1.5.0 documents deletion-token semantics (CR-ROUTING-4) and the explanation-code evidence mapping (CR-ROUTING-9); v1.6.0 adds 311 alley categories (CR-ML-2) and the foot-over-access rule (CR-DATA-7), no schema shape change).
   description: |
     All geometries are GeoJSON in EPSG:4326 with [longitude, latitude] ordering.
     Every risk/condition datum carries an `evidence` object; `unknown` is never zero risk.
