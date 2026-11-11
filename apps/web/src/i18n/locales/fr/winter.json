@@ -60,7 +60,8 @@
       "recall_at_k": "Rappel@k",
       "n_test": "Échantillons de test"
     },
-    "limitations": "Limites"
+    "limitations": "Limites",
+    "limitationsEnglishOnly": "Texte fourni par l’API en anglais seulement."
   },
   "refresh": {
     "title": "Dernière mise à jour"

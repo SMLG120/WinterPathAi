@@ -22,7 +22,7 @@ function Body({ m }: { m: ModelStatus }) {
       </p>
       <div>
         <p className="font-medium">{t('model.target')}</p>
-        <p className="font-mono text-xs">{m.target}</p>
+        <p lang="en" className="font-mono text-xs">{m.target}</p>
         <p className="mt-1 text-muted-foreground">{t('model.targetNote')}</p>
       </div>
       {(m.trained_at || m.training_window || m.model_id) && (
@@ -65,7 +65,10 @@ function Body({ m }: { m: ModelStatus }) {
       {m.limitations && m.limitations.length > 0 && (
         <div>
           <p className="font-medium">{t('model.limitations')}</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+          {/* The API returns these sentences in English only (no locale on /models/status). We
+              show them verbatim rather than inventing a translation, and mark the language. */}
+          {i18n.language !== 'en' && <p className="text-xs text-muted-foreground">{t('model.limitationsEnglishOnly')}</p>}
+          <ul lang="en" className="mt-1 list-disc space-y-0.5 pl-5">
             {m.limitations.map((l) => (
               <li key={l}>{l}</li>
             ))}

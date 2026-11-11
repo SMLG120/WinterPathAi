@@ -352,5 +352,7 @@ export default function PlannerMap(props: PlannerMapProps) {
     }
   }, [origin, destination, t]);
 
-  return <div ref={container} className="absolute inset-0" data-testid="planner-map" />;
+  // Inline style on purpose: maplibre-gl.css sets `.maplibregl-map { position: relative }` as
+  // unlayered CSS, which beats Tailwind 4's layered `absolute inset-0` and collapsed the map to 0 px.
+  return <div ref={container} style={{ position: 'absolute', inset: 0 }} data-testid="planner-map" />;
 }
