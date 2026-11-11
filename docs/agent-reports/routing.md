@@ -1,7 +1,7 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 5 adopts contract **v1.4.0**: closure activity through `wp.closure_active_at` (CR-ROUTING-7), plus `terminal_at` now that migration 0003 exists. Cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
-- **Branch / SHA:** `agent/routing` @ `b6b62c4` (code). `integration/winterpath` (`dc1ed12`, v1.4.0 + Data migrations 0002–0004) was merged in first as `c6d603f`. This report is committed on top.
+- **Status:** READY FOR REVIEW. Cycle 6 adopts contract **v1.5.0**: 311 natures, CR-ROUTING-4 and CR-ROUTING-9 accepted. Cycle 5 added v1.4.0 closure activity and `terminal_at`; cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
+- **Branch / SHA:** `agent/routing` @ `864aa80` (code). `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -24,7 +24,30 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0a. Cycle 5 run (contract v1.4.0 closure activity) — current
+### 0b. Cycle 6 run (contract v1.5.0) — current
+`uptime` at start: `load averages: 11.79 23.10 29.56`. `wp_routing` at `0004_closure_status (head)`; no migration for `report_311_cell.nature` exists yet.
+```text
+$ set -a; source .env.local; set +a; uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider -s   # filtered to latency + summary
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=7.6 ms p95=17.5 ms max=69.3 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=43.5 ms p95=118.5 ms max=226.1 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.3 ms p95=2.0 ms max=2.5 ms (rejected >75 m from network: 48)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=3.9 ms p95=7.0 ms max=13.7 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=5.8 ms p95=8.0 ms max=14.3 ms
+======================= 291 passed, 1 warning in 19.59s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+Before this, on the unchanged cycle-5 branch (`integration/winterpath` was still `dc1ed12`, so `git merge` printed `Already up to date.`), the rerun gave `290 passed, 1 warning in 28.65s` with the same lint and ownership output.
+
+### 0a. Cycle 5 run (contract v1.4.0 closure activity)
 `wp_routing` migrated to head with the Data agent's alembic (my own DB only):
 ```text
 $ uv run --project services/ingestion --with alembic alembic -c db/alembic.ini current   # before
@@ -164,6 +187,20 @@ Size proxies (SYNTHETIC grids over PILOT_BBOX, final run): 2 400 edges p50 9.1 /
 | `/reports` + moderation + deletion, in-memory + PostGIS | Yes | in-memory lifecycle/expiry/purge tests; `test_api_postgis.py` runs the full lifecycle, hazards, sources and pilot requests on PostGIS |
 | Latency p50/p95, 100 pilot OD pairs | Yes (pilot_mini) | table above; full pilot graph pending |
 | `pytest services/routing services/api` green; ruff clean | Yes | 281 passed, 0 skipped (cycle 4); ruff output above |
+
+## Cycle 6 — contract v1.5.0
+| Item | Change | Evidence |
+|---|---|---|
+| `wp.report_311_cell.nature` (CR-ML-1) | `/hazards` and route hazards now sum `n` over `nature IN ('requete','plainte')` per (cell, day, category) and apply the k-anonymity floor **after** summing (sums < 3 suppressed), then sum across the 3-day window. Before this, the floor was applied to each stored row before summing. A table without `nature` (pre-v1.5) is summed as-is. Canonical categories get EN/FR titles. | `test_311_sums_natures_then_applies_floor` (real Postgres, session TEMP table with the v1.5 shape, because no migration adds `nature` yet): 1 requete + 2 plainte → shown with `report_count` 3; 2 requete + 5 information → suppressed; 2 + 2 on different days → suppressed (floor per day) |
+| CR-ROUTING-4 (accepted, v1.5 wording) | `DELETE /reports/{id}`: a wrong, **missing or malformed** token, or an unknown or **non-UUID** id, now returns **404 `NOT_FOUND`** with an identical body. Before this, malformed input returned 422. Admin endpoints keep 422 for a malformed id. | `test_api_contract.py`: 5 bad-deletion variants, all 404 and schema-valid |
+| CR-ROUTING-9 (accepted) | No change needed: the catalog already matches the documented mapping | — |
+| `CONTRACT_VERSION` | `1.5.0` (`openapi.yaml` `info.version` is now 1.5.0) | — |
+
+**Points for the coordinator:**
+- **The v1.5 evidence mapping says "closures → confirmed".** My cycle-5 codes `PASSES_POSSIBLE_CLOSURE` / `AVOIDS_POSSIBLE_CLOSURE` use **`unknown`**, because the statement they make ("may be in effect") rests on unknown activity, even though the permit itself is confirmed. I kept `unknown`. Please confirm, or tell me to use `confirmed`.
+- **The mapping doesn't list two codes:** `REDUCED_MOBILITY_SPEED` (currently `model_estimate`, an assumed speed) and `RISK_UNKNOWN_SHARE` (`unknown`).
+- **For Platform:** any harness case that expected 422 for a malformed deletion token or id must now expect 404.
+- **Not acted on:** the v1.5 path-type policy (Geofabrik, `service`/`cycleway` only with explicit foot permission, corridors excluded) is enforced at graph build (Data). Routing still excludes edges whose `foot_access` is `no` or `private`, regardless of source.
 
 ## Cycle 5 — closure activity (contract v1.4.0, CR-ROUTING-7) and `terminal_at`
 Rule (data-model v1.4): `wp.closure_active_at(c, t)` is three-valued. An edge is excluded only when the closure is active at `t` **and** `blocks_passage` is true. `NULL` (unknown activity) must be flagged or penalised, never treated as clear.
@@ -313,11 +350,12 @@ Not done or not verifiable here:
 Resolved by v1.3.0 and adopted in cycle 4: 503 declarations (old #2), `OFF_NETWORK` (old #3), `wp.edge.name` (old #4; read when migrated), `wp.community_report.terminal_at` (old #5; awaiting migration), and `.env.example` routing names (old #1, partly).
 
 Resolved by v1.4.0 and adopted in cycle 5: closure status vocabulary and activity (old #6, CR-ROUTING-7). Migrations 0002–0004 are applied to `wp_routing`.
+Resolved by v1.5.0 and adopted in cycle 6: CR-ROUTING-4 (404 for any bad deletion attempt) and CR-ROUTING-9 (explanation evidence mapping, old #7).
 
 Still open (pending coordinator/user decision; not implemented):
 1. `.env.example`: still missing `WEATHER_SOURCE`, `WEATHER_MAX_AGE_MINUTES`, `WEATHER_STATION_IDS`. Also: `RISK_PROVIDER=winterpath_ml.inference:load_provider` enables the ML layer, and `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
 6. openapi (additive, new in cycle 5): `HazardFeature.properties.active: boolean | null` (closure activity at the evaluated time). Today "schedule unknown" reaches the map only through `title_en/fr` and `evidence.note`, so the frontend cannot badge it reliably.
-7. Confirm the evidence states chosen for explanation codes, and that both routes are returned when they are identical.
+7. Confirm that both routes are returned when they are identical (the evidence-state part was resolved by v1.5).
 8. **Platform (FYI, not a contract change):** `tests/integration/log_scan.py` flags fractional seconds of microsecond ISO timestamps (e.g. `…:40.010135Z`) as latitudes. I avoided this by logging milliseconds, but other services may trip it.
 9. data-model (clarify, cycle 3): the interval of `wp.weather_obs.precip_mm`. I serve it as `precipitation_mm_1h`, which is correct for `climate-hourly` and for SWOB's 1-hour amount. Please confirm the ingest stores the 1-hour value for `swob-realtime`. Also: `wp.weather_daily` needs a migration.
 
