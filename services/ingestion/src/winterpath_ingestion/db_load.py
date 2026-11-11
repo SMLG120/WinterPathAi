@@ -556,6 +556,14 @@ def _weather(settings: Settings, since: date | None = None):
 
 
 LOADERS = {"osm": _osm, "voirie": _voirie, "entraves": _entraves, "311": _r311, "eccc": _weather}
+# canonical source_id (contract v1.3, wp.source) → LOADERS key; `wp-ingest load --source <id>`
+SOURCE_LOADERS = {
+    "osm": "osm",
+    "mtl-voirie": "voirie",
+    "mtl-entraves": "entraves",
+    "mtl-311": "311",
+    "eccc-geomet": "eccc",
+}
 
 
 def load(

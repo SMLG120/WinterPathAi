@@ -13,6 +13,7 @@ uv run wp-ingest 311        # → data/processed/report_311 (H3 r9 × day × cat
 uv run wp-ingest eccc       # → data/processed/weather_obs
 uv run wp-ingest load       # processed → PostGIS wp.* (DATABASE_URL), one txn per source
 uv run wp-ingest load --weather-since 2025-11-01   # same, wp.weather_obs bounded (hosted DB)
+uv run wp-ingest load --source eccc-geomet        # one source only (repeatable; canonical source_id)
 uv run alembic -c ../../db/alembic.ini upgrade head   # migrations (db/migrations)
 uv run pytest               # unit + PostGIS tests (PostGIS tests skip if unreachable)
 ```
@@ -27,6 +28,19 @@ uv run pytest               # unit + PostGIS tests (PostGIS tests skip if unreac
   (n<3) applies after summing.
 - Topology: edges connect only through shared OSM nodes. Gaps are reported in
   `data/qa/osm_pilot_gaps.json`, never repaired.
+
+## Per-source load (`--source`)
+
+`wp-ingest load --source <source_id>` loads only the named sources. The flag is repeatable, and
+the accepted values are `osm`, `mtl-voirie`, `mtl-entraves`, `mtl-311` and `eccc-geomet`. It uses
+the same path as a full load: one transaction per source (staging → upsert → prune), a `failed`
+ingest_run on error with current rows untouched, and a no-op when the same checksum has already
+succeeded. It combines with `--force` and `--weather-since`. Other sources are not touched even
+when their processed output exists. Without `--source`, all five load as before.
+
+Scheduled weather job (`.github/workflows/scheduled.yml`): `wp-ingest eccc --refresh` fetches
+hourly data from 2022 onward. To keep the hosted table bounded, pass a rolling cutoff, e.g.
+`wp-ingest load --source eccc-geomet --weather-since "$(date -u -d '365 days ago' +%F)"` (GNU date).
 
 ## Bounding `wp.weather_obs` (`--weather-since`)
 
@@ -62,12 +76,17 @@ not been run against Supabase: the steps are written from the migrations and loa
 from a real Supabase run. Platform owns the hosted project and its login users (migration 0001
 creates only `NOLOGIN` group roles).
 
-Steps 1–3 have been rehearsed on a local scratch database. PostGIS and the step-1 grants were
-applied first, then the migration ran with `options=-c role=wp_migrator` and the load with
-`role=wp_writer`, all without superuser rights. Head was reached, and `wp_migrator` owns all 12
-tables, the schema, the function and `alembic_version`. All five sources loaded. What the
-rehearsal could not check is Supabase-specific behaviour: the extension schema, `options`
-handling and its default privileges.
+Steps 1–3 were rehearsed on a local scratch database (2026-11-11, at 0007):
+- PostGIS was created `WITH SCHEMA extensions`, followed by the step-1 grants.
+- The migration ran with `options=-c role=wp_migrator -c search_path=public,extensions`, and the
+  load with `role=wp_writer`, all without superuser rights.
+- Results: head was reached, `wp_migrator` owns all 13 tables and `alembic_version`, and
+  `wp.edge.geom` is `extensions.geometry`. `load --source osm --source eccc-geomet` loaded exactly
+  those two sources, and `wp_writer` can insert into and delete from `wp.risk_cell_score`.
+- The local roles are NOLOGIN, so the search path went in `options` rather than in
+  `ALTER ROLE … SET`.
+- Not checked: Supabase-specific behaviour, namely its `options` passthrough and its default
+  privileges.
 
 **0. Prerequisite.** Check that the local processed outputs exist. `load` reads only
 `data/processed/*/` and makes no network calls.
@@ -90,15 +109,11 @@ CREATE ROLE wp_loader  LOGIN PASSWORD '<secret>' IN ROLE wp_writer;
 -- The migrator creates schema wp and Alembic's public.alembic_version.
 GRANT CREATE ON DATABASE postgres TO wp_migrator;
 GRANT CREATE ON SCHEMA public TO wp_migrator;
--- PostGIS must exist before 0001 (its CREATE EXTENSION IF NOT EXISTS is then a no-op).
-CREATE EXTENSION IF NOT EXISTS postgis;
-SELECT extnamespace::regnamespace FROM pg_extension WHERE extname = 'postgis';
-```
-
-If the last query returns `extensions` rather than `public`, the `geometry` type is only visible
-when that schema is on the search path. In that case also run:
-
-```sql
+-- Contract v1.7: PostGIS in schema `extensions`, enabled BEFORE the first migration
+-- (0001's CREATE EXTENSION IF NOT EXISTS is then a no-op).
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
+SELECT extnamespace::regnamespace FROM pg_extension WHERE extname = 'postgis';  -- → extensions
+-- …and every login role used by Alembic, the API and jobs needs it on its search_path.
 ALTER ROLE wp_migrate SET search_path = public, extensions;
 ALTER ROLE wp_loader  SET search_path = public, extensions;
 ```
@@ -113,7 +128,7 @@ read -rs "PGPW?wp_migrate password: "; echo   # zsh (bash: read -rsp '…' PGPW)
 HOST=db.<project-ref>.supabase.co
 MIG_URL="postgresql://wp_migrate:${PGPW}@${HOST}:5432/postgres?sslmode=require&options=-c%20role%3Dwp_migrator"
 uv run alembic -c ../../db/alembic.ini -x url="$MIG_URL" upgrade head
-uv run alembic -c ../../db/alembic.ini -x url="$MIG_URL" current      # → 0006_report_311_nature (head)
+uv run alembic -c ../../db/alembic.ini -x url="$MIG_URL" current      # → 0007_risk_cell_score (head)
 unset PGPW MIG_URL
 ```
 

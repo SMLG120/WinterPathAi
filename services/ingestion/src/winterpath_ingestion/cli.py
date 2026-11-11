@@ -9,6 +9,10 @@ from datetime import date
 
 from .config import get_settings
 
+# canonical wp.source ids accepted by `load --source` (kept in sync with db_load.SOURCE_LOADERS;
+# listed here so `--help` needs no heavy imports)
+SOURCE_IDS = ["osm", "mtl-voirie", "mtl-entraves", "mtl-311", "eccc-geomet"]
+
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="wp-ingest")
@@ -24,15 +28,31 @@ def main(argv: list[str] | None = None) -> int:
         help="load only: bound wp.weather_obs to observed_at >= this local (America/Montreal) "
         "date; older rows are skipped and pruned (e.g. for the hosted DB)",
     )
+    ap.add_argument(
+        "--source",
+        action="append",
+        choices=SOURCE_IDS,
+        # no metavar: usage then shows the choice list as one unbreakable token, so
+        # `wp-ingest load --help | grep eccc-geomet` works at any terminal width
+        help="load only: load just this canonical source id (repeatable), with the same "
+        "per-source transaction, staging and checksum no-op as a full load",
+    )
     args = ap.parse_args(argv)
     if args.weather_since is not None and args.pipeline != "load":
         ap.error("--weather-since only applies to `load`")
+    if args.source and args.pipeline != "load":
+        ap.error("--source only applies to `load`")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     s = get_settings()
     if args.pipeline == "load":
-        from .db_load import LOADERS, load
+        from .db_load import LOADERS, SOURCE_LOADERS, load
 
-        for r in load(s, list(LOADERS), force=args.force, weather_since=args.weather_since):
+        which = (
+            list(dict.fromkeys(SOURCE_LOADERS[x] for x in args.source))
+            if args.source
+            else list(LOADERS)
+        )
+        for r in load(s, which, force=args.force, weather_since=args.weather_since):
             print(json.dumps(r, default=str))
         return 0
 
