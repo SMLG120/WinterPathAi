@@ -42,8 +42,8 @@ services:
       # --- data sources: everything from PostGIS (Supabase) ---
       - key: ROUTING_GRAPH_SOURCE
         value: postgis
-      - key: API_STORE_BACKEND
-        value: postgis
+      - key: API_STORE_BACKEND     # postgis: "memory" loads no closures or 311 hazards. Writes stay blocked by
+        value: postgis            # API_PUBLIC_WRITES=false, and the wp_api DB login is read-only anyway.
       - key: WEATHER_SOURCE
         value: postgis
       - key: WEATHER_MAX_AGE_MINUTES  # ingest runs every 3 h (scheduled.yml) + ECCC publication lag
