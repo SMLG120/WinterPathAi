@@ -458,7 +458,35 @@ Because the spatial holdout blocks are drawn from the coverage, they differ betw
 | 311 « Requêtes 3-1-1 (2022 à ce jour) » CSV | downloaded with `--fetch-311` from `config.URL_311_2022_PRESENT` into `$WP_ML_CACHE_DIR/score/` (never overwrites the pinned evaluation snapshot), then aggregated by the unchanged `data_311.build_interim` | 850,499,252 B on 2026-11-11 |
 | ECCC GeoMet `climate-daily`, stations 7025251 + 702S006, 2021-10-01..end | always fetched fresh into a temp dir. The old range-keyed cache could freeze an incomplete day: `eccc_…_2026-11-11.json`, fetched 2026-11-10 16:11, was byte-identical to the 11-10 file. | ~650 KB |
 
-**Failure policy:** every requested in-season day is prepared and validated before anything is written. Validation requires exactly one row per coverage cell and finite `p` in [0, 1]. Any incomplete input or invalid table means nothing is written and exit 1. A missing artifact, sha mismatch or disabled model means exit 2. Tables are written to `.<day>.parquet.tmp`, then `os.replace`d (the provider globs `*.parquet`). Out-of-season days are reported and skipped with exit 0. Pinned gate files are untouched (`pins OK`).
+**Exit policy (revised per coordinator, supersedes the first version):**
+
+| Exit | Meaning |
+|---|---|
+| 0 | Days written. Days whose inputs aren't published yet get a clear notice and are not written, which is not a failure. Out-of-season days are skipped with a notice. |
+| 1 | A scored table failed validation (one row per coverage cell, finite `p` in [0, 1]). Nothing is written. |
+| 2 | Artifact or registry error: missing, sha256 mismatch, or model disabled. |
+| 3 | Download error (311 or ECCC), with the URL and the reason in the message. A failed 311 download leaves no `.part` file. |
+| 4 | Stale: in season, and the newest `<day>.parquet` on disk is for a day that began (local midnight) more than 36 h ago. |
+
+Under GitHub Actions, notices and errors are also emitted as `::notice::` / `::error::` annotations. Tables are written to `.<day>.parquet.tmp`, then `os.replace`d (the provider globs `*.parquet`). Pinned gate files are untouched (`pins OK`).
+
+Real runs, 2026-11-11 13:02 EST, scratch artifacts, `GITHUB_ACTIONS=true`:
+```text
+== A: --start 2026-11-11 --end 2026-11-12
+::notice title=winterpath_ml.score::2026-11-12 not scored yet: 311 data ends 2026-11-10 < 2026-11-11. Will be scored on a later run.
+"rows_per_day": {"2026-11-11": 2930}, "newest_scored_day": "2026-11-11"
+exit 0
+== B: only 2026-11-09 on disk, --start 2026-11-12
+::error title=winterpath_ml.score::score tables are stale: newest scored day 2026-11-09 began 61.0 h ago (> 36 h)
+exit 4
+== C: --fetch-311 through a proxy on a closed port
+::error title=winterpath_ml.score::311 CSV download failed: GET https://donnees.montreal.ca/…/requetes311.csv -> URLError: <urlopen error [Errno 61] Connection refused>. Check that this runner can reach donnees.montreal.ca (HTTPS, port 443). Nothing was written.
+exit 3
+== D: ECCC through the same proxy
+::error title=winterpath_ml.score::ECCC climate-daily download failed: https://api.weather.gc.ca -> URLError: <urlopen error [Errno 61] Connection refused>. Check that this runner can reach the ECCC GeoMet API. Nothing was written.
+exit 3
+```
+Runner reachability of donnees.montreal.ca will be established on the first manual `workflow_dispatch` run (coordinator).
 
 **Measured locally** (macOS arm64, `/usr/bin/time -l`, empty cache, scratch artifact dir):
 ```text
@@ -469,7 +497,7 @@ $ build_interim on the downloaded CSV               (venv python directly)
        10.62 real   1121468416  maximum resident set size   1591576592  peak memory footprint
 $ score --start 2026-11-11                          (from aggregates, no 311 download)
         4.98 real    946569216  maximum resident set size    868124040  peak memory footprint
-$ score --start 2026-11-11 --end 2026-11-12
+$ score --start 2026-11-11 --end 2026-11-12   (first version; now exit 0 + notice, see run A)
 SCORE FAILED (inputs incomplete; nothing written): 2026-11-12: 311 data ends 2026-11-10 < 2026-11-11
 exit 1
 $ (one byte appended to the joblib)
@@ -489,7 +517,7 @@ Peak about 1.1 GB RSS (1.6 GB footprint) during aggregation, and about 55 s wall
 ```
 Negative control (same hook around `joblib.load` of the heuristic artifact): `caught pickle.find_class ('winterpath_ml.models', 'Calibrated')`.
 
-**Checks:** `uv run pytest -q` → `53 passed, 1 skipped`. `uvx ruff check .` → `All checks passed!` `gate_logreg_2026 --check` → `pins OK; coverage list OK`. `scripts/check-ownership.sh ml` → `ownership OK for agent/ml`.
+**Checks (after the exit-policy revision):** `uv run pytest -q` → `58 passed, 1 skipped`. `uvx ruff check .` → `All checks passed!` `gate_logreg_2026 --check` → `pins OK; coverage list OK`. `scripts/check-ownership.sh ml` → `ownership OK for agent/ml`.
 
 **Not done (Platform/coordinator):** the GitHub Actions workflow file itself (`.github/` is not ML-owned). That includes where the two git-ignored artifacts come from, where written score tables go so the API can read them, and the cron time. Network access from GitHub runners to donnees.montreal.ca has not been tested.
 

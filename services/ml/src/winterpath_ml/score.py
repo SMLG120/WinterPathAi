@@ -17,14 +17,27 @@ Inputs read
 - Weather. ECCC GeoMet `climate-daily` for stations 7025251 and 702S006 is always fetched fresh
   into a temporary directory, never from a cache.
 
-Failure policy: every requested in-season day is prepared and validated before any file is
-written. If any day lacks inputs or fails validation, nothing is written and the exit status is 1.
-Each table is written to a temp file and renamed into place, so a reader never sees a half-written
-day. Out-of-season days are reported and skipped (the layer is undefined there; providers return
-`unknown`).
+Policy
+- A day whose inputs are not published yet (311 does not reach D-1, or the D-3..D-1 weather is
+  incomplete) is not written. The run prints a notice and continues. That alone is not a failure.
+- Every day that is scored is validated: exactly one row per coverage cell, finite p in [0, 1].
+  If any scored day fails validation, nothing at all is written.
+- Each table is written to `.<day>.parquet.tmp` and renamed into place, so a reader never sees a
+  half-written day.
+- Staleness: after the run, if the season is on and the newest score table on disk is for a day
+  that began (local midnight) more than STALE_HOURS ago, the run fails.
+- Out-of-season days are skipped with a notice (the layer is undefined there; providers return
+  `unknown`).
 
-Exit status: 0 written (or nothing in season), 1 inputs incomplete or invalid, 2 artifact or
-registry error.
+Exit status
+- 0: written, or nothing ready yet (notice), or out of season.
+- 1: validation failed (nothing written).
+- 2: artifact or registry error (missing, sha256 mismatch, model disabled).
+- 3: download failed (311 or ECCC).
+- 4: stale, i.e. the newest scored day is more than STALE_HOURS old.
+
+Under GitHub Actions (`GITHUB_ACTIONS=true`), notices and errors are also emitted as
+`::notice::` / `::error::` annotations.
 """
 
 from __future__ import annotations
@@ -36,6 +49,7 @@ import os
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -46,14 +60,26 @@ import pandas as pd
 from . import config, data_311, features, inference, weather
 
 SCORE_CACHE = config.CACHE_DIR / "score"
+STALE_HOURS = 36
+NETWORK_ERRORS = (urllib.error.URLError, TimeoutError, ConnectionError, OSError)
 
 
 class ScoreError(RuntimeError):
     """Artifact or registry problem (exit 2)."""
 
 
-class InputsIncomplete(RuntimeError):
-    """A requested day cannot be scored from complete inputs (exit 1)."""
+class ValidationFailed(RuntimeError):
+    """A scored day's table is incomplete or invalid (exit 1)."""
+
+
+class DownloadFailed(RuntimeError):
+    """A source could not be downloaded (exit 3)."""
+
+
+def _annotate(kind: str, msg: str) -> None:
+    print(f"{kind.upper()}: {msg}", file=sys.stderr)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::{kind} title=winterpath_ml.score::{msg}", flush=True)
 
 
 def sha256(path: Path) -> str:
@@ -115,7 +141,7 @@ def validate(out: pd.DataFrame, cells: list[str], day: pd.Timestamp) -> None:
     elif ((p < 0) | (p > 1)).any():
         problems.append("p outside [0, 1]")
     if problems:
-        raise InputsIncomplete(
+        raise ValidationFailed(
             f"{day.date()}: invalid score table ({'; '.join(problems)})"
         )
 
@@ -124,12 +150,18 @@ def fetch_311(dest: Path) -> Path:
     """Download the 311 CSV to `dest/requetes311.csv` via a .part file (no partial file left)."""
     dest.mkdir(parents=True, exist_ok=True)
     final, part = dest / "requetes311.csv", dest / "requetes311.csv.part"
-    req = urllib.request.Request(
-        config.URL_311_2022_PRESENT, headers={"User-Agent": weather.USER_AGENT}
-    )
-    with urllib.request.urlopen(req, timeout=900) as r, open(part, "wb") as f:
-        while chunk := r.read(1 << 20):
-            f.write(chunk)
+    url = config.URL_311_2022_PRESENT
+    req = urllib.request.Request(url, headers={"User-Agent": weather.USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=900) as r, open(part, "wb") as f:
+            while chunk := r.read(1 << 20):
+                f.write(chunk)
+    except NETWORK_ERRORS as e:
+        part.unlink(missing_ok=True)
+        raise DownloadFailed(
+            f"311 CSV download failed: GET {url} -> {type(e).__name__}: {e}. "
+            "Check that this runner can reach donnees.montreal.ca (HTTPS, port 443). Nothing was written."
+        ) from e
     os.replace(part, final)
     return final
 
@@ -147,7 +179,7 @@ def load_311(fetch: bool) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         meta = {"source": str(config.INTERIM_DIR), "sha256": None}
     for p in paths.values():
         if not p.exists():
-            raise InputsIncomplete(f"311 aggregates missing: {p} (use --fetch-311)")
+            raise ScoreError(f"311 aggregates missing: {p} (use --fetch-311)")
     rc, ac = pd.read_parquet(paths["report_cells"]), pd.read_parquet(paths["all_cells"])
     meta["last_day"] = str(ac["day"].max().date())
     return rc, ac, meta
@@ -155,14 +187,24 @@ def load_311(fetch: bool) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
 
 def load_weather_fresh(start: date, end: date) -> pd.DataFrame:
     """ECCC observations fetched now; a cached file could predate the latest observations."""
-    with tempfile.TemporaryDirectory() as td:
-        prim = weather.fetch_climate_daily(config.STATION_PRIMARY, start, end, Path(td))
-        fb = weather.fetch_climate_daily(config.STATION_FALLBACK, start, end, Path(td))
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            prim = weather.fetch_climate_daily(
+                config.STATION_PRIMARY, start, end, Path(td)
+            )
+            fb = weather.fetch_climate_daily(
+                config.STATION_FALLBACK, start, end, Path(td)
+            )
+    except NETWORK_ERRORS as e:
+        raise DownloadFailed(
+            f"ECCC climate-daily download failed: {config.ECCC_API} -> {type(e).__name__}: {e}. "
+            "Check that this runner can reach the ECCC GeoMet API. Nothing was written."
+        ) from e
     return weather.build_daily_weather(prim, fb)
 
 
 def prepare(start: date, end: date, layer: str | None, fetch: bool) -> dict:
-    """Load and validate everything; returns the tables to write. Writes nothing."""
+    """Load inputs and score every ready day, validating each. Writes nothing."""
     reg = inference.load_registry()
     layer = layer or reg["active_layer"]
     entry = reg["layers"][layer]
@@ -170,8 +212,13 @@ def prepare(start: date, end: date, layer: str | None, fetch: bool) -> dict:
         raise inference.ModelDisabledError("model layer is disabled in the registry")
     days = pd.date_range(start, end)
     in_season = [d for d in days if d.month in config.SEASON_MONTHS]
-    skipped = [str(d.date()) for d in days if d.month not in config.SEASON_MONTHS]
-    plan = {"registry": reg, "layer": layer, "tables": {}, "out_of_season": skipped}
+    plan = {
+        "registry": reg,
+        "layer": layer,
+        "tables": {},
+        "out_of_season": [str(d.date()) for d in days if d not in in_season],
+        "not_ready": {},
+    }
     if not in_season:
         return plan
 
@@ -180,17 +227,21 @@ def prepare(start: date, end: date, layer: str | None, fetch: bool) -> dict:
     rc, ac, plan["source_311"] = load_311(fetch)
     wd = load_weather_fresh(date(2021, 10, 1), end)
 
-    not_ready = [
-        f"{d.date()}: {why}" for d in in_season if (why := inputs_ready(d, rc, ac, wd))
-    ]
-    if not_ready:
-        raise InputsIncomplete("; ".join(not_ready))
+    ready = []
+    for d in in_season:
+        why = inputs_ready(d, rc, ac, wd)
+        if why:
+            plan["not_ready"][str(d.date())] = why
+        else:
+            ready.append(d)
+    if not ready:
+        return plan
 
     import joblib  # sha-verified above; batch job only, never imported by the API path
 
     scorer = joblib.load(scorer_path)
     scored_at = datetime.now(UTC).replace(microsecond=0).isoformat()
-    for d in in_season:
+    for d in ready:
         panel = features.build_panel(
             rc[rc["day"] < d], ac[ac["day"] < d], wd[wd.index < d], cells, d, d
         )
@@ -230,13 +281,38 @@ def write(plan: dict) -> list[str]:
     return written
 
 
+def newest_scored_day(out_dir: Path) -> date | None:
+    days = []
+    for f in out_dir.glob("*.parquet") if out_dir.exists() else []:
+        try:
+            days.append(date.fromisoformat(f.stem))
+        except ValueError:
+            continue
+    return max(days, default=None)
+
+
+def staleness(out_dir: Path, now: datetime) -> str | None:
+    """Reason string if the newest scored day began more than STALE_HOURS ago (in season only)."""
+    local_now = now.astimezone(inference.LOCAL_TZ)
+    if local_now.month not in config.SEASON_MONTHS:
+        return None
+    newest = newest_scored_day(out_dir)
+    if newest is None:
+        return f"no score tables in {out_dir}"
+    began = datetime(newest.year, newest.month, newest.day, tzinfo=inference.LOCAL_TZ)
+    age_h = (now - began).total_seconds() / 3600
+    if age_h > STALE_HOURS:
+        return f"newest scored day {newest} began {age_h:.1f} h ago (> {STALE_HOURS} h)"
+    return None
+
+
 def score_days(
     start: date, end: date, layer: str | None = None, fetch_311: bool = False
 ) -> list[str]:
     return write(prepare(start, end, layer, fetch_311))
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, now: datetime | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--start", type=date.fromisoformat, required=True)
     ap.add_argument("--end", type=date.fromisoformat)
@@ -249,25 +325,43 @@ def main(argv: list[str] | None = None) -> int:
     try:
         plan = prepare(a.start, a.end or a.start, a.layer, a.fetch_311)
         written = write(plan)
-    except InputsIncomplete as e:
-        print(
-            f"SCORE FAILED (inputs incomplete; nothing written): {e}", file=sys.stderr
-        )
+    except ValidationFailed as e:
+        _annotate("error", f"validation failed; nothing written: {e}")
         return 1
     except (ScoreError, inference.ModelDisabledError, FileNotFoundError, KeyError) as e:
-        print(
-            f"SCORE FAILED (artifact/registry; nothing written): {e}", file=sys.stderr
-        )
+        _annotate("error", f"artifact/registry error; nothing written: {e}")
         return 2
-    summary = {
-        "layer": plan["layer"],
-        "written": written,
-        "rows_per_day": {d: len(t) for d, t in plan["tables"].items()},
-        "out_of_season_skipped": plan["out_of_season"],
-        "source_311": plan.get("source_311"),
-        "wall_s": round(time.monotonic() - t0, 1),
-    }
-    print(json.dumps(summary, indent=2))
+    except DownloadFailed as e:
+        _annotate("error", str(e))
+        return 3
+    for d, why in plan["not_ready"].items():
+        _annotate(
+            "notice", f"{d} not scored yet: {why}. Will be scored on a later run."
+        )
+    if plan["out_of_season"]:
+        _annotate(
+            "notice", f"out of season, not scored: {', '.join(plan['out_of_season'])}"
+        )
+    out_dir = inference.scores_dir(plan["registry"], plan["layer"])
+    stale = staleness(out_dir, now or datetime.now(UTC))
+    print(
+        json.dumps(
+            {
+                "layer": plan["layer"],
+                "written": written,
+                "rows_per_day": {d: len(t) for d, t in plan["tables"].items()},
+                "not_ready": plan["not_ready"],
+                "out_of_season_skipped": plan["out_of_season"],
+                "newest_scored_day": str(newest_scored_day(out_dir)),
+                "source_311": plan.get("source_311"),
+                "wall_s": round(time.monotonic() - t0, 1),
+            },
+            indent=2,
+        )
+    )
+    if stale:
+        _annotate("error", f"score tables are stale: {stale}")
+        return 4
     return 0
 
 
