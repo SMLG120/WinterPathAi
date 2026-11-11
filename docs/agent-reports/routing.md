@@ -1,7 +1,7 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW, **including for a combined merge with `agent/data` @ `4254dd7`** (migration 0006 and the regenerated Geofabrik pilot_mini): 302 passed on both. Cycle 7 fixes API-NULL-1 and makes the tests fixture-independent. Cycle 6 adopted contract **v1.5.0**: 311 natures, CR-ROUTING-4 and CR-ROUTING-9 accepted. Cycle 5 added v1.4.0 closure activity and `terminal_at`; cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
-- **Branch / SHA:** `agent/routing` @ `31651e5` (code: contract v1.6.0), on merge `5af6145` of `integration/winterpath` `a292b63`. Earlier code checkpoints: `517186d` (cycle 7), `864aa80` (cycle 6), `b6b62c4` (cycle 5). This report is committed on top.
+- **Status:** READY FOR REVIEW. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -24,7 +24,50 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0f. Cycle 8 — contract v1.6.0 (a292b63) — current
+### 0g. Cycle 9 — merge of `agent/data` `f6eb3b2`, DB re-migrated, full rerun — current
+**Order** (0006 was edited in place, so the applied version had to be undone with its own downgrade):
+1. **Downgrade with the applied 0006.** My scratchpad export of `agent/data`'s `db/` (identical to `4254dd7`'s 0006: `diff` empty) against **my own** DB:
+   ```text
+   target db: /wp_routing port 55432
+   $ alembic -c <scratch>/data-db/db/alembic.ini current    → 0006_report_311_nature (head)
+   $ … downgrade 0005_closure_active_excl_end; … current     → 0005_closure_active_excl_end
+   ```
+2. **Merge the exact commit:** `git merge --no-edit f6eb3b2` → `f776a3a` (26 files, no conflicts). The worktree's 0006 equals `f6eb3b2`'s (`diff` empty).
+3. **Upgrade with the merged files:**
+   ```text
+   $ uv run --project services/ingestion --with alembic alembic -c db/alembic.ini upgrade head; … current
+   0006_report_311_nature (head)
+   report_311_cell_category_check: CHECK ((category = ANY (ARRAY['sidewalk_slippery', 'roadway_slippery', 'snow_clearing', 'snow_dumping', 'snow_clearing_alley', 'snow_dumping_alley'])))
+   report_311_cell_pkey:           PRIMARY KEY (h3, day, category, nature)
+   ```
+
+**Fixture now in tree:** pilot_mini has 92 nodes, 200 edges and bbox `[-73.578801, 45.503026, -73.576318, 45.505218]`, the same as `ee5f1fc`/`4254dd7`. The fixture-derived tests from cycle 7 handle it.
+
+```text
+$ uptime → load averages: 9.24 6.98 7.56
+$ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider -s   # filtered
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=0.9 ms p95=1.5 ms max=1.7 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=3.9 ms p95=6.5 ms max=11.3 ms
+======================= 303 passed, 1 warning in 15.04s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+**Ownership gate: `exit=1`, expected.** `scripts/check-ownership.sh routing` compares this branch with `integration/winterpath` (`a292b63`) and lists the 26 Data-owned files the `f6eb3b2` merge brought in: `data/fixtures/pilot_mini/*`, `data/qa/*`, `db/migrations/versions/0006_report_311_nature.py`, `docs/agent-reports/data.md` and `services/ingestion/*`. I verified that:
+- every non-owned file changed since the merge base (26) appears in `git diff --name-only a292b63 f6eb3b2`;
+- `git diff f6eb3b2 HEAD -- <those 26 files>` is **empty** (byte-identical to Data's commit);
+- the only commits touching them are Data's (`f6eb3b2`, `ee5f1fc`, `4254dd7`).
+
+No routing commit edits a non-owned path. The gate will pass again once integration contains `f6eb3b2`.
+
+Not run: `services/ingestion` tests (Data-owned; their PostGIS tests target Data's DB setup, not `wp_routing`).
+
+### 0f. Cycle 8 — contract v1.6.0 (a292b63)
 - **Merge:** `git merge --no-edit integration/winterpath` → `5af6145`, no conflicts; docs only. Just before it, a merge attempt returned `Already up to date.` (integration was still `eb92007`).
 - **CR-ML-2:** `CATEGORY_311_TITLES` gains `snow_clearing_alley` ("311 reports: snow clearing (alley)" / "Requêtes 311 : déneigement (ruelle)") and `snow_dumping_alley` ("311 reports: snow dumping (alley)" / "Requêtes 311 : dépôt de neige (ruelle)"). A new test checks that all six canonical categories have titles.
 - **`CONTRACT_VERSION` = `1.6.0`.**
