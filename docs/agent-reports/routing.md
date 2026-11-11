@@ -1,6 +1,6 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 15: report reads work under a read-only DB role (effective status in SQL, expiry write skipped/tolerated), 325 passed. Cycle 14: `/routes/compare` under 0.1 CPU p95 4692→602 ms (memory store), byte-identical results, golden regression test; 324 passed. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Status:** READY FOR REVIEW. Cycle 16 (URGENT): with writes off, report/pilot stores stay in memory so hazards work as `wp_reader` on PostGIS; 328 passed. Cycle 15: report reads work under a read-only DB role (effective status in SQL, expiry write skipped/tolerated), 325 passed. Cycle 14: `/routes/compare` under 0.1 CPU p95 4692→602 ms (memory store), byte-identical results, golden regression test; 324 passed. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
 - **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
@@ -24,7 +24,47 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0p. Cycle 15 — report reads under a read-only DB role — current
+### 0q. Cycle 16 — URGENT: hazards as `wp_reader` with public writes off (production 503) — current
+**Cause (coordinator, Render):**
+- With `API_STORE_BACKEND=postgis`, `/hazards` and `/routes/compare` returned 503 "Hazard store unavailable".
+- `PostgisHazardRepository.list` appends community hazards from `PostgisReportRepository.approved_active`, which SELECTs `wp.community_report`. The deployed role `wp_reader` deliberately has **no** SELECT on `wp.community_report` / `wp.pilot_request` (PII; migration 0001).
+- Production was reverted to `memory`, so live routes ignored the active blocking closures.
+
+**Fix (`state.py` only, no grant added):**
+- With `API_PUBLIC_WRITES=false`, the report and pilot-request stores are in memory (empty: nothing can be submitted), **even when `API_STORE_BACKEND=postgis`**.
+- Hazards (closures, 311 aggregates) and sources stay on PostGIS through the shared engine. The hazard store's community-report source is the in-memory store.
+- With writes on, nothing changes: Postgis report store (`persist_expiry=True`), Postgis pilot-request store, and the hazard store reading approved community reports from PostGIS.
+- `PostgisReportRepository`'s read-only tolerance (0p) stays as defence in depth.
+
+**Tests:**
+1. `test_api_deploy_v17.py::test_postgis_store_with_writes_off_keeps_pii_stores_in_memory`: with postgis + writes off, reports and pilot requests are in memory; hazards and sources are on PostGIS; the hazard store uses the in-memory reports. `…_with_writes_on_unchanged`: the previous wiring is fully kept.
+2. `test_api_postgis.py::test_hazards_and_routes_as_wp_reader_without_pii_select`. The API connects with `options=-c role=wp_reader -c default_transaction_read_only=on`: the test login only switches role for the session, and **no grant is added**.
+   - `current_user` → `wp_reader`, read-only → `on`.
+   - `SELECT … wp.community_report` → SQLSTATE `42501`.
+   - The old wiring (`PostgisHazardRepository(eng, PostgisReportRepository(eng)).list`) raises: this is the production 503.
+   - With the fix, as `wp_reader`, all of these succeed with no error:
+     - graph loads;
+     - `/health` database `ok`;
+     - `/hazards` 200;
+     - the hazard store returns TEST closure `TEST-RT-active` as an active hard closure at the route's departure time;
+     - `/routes/compare` 200, both routes avoiding the closed edge with `EXCLUDES_CONFIRMED_CLOSURE`;
+     - `/data-sources` 200;
+     - `POST /reports` → 503 `WRITES_DISABLED`.
+   - `/hazards` evaluates "now" (2026-11-11), before the TEST closure's December window, so the closure itself is asserted through the store at the departure time.
+- **Mutation check:** with `state.py` from `HEAD`, both new tests fail. The writes-on test passes on both versions.
+- **After the run:**
+  - 0 `TEST-RT-%` closures, 0 `wp.edge` rows, 0 `wp.community_report` rows;
+  - `has_table_privilege('wp_reader', 'wp.community_report'|'wp.pilot_request', 'SELECT')` → `False` / `False` (unchanged).
+
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+======================= 328 passed, 1 warning in 19.32s ========================
+$ ruff (routing / api): All checks passed! 21 / 33 files already formatted
+$ (cd services/api && uv lock --check)  → exit=0
+```
+CR-ROUTING-11 (DELETE → 503 when writes are disabled): kept as a proposal, per the coordinator.
+
+### 0p. Cycle 15 — report reads under a read-only DB role
 **Context:**
 - Coordinator decision: production uses `API_STORE_BACKEND=postgis`, `API_PUBLIC_WRITES=false`, and role `wp_api` with `default_transaction_read_only=on`.
 - `PostgisReportRepository.get`/`list` ran the expiry `UPDATE` (`_expire_sql`) before reading. Under that role it fails with SQLSTATE 25006, so `DELETE /reports/{id}` (whose token check reads the report via `get`) and the admin list would return 500.

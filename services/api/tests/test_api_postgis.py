@@ -508,3 +508,96 @@ def test_report_reads_under_read_only_session(db, make_client) -> None:
     assert rw.get(old.id, now).status == "expired"
     assert tuple(stored(old.id)) == ("expired", old.expires_at)
     assert tuple(stored(fresh.id)) == ("pending", None)
+
+
+# ------------------------------------------------------------------- as wp_reader (production)
+def _as_wp_reader(url: str) -> str:
+    """Session runs as wp_reader (read-only), like the deployed wp_api login. No grant is
+    added: the superuser test login only switches role for the session."""
+    sep = "&" if "?" in url else "?"
+    return url + sep + "options=-c%20role%3Dwp_reader%20-c%20default_transaction_read_only%3Don"
+
+
+def test_hazards_and_routes_as_wp_reader_without_pii_select(db, closures, make_client) -> None:
+    from datetime import datetime
+
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import DBAPIError
+
+    from winterpath_api.repositories.hazards import PostgisHazardRepository
+    from winterpath_api.repositories.reports import (
+        InMemoryReportRepository,
+        PostgisReportRepository,
+    )
+
+    url = _as_wp_reader(os.environ["DATABASE_URL"])
+    eng = create_engine(url)
+    at = datetime.fromisoformat(AT_ISO.replace("Z", "+00:00"))
+    try:
+        with eng.connect() as c:
+            assert c.execute(text("SELECT current_user")).scalar() == "wp_reader"
+            assert c.execute(text("SHOW default_transaction_read_only")).scalar() == "on"
+        # The role really lacks the PII grant …
+        with pytest.raises(DBAPIError) as ei, eng.connect() as c:
+            c.execute(text("SELECT 1 FROM wp.community_report LIMIT 1"))
+        assert ei.value.orig.sqlstate == "42501"
+        # … so the previous wiring (Postgis report store behind the hazard store) fails: this is
+        # the production 503 "Hazard store unavailable".
+        with pytest.raises(DBAPIError):
+            PostgisHazardRepository(eng, PostgisReportRepository(eng)).list(at)
+    finally:
+        eng.dispose()
+
+    # Route that crosses a TEST closure (found with the default superuser client).
+    base = make_client(
+        graph_source="postgis", store_backend="postgis", database_url=os.environ["DATABASE_URL"]
+    ).post("/api/v1/routes/compare", json=ROUTE)
+    assert base.status_code == 200, base.text
+    short_ids = base.json()["routes"][0]["edge_ids"]
+    target = short_ids[len(short_ids) // 2]
+    closures(["TEST-RT-active"], _midpoint(db, target))
+
+    c = make_client(
+        graph_source="postgis",
+        store_backend="postgis",
+        public_writes=False,
+        database_url=url,
+    )
+    st = c.app.state.wp
+    assert isinstance(st.reports, InMemoryReportRepository)
+    assert st.engine is not None  # graph loaded as wp_reader
+
+    h = c.get("/api/v1/health")
+    validate_response(h, "/health", "get")
+    assert h.json()["checks"]["database"]["status"] == "ok"
+
+    hz = c.get(f"/api/v1/hazards?bbox={pilot_bbox_param()}")
+    validate_response(hz, "/hazards", "get")
+    assert hz.status_code == 200, hz.text  # was 503 "Hazard store unavailable" in production
+    # /hazards evaluates "now" (before the TEST closure's window); at the route's departure time
+    # the same store, as wp_reader, returns the closure as an active hard closure.
+    got = {h.hazard_id: h for h in st.hazards.list(at)}
+    assert got["TEST-RT-active"].is_hard_closure
+
+    r = c.post("/api/v1/routes/compare", json=ROUTE)
+    validate_response(r, "/routes/compare", "post")
+    if r.status_code == 404:  # the closure disconnected the pair: still answered, not 503
+        assert r.json()["code"] == "NO_ROUTE"
+    else:
+        assert r.status_code == 200, r.text
+        for route in r.json()["routes"]:
+            assert target not in route["edge_ids"]
+            assert "EXCLUDES_CONFIRMED_CLOSURE" in [x["code"] for x in route["explanation"]]
+
+    s = c.get("/api/v1/data-sources")
+    validate_response(s, "/data-sources", "get")
+    assert s.status_code == 200 and "osm" in {x["id"] for x in s.json()}
+    w = c.post(
+        "/api/v1/reports",
+        json={
+            "category": "ice",
+            "location": {"lon": -73.576, "lat": 45.504},
+            "location_consent": True,
+        },
+    )
+    assert w.status_code == 503 and w.json()["code"] == "WRITES_DISABLED"
