@@ -1,7 +1,7 @@
 # Agent report — platform
 
 - **Status:** READY FOR REVIEW (local DB boot and contract-vs-stub verified; CI never run on GitHub — repo has no remote and nothing was pushed)
-- **Branch / SHA:** agent/platform @ 5ce5c9f (contract v1.1.0 adoption), on top of merge 11e525f of `integration/winterpath` f191fce. Original implementation: b6daddf. This report update is in the following commit.
+- **Branch / SHA:** agent/platform — code at 5ce5c9f (contract v1.1.0 adoption), on top of merge 11e525f of `integration/winterpath` f191fce. Original implementation: b6daddf. Report updates: 8b89803 (v1.1.0 outputs) and the commit after it (stale-wording fixes only; no code or test changes).
 - **Contract:** v1.1.0 (CR-PLAT-1 and CR-PLAT-2 implemented by the coordinator)
 - **Date (UTC):** 2026-11-10
 
@@ -301,7 +301,7 @@ ownership OK for agent/platform
 | CI YAML passes `actionlint` locally | Yes | actionlint 1.7.12, exit 0, with shellcheck integration active |
 | Contract tests green against stub, ready for real API | Yes (stub) | v1.1.0: 54 passed / 5 skipped / 0 xfail (was 46 / 4 xfail / 5 under v1.0.0). Real API: `API_BASE_URL=… API_LOG_FILE=… make test`; CI job already wired |
 | gitleaks run on repo with literal output | Yes | History: no leaks (6 commits). Working tree: only the ignored `.env.local` |
-| No secrets committed; `.env.example` names only | Yes | gitleaks; `.env.example` untouched (coordinator-owned); env name additions requested in CR-PLAT-2 |
+| No secrets committed; `.env.example` names only | Yes | gitleaks; `.env.example` not edited on this branch (coordinator-owned); the CR-PLAT-2 test-harness names arrived via the v1.1.0 merge (f191fce) |
 | api/web services behind profiles, skipped with explicit message | Yes | `make up` prints SKIP lines; CI prints `::notice` SKIP |
 | Dockerfiles non-root; Render/Vercel/Supabase drafts; RUNBOOK | Yes | Probe build: uid 10001 / uid 101; files under `infra/` |
 | Observability spec + `/health` expectations | Yes | `infra/OBSERVABILITY.md`; implemented by the stub and enforced by `test_privacy.py` |
@@ -345,7 +345,7 @@ Schemathesis negative testing shows that these operations declare no status for 
 | `DELETE /reports/{reportId}` | non-uuid id, missing `X-Deletion-Token` | 204, 404 | `400`, `422`, `429` |
 | `GET /admin/reports` | `?status=bogus`, `?limit=0` | 200, 401 | `400`, `422` |
 | `POST /admin/reports/{reportId}/moderation` | bad body / non-uuid id | 200, 401, 404 | `400`, `422` |
-| `POST /pilot-requests` | malformed JSON / missing body | 201, 422, 429 | `400` (the stub uses 422 here for now) |
+| `POST /pilot-requests` | malformed JSON / missing body | 201, 422, 429 | `400` (under v1.0.0 the stub used 422 here; since v1.1.0 it returns 400 for malformed bodies) |
 
 ### CR-PLAT-2 — `.env.example` names (coordinator-owned) — **RESOLVED in v1.1.0 (f191fce)**
 Add names only, for the test harness: `API_BASE_URL`, `API_LOG_FILE`, `API_ADMIN_TOKEN` (plaintext, tests/local only), `API_APP`, `STUB_PORT`, `STUB_ADMIN_TOKEN`, `CORS_ALLOWED_ORIGIN`.
