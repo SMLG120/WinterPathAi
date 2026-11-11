@@ -585,3 +585,124 @@ f|f|45   f|t|19   f||1   t|f|68   t|t|25   t||9
 Note: `ruff format` on `db/migrations/versions/` would reflow 0001's `EDGE_KIND` constant, and
 `ruff check` flags E501 inside 0001's SQL. Both predate this change. I reverted the reflow so that
 0001 stays byte-identical.
+
+## Contract v1.5.0 follow-up — Geofabrik, path policy, CR-ML-1 (2026-11-10)
+`git merge --no-edit integration/winterpath` merged `bbae7d3` (contract v1.5.0) as `d69c717`. No
+conflicts.
+
+### (1) OSM source: Geofabrik, with no public Overpass in the pipeline
+- **New `osm/geofabrik.py`; `osm/overpass.py` deleted.**
+  - `quebec-latest.osm.pbf` is resolved to its dated redirect target and cached under that name.
+    The redirect target is
+    `https://download.geofabrik.de/north-america/canada/quebec-261108.osm.pbf`.
+  - The file is checked against Geofabrik's `.md5`, and a mismatch is fatal (tested).
+  - The file is clipped with **pyosmium 4.3.2** in two streaming passes. Pass 1 indexes node
+    locations in C++ and only highway ways reach Python. Pass 2 runs an IdFilter over the needed
+    nodes.
+  - Clip semantics replicate the old Overpass query: a way is kept if any segment intersects the
+    bbox, and the whole way is kept. A way that crosses the bbox with no node inside it is kept
+    (tested).
+  - The output keeps the Overpass JSON shape, so `build_graph` is unchanged.
+- **Provenance.** The URL, Last-Modified, PBF header `osmosis_replication_timestamp`, MD5, SHA-256
+  and fetched_at go into the manifest and **`wp.ingest_run.log.provenance`**. For that,
+  `db_load._run_log` now copies `manifest.provenance` into the log.
+  ```text
+  url  https://download.geofabrik.de/north-america/canada/quebec-261108.osm.pbf
+  Last-Modified  Mon, 09 Nov 2026 00:37:54 GMT   osm_replication_timestamp  2026-11-08T21:21:00Z
+  md5  4aa2c6163b2c7121113238feec9e1328   size 1 166 570 375 B
+  sha256  76f100e41397bbc3428ed357b2c1f91d3f8d3f2663b335c34dfb3321e9614768
+  clip: 6 853 ways, 21 273 nodes, 0 missing nodes   (wp-ingest osm --force: 1:52.77 wall)
+  ```
+- **Comparison with the Overpass snapshot** (`data/qa/osm_source_comparison.json`, built with
+  both policies so source and policy effects stay separate):
+  - **Source effect: none.** Overpass (2026-11-10T20:43:04Z) and the Geofabrik clip
+    (2026-11-08T21:21:00Z) contain the same 6 853 ways. Way tags and node lists are identical, and
+    so are all 21 273 nodes. Under the old policy both builds give **identical** results: 16 652
+    edges and 6 987 nodes, with 0 IDs differing.
+  - **Policy effect** (Geofabrik, old→new policy): 16 642 edge IDs are kept, 10 disappear and 204
+    appear. Node IDs: 6 987 kept, 55 added.
+    - The 10 removed IDs are segments of existing ways that are now split at nodes shared with a
+      newly included service or cycleway way. This follows the documented split rule; it is not a
+      change in the ID scheme.
+    - Kept edges have unchanged geometry.
+  - The edge-ID stability tests (two builds; shuffled element order) are kept. They are joined by
+    `test_clip_reproduces_graph_and_edge_ids`. That test writes a PBF from the committed real
+    extract, clips it, and checks that the edge and node ID lists match exactly.
+
+### (2) Path policy
+`graph.CONDITIONAL_HIGHWAYS = {service, cycleway}` are included only when `foot ∈ {yes, designated,
+permissive}`. `corridor` stays excluded. A cycleway with foot permission has `edge_kind = path`
+(shared-use path); a service road has `other`.
+
+| | Overpass / old policy | **Geofabrik / v1.5.0** |
+|---|---|---|
+| ways included | 4 936 | **4 975** (+39: 38 service, 1 cycleway) |
+| nodes | 6 987 | **7 042** |
+| directed edges | 16 652 | **16 846** (+service/yes 110, service/permissive 66, cycleway/designated 8; +10 from re-splits) |
+| components | 159 | **145** |
+| largest component (nodes / length) | 91.57 % / 97.11 % | **93.24 % / 97.86 %** |
+| gaps | 351 (193 near-miss + 158 component) | **336 (192 + 144)** |
+| excluded: service / cycleway without foot permission | 983 / 150 | **946 / 148** |
+
+**Needs a ruling (CR-DATA-7):** 6 of the added ways carry `access=private|no` *and* an explicit
+`foot=yes|permissive`: 112854780, 503388659 (Rue Kimberley), 1296208357, 1379125200,
+1460735759 and 1460735762. They are mostly driveways. The v1.4 rule, in OSM semantics and covered
+by an existing test, is that an explicit foot tag overrides `access`, so these are **included**.
+v1.5.0 also says "`access=private|no` everywhere" is excluded. If that means "even with foot=yes",
+it is a one-line change, and I'll make it on request.
+
+### (3) CR-ML-1: `wp.report_311_cell.nature`
+- **Migration `0006_report_311_nature`** (revises 0005):
+  - Adds `nature NOT NULL CHECK IN (requete, plainte, information, commentaire)` and
+    `CHECK category IN (sidewalk_slippery, roadway_slippery, snow_clearing, snow_dumping)`.
+  - The PK becomes `(h3, day, category, nature)`.
+  - Upgrade **deletes** existing aggregates. They mix natures and can't be split; inventing a
+    nature isn't an option. The table is derived data and is rebuilt by `wp-ingest 311 && load`.
+  - Downgrade is exact: it sums n over natures back into the old PK (tested with synthetic rows:
+    2 + 1 + 5 → 8).
+- **Ingest:** `r311.normalize_nature` matches case- and accent-insensitively ("Requête" →
+  `requete`). Any other value is skipped and counted as `unknown_nature`, never guessed. The
+  pipeline checksum includes the nature map.
+- Observed natures in the whole file: Requete 1 725 024, Information 1 487 690, Commentaire
+  29 967, Plainte 28 936.
+- **Rebuilt (pilot-independent, citywide):**
+  - 80 614 winter reports → 70 427 rows (h3×day×category×nature) in 2 678 cells, 2022-01-01 to
+    2026-11-07.
+  - By nature in DB: requete 61 067 rows / 70 574 reports, plainte 2 631 / 2 714, commentaire
+    6 729 / 7 326, **information 0**. Winter information requests carry no location, consistent
+    with the publisher note.
+  - Label view (requete + plainte summed, k-anon checked **after** summing): 63 112 cell-days, of
+    which 61 347 have n<3.
+
+### pilot_mini regenerated from the Geofabrik build
+200 edges / **92 nodes** (was 88), `simulated:false`, `osm_snapshot` 2026-11-08T21:21:00Z.
+`metadata.json` now has `osm_raw_sha256` (the PBF sha256), `osm_pipeline_checksum` and
+`osm_source` (provider, URL, Last-Modified, replication timestamp, MD5). ATTRIBUTION now names
+Geofabrik.
+
+**Heads-up for routing/api/frontend:** only **40 of 200** fixture edge IDs are unchanged, even
+though 99.9 % of full-graph IDs are stable. The fixture is the first 200 edges by network distance
+from the anchor, and the newly included service paths (several `foot=permissive` around McGill)
+change which edges are nearest. Tests that hard-code fixture edge IDs need updating.
+
+### Commands (literal)
+```text
+$ wp-ingest osm --force       → noop false; nodes 7042, directed_edges 16846, components 145, gap_count 336
+$ wp-ingest voirie --force    → sidewalk match 0.9411 (4890/5196); all 0.424 (7142/16846)
+$ wp-ingest fixture --force   → {'edge_count': 200, 'node_count': 92}
+$ wp-ingest 311 --force       → cells_rows 70427, distinct_cells 2678, label_cell_days 63112
+$ alembic upgrade head (wp_data) → 0006_report_311_nature
+$ wp-ingest load
+{"source_id": "osm", "noop": false, "counts": {"node": 7042, "edge": 16846}}
+{"source_id": "mtl-voirie", "noop": false, "counts": {"sidewalk_polygon": 1495}}
+{"source_id": "mtl-entraves", "noop": true}
+{"source_id": "mtl-311", "noop": false, "counts": {"report_311_cell": 70427}}
+{"source_id": "eccc-geomet", "noop": true}
+$ ruff check . → All checks passed!     $ ruff format --check . → 27 files already formatted
+$ uv run pytest -q
+................................................                         [100%]
+48 passed in 48.08s
+$ pip-audit (uv export) → No known vulnerabilities found   (new dep: osmium 4.3.2)
+```
+QA: `data/qa/osm_pilot_gaps.json` (336), `data/qa/pipeline_stats.json` (refreshed with
+`osm_source` and `graph_policy`), and `data/qa/osm_source_comparison.json` (new).

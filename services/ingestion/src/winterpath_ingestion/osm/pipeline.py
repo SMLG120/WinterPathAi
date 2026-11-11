@@ -1,14 +1,24 @@
-"""OSM pilot graph pipeline: download (cached) → build → write processed outputs atomically."""
+"""OSM pilot graph pipeline: Geofabrik Quebec PBF (cached, MD5-verified) → bbox clip → build →
+write processed outputs atomically. No public Overpass (contract v1.5.0)."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
 from ..config import PILOT_BBOX, Settings
 from ..runs import RunResult, run_atomic
-from .graph import build_graph, load_overpass
-from .overpass import fetch_pilot
+from . import geofabrik
+from .graph import CONDITIONAL_HIGHWAYS, INCLUDED_HIGHWAYS, build_graph
+
+# Part of the run checksum: a policy change must rebuild even if the PBF is unchanged.
+GRAPH_POLICY = (
+    "v1.5.0:"
+    + ",".join(sorted(INCLUDED_HIGHWAYS))
+    + "|cond:"
+    + ",".join(sorted(CONDITIONAL_HIGHWAYS))
+)
 
 
 def write_geojson(gdf, path: Path) -> None:
@@ -62,9 +72,11 @@ def _clean(v):
 
 
 def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> RunResult:
-    raw = fetch_pilot(settings.raw_dir, PILOT_BBOX, settings.user_agent, refresh=refresh)
-    osm = load_overpass(raw.path)
-    snapshot = osm.get("osm3s", {}).get("timestamp_osm_base")
+    pbf = geofabrik.fetch(settings.raw_dir, settings.user_agent, refresh=refresh)
+    clip_path, osm = geofabrik.clip_cached(pbf, PILOT_BBOX, refresh=refresh)
+    snapshot = pbf.replication_timestamp
+    provenance = {**pbf.provenance(), "bbox": list(PILOT_BBOX), "clip": osm["clip_stats"]}
+    checksum = hashlib.sha256(f"{pbf.sha256}|{clip_path.name}|{GRAPH_POLICY}".encode()).hexdigest()
 
     def build(staging: Path, run_id: str) -> dict:
         res = build_graph(osm, snapshot=snapshot, ingest_run_id=run_id)
@@ -75,11 +87,13 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
         return {
             "source_id": "osm",
             "osm_snapshot": snapshot,
-            "raw_file": raw.path.name,
-            "raw_sha256": raw.sha256,
-            "fetched_at": raw.fetched_at,
+            "raw_file": pbf.path.name,
+            "raw_sha256": pbf.sha256,
+            "fetched_at": pbf.fetched_at,
             "bbox": list(PILOT_BBOX),
+            "graph_policy": GRAPH_POLICY,
+            "provenance": provenance,
             "stats": res.stats,
         }
 
-    return run_atomic("osm_pilot", settings.processed_dir, raw.sha256, build, force=force)
+    return run_atomic("osm_pilot", settings.processed_dir, checksum, build, force=force)

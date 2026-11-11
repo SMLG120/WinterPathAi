@@ -15,9 +15,10 @@ SOURCES: list[dict] = [
         "available under the ODbL",
         "url": "https://www.openstreetmap.org/copyright",
         "status": "active",
-        "notes": "Fetched via Overpass API (overpass-api.de). Commercial use of the public "
-        "instance is discouraged by its policy: switch to a Geofabrik extract or "
-        "self-hosted Overpass before launch. Share-alike applies to derived databases.",
+        "notes": "Geofabrik quebec-latest.osm.pbf (download.geofabrik.de), clipped to the pilot "
+        "bbox; dated file, MD5/SHA-256 and OSM timestamp recorded in wp.ingest_run.log "
+        "(contract v1.5.0). Public Overpass is not used by the pipeline. Share-alike applies "
+        "to derived databases.",
     },
     {
         "source_id": "mtl-voirie",
