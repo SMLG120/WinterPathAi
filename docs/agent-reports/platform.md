@@ -5,6 +5,29 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (g) — coordinator review of 33537fe: scheduled.yml changes
+Merged `integration/winterpath` 5238c45 first, as merge commit 89a0bf4. It changed no platform-owned paths and brought in `.gitignore` rules for the two scoring artifacts plus the deployment docs.
+
+1. **Scoring schedule:** the 10:40 run is replaced by two runs, `0 12 * * *` and `0 18 * * *` UTC (07:00/13:00 EST, 08:00/14:00 EDT). The job `if:` matches either schedule. This relies on ML making its scorer idempotent (exit 0 if the day is already scored or inputs are incomplete).
+2. **Artifacts:** the scoring job sets `MODEL_ARTIFACT_DIR: ${{ github.workspace }}/models/artifacts`, which ML's `config.py` honours (`ARTIFACT_DIR = Path(os.environ.get("MODEL_ARTIFACT_DIR", …))`). There is no download step. As of 5238c45 the artifacts are allowed by `.gitignore` but **not yet committed** (`git ls-files models/artifacts` → only `.gitkeep`). ML's sha256 check against `models/registry.json` will fail loudly until they are.
+3. **Weather load:** the job uses `wp-ingest load --source "$WEATHER_LOAD_SOURCE"` (`eccc-geomet`, a placeholder for Data to confirm) once `wp-ingest load --help` advertises `--source`. If `--source` exists but does not list that name, the step fails with `::error` rather than loading the wrong thing. Until then it falls back to the full `wp-ingest load` with a `::notice` (non-weather sources skip with "no processed output"). Today the fallback is taken, because the CLI is unchanged and the weather loader key is still `eccc`.
+4. **Container test under Render-Free limits: BLOCKED.** Routing's v1.7 commit is not on integration: `services/api` still has `CONTRACT_VERSION = "1.6.0"` and `settings.py` has no `API_PUBLIC_WRITES`, `RISK_SCORE_SOURCE` or `DATABASE_POOL_SIZE`. When it lands I will merge integration and run the image with `--memory=512m --cpus=0.1` against `wp_data`, `ROUTING_GRAPH_SOURCE=postgis` and `API_PUBLIC_WRITES=false`. I will report boot time, RSS, and p50/p95 for 100 `POST /routes/compare` requests with `{lon,lat}` points across the pilot bbox.
+
+```text
+$ actionlint            -> [actionlint exit 0]
+$ grep -n -E "cron:|event.schedule" .github/workflows/scheduled.yml
+16:    - cron: "17 */3 * * *"   # weather ingest every 3 h (minute 17 avoids top-of-hour congestion)
+20:    - cron: "0 12 * * *"
+21:    - cron: "0 18 * * *"
+40:      (github.event_name == 'schedule' && github.event.schedule == '17 */3 * * *') ||
+103:      (github.event_name == 'schedule' && (github.event.schedule == '0 12 * * *' || github.event.schedule == '0 18 * * *')) ||
+$ (services/ingestion, branch-selection dry run, --help only, no DB)
+fallback branch: no --source in 'wp-ingest load --help'
+usage: wp-ingest [-h] [--refresh] [--force]
+                 {osm,fixture,voirie,entraves,311,eccc,all,load}
+```
+Not verified: neither job has run on GitHub, and neither has touched a database, because no secret exists.
+
 ## Update 2026-11-11 (f) — v1.7 free-tier deployment drafts (nothing applied)
 Context: merged `integration/winterpath` 07a1f29 (contract **v1.7.0**) once, after integration moved past 3aa6438; it touched no platform-owned paths. The user's request arrived truncated: it began mid-item at "free, runtime docker, …". Items (2)–(5) are done below; **item (1) was not received and is not done.**
 

@@ -14,7 +14,11 @@ name: scheduled
 on:
   schedule:
     - cron: "17 */3 * * *"   # weather ingest every 3 h (minute 17 avoids top-of-hour congestion)
-    - cron: "40 10 * * *"    # daily scoring 10:40 UTC = 05:40 EST / 06:40 EDT (after D-1 closes in Montréal)
+    # Daily scoring twice: 12:00 and 18:00 UTC (07:00/13:00 EST, 08:00/14:00 EDT). ML saw the 311
+    # file with no rows for the current day at 12:44 local, so the second run catches late inputs.
+    # ML's scorer is idempotent: exit 0 if the day is already scored or inputs are incomplete.
+    - cron: "0 12 * * *"
+    - cron: "0 18 * * *"
   workflow_dispatch:
     inputs:
       job:
@@ -42,6 +46,9 @@ jobs:
     concurrency:
       group: scheduled-weather-ingest
       cancel-in-progress: false   # never kill a load mid-transaction; queue the next run
+    env:
+      # Data agent's per-source load (`wp-ingest load --source <name>`); name to be confirmed by Data.
+      WEATHER_LOAD_SOURCE: eccc-geomet
     defaults:
       run:
         working-directory: services/ingestion
@@ -73,16 +80,27 @@ jobs:
       - name: fetch ECCC observations (no database access)
         if: steps.gate.outputs.configured == 'true'
         run: uv run --locked wp-ingest eccc --refresh
-      - name: load into PostGIS (staging + swap; other sources skip with "no processed output")
+      - name: load weather into PostGIS (per-source load; full-load fallback until Data lands it)
         if: steps.gate.outputs.configured == 'true'
         env:
           DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
-        run: uv run --locked wp-ingest load
+        run: |
+          help="$(uv run --locked wp-ingest load --help 2>&1 || true)"
+          if printf '%s' "$help" | grep -q -- '--source'; then
+            if ! printf '%s' "$help" | grep -q -- "$WEATHER_LOAD_SOURCE"; then
+              echo "::error title=weather load::wp-ingest load supports --source but does not list '$WEATHER_LOAD_SOURCE' — update WEATHER_LOAD_SOURCE"
+              exit 1
+            fi
+            uv run --locked wp-ingest load --source "$WEATHER_LOAD_SOURCE"
+          else
+            echo "::notice title=weather load fallback::wp-ingest load has no --source yet; running the full load (non-weather sources skip with 'no processed output')"
+            uv run --locked wp-ingest load
+          fi
 
   daily-scoring:
     name: daily risk scoring (-> wp.risk_cell_score)
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '40 10 * * *') ||
+      (github.event_name == 'schedule' && (github.event.schedule == '0 12 * * *' || github.event.schedule == '0 18 * * *')) ||
       (github.event_name == 'workflow_dispatch' && inputs.job != 'weather')
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -95,6 +113,9 @@ jobs:
       # Entry point of ML's v1.7 DB-backed scorer. ML agent to confirm the module and flags before
       # the secret is added; the job refuses to run until services/ml references wp.risk_cell_score.
       SCORING_MODULE: winterpath_ml.score
+      # The two scoring artifacts are committed (integration 5238c45 .gitignore; sha256-verified
+      # against models/registry.json by ML before use) — read from the checkout, no download.
+      MODEL_ARTIFACT_DIR: ${{ github.workspace }}/models/artifacts
     defaults:
       run:
         working-directory: services/ml
