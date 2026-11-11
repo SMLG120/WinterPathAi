@@ -43,5 +43,5 @@ Pages → Deployments → choose the last good deployment → **Rollback**. (Dir
 2. `alembic upgrade head` as `wp_migrate`.
 3. Load data from the operator's cached `data/processed/` (or re-run the pipeline).
 4. Create the Render service from `infra/render.yaml`, set secrets, deploy.
-5. Build `apps/web` with production `VITE_*` values and upload to Cloudflare Pages.
+5. Build `apps/web` with `npm run build:pages` and the production `VITE_*` values (it refuses unsafe settings such as mocks on, and scans `dist/` for mock code, source maps, secrets and missing headers), then upload `dist/` to Cloudflare Pages.
 6. Set GitHub Actions secrets; run the scheduled workflows once.
