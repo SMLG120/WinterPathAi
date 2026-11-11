@@ -2,8 +2,8 @@
 
 - **Status:** READY FOR REVIEW
 - **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
-- **Date (UTC):** 2026-11-10 (update 2: post contract v1.3.0 merge)
-- **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts.
+- **Date (UTC):** 2026-11-11 (update 3: post contract v1.5.0 merge)
+- **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts. Contract **v1.4.0/v1.5.0** + routing/data/platform merged after 249570b — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
 `123 files changed, 18459 insertions(+)` (all under `apps/web/`, `assets/3d/`, plus this report). `scripts/check-ownership.sh frontend` → `ownership OK for agent/frontend`.
@@ -307,13 +307,56 @@ largest lazy chunks:
      290.7 KB gz  assets/PlannerMap-Db3_R_bg.js
 ```
 
+## Update 3 — after contract v1.5.0 merge
+**Contract impact on the frontend** (v1.4 is DB-only; v1.5 OpenAPI changes are descriptive):
+- CR-ROUTING-9 evidence mapping: the mock route explanations used invented codes (`SIMULATED_DEMO`, `SHORTEST_BASELINE`, `UNKNOWN_CONDITIONS`, `AVOIDS_SIMULATED_CLOSURE`). They now use routing's canonical codes (`SIMULATED_DATA`, `SHORTEST_DISTANCE`, `RISK_LAYER_UNAVAILABLE`, `AVOIDS_POSSIBLE_CLOSURE`), and `SHORTEST_DISTANCE` is `unknown` per the mapping. The invented demo closure stays `simulated`, never `confirmed`. A new test in `fixtures.test.ts` pins the vocabulary.
+- CR-ROUTING-4 (any bad deletion token → 404): the UI and mock already behaved this way (generic "could not delete", no existence leak). No change.
+- v1.5 OSM path-type policy (Geofabrik; corridors/RÉSO excluded): no UI copy mentions Overpass, RÉSO, corridors or cycleways, so nothing contradicts it.
+- `schema.d.ts` regenerated from openapi 1.5.0 (description-only diff).
+
+**Entry-bundle trim:** Motion's animation features now load asynchronously (`LazyMotion features={loadMotionFeatures}`). Initial JS went from 157.5 to 143.9 KB gz. Sections start from the hidden fade-in state only once the features have loaded (`src/lib/motionReady.ts`, unit-tested), so a slow or failed chunk can never leave content invisible.
+
+**Lighthouse 12.8.2, same method as update 2** (3 runs/page). Caveat: port 8104 was then held by another session's API instance (mine could not bind). LCP elements on these pages are static text, not API data.
+```text
+en_1 perf 86 a11y 100 LCP 2930 CLS 0.001 TBT 312
+en_2 perf 81 a11y 100 LCP 2956 CLS 0.001 TBT 455
+en_3 perf 87 a11y 100 LCP 2948 CLS 0.001 TBT 263
+en_plan_1 perf 67 a11y 100 LCP 3472 CLS 0.000 TBT 900
+en_plan_2 perf 88 a11y 100 LCP 3395 CLS 0.000 TBT 136
+en_plan_3 perf 76 a11y 100 LCP 5042 CLS 0.000 TBT 178
+en_how-it-works_1 perf 92 a11y 100 LCP 3030 CLS 0.003 TBT 25
+en_how-it-works_2 perf 92 a11y 100 LCP 3002 CLS 0.003 TBT 17
+en_how-it-works_3 perf 92 a11y 100 LCP 3049 CLS 0.000 TBT 38
+```
+No measurable LCP change from the smaller entry (differences are within run-to-run noise). LCP is still about 2.9–3.0 s on content pages and 3.4–5.0 s on `/plan`, so the **2.5 s target is still not met**. On every page Lighthouse attributes LCP to *render delay* (TTFB ≈ 455 ms, no load delay). The LCP element is static text: hero h1 on `/`, the address-search help text on `/plan`, the intro paragraph on `/how-it-works`. Fonts use `font-display: swap`, so they are not the cause. The fix that would move it is **build-time prerendering of the static pages** (HTML with content before JS runs). That is an architecture change I have not made; it needs a decision from the coordinator.
+
+**Re-run**
+```text
+$ npx tsc -b && npx eslint . --max-warnings 0 → LINT_OK
+$ npx vitest run
+ Test Files  11 passed (11)
+      Tests  106 passed (106)
+$ npx playwright test --reporter=line          (mock build)
+  96 passed (5.0m)
+$ E2E_ADMIN_TOKEN=… npx playwright test -c playwright.real.config.ts --reporter=line   (local services/api, fixture graph)
+  16 passed (1.6m)
+$ npm run build → exit 0; node scripts/bundle-size.mjs
+dir: dist
+initial (entry + modulepreload):
+     143.9 KB gz  assets/index-Cl5i91_t.js
+  TOTAL initial JS:    143.9 KB gz  (budget 250 KB, excludes map + 3D chunks)
+largest lazy chunks:
+     290.7 KB gz  assets/PlannerMap-CwtsbHRD.js
+     221.1 KB gz  assets/Scene3D-D7aT1PGj.js
+```
+
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
 |---|---|---|
 | Six pages render EN + FR, desktop + 390 px, light + dark | Yes (automated) | `pages.spec.ts` matrix: 7 pages × 2 langs × 2 themes × 2 viewports, h1 + no horizontal overflow + axe clean |
 | Planner end-to-end against mocks; real API is env-only | Yes, both | mock: `planner.spec.ts`; real: `e2e-real/real-api.spec.ts` 16/16 against local `services/api` (fixture graph, memory store) |
 | Evidence states icon + text everywhere; no unlabelled demo data | Yes | `EvidenceBadge.test.tsx`, honesty tests in `fixtures.test.ts`, demo banner asserted on every page |
-| build / lint / test / playwright pass, bundle sizes | Yes | Outputs above; initial JS 157.5 KB gz (budget 250); mock e2e 96/96 |
+| build / lint / test / playwright pass, bundle sizes | Yes | Outputs above; initial JS 143.9 KB gz (budget 250); vitest 106/106; mock e2e 96/96; real-API e2e 16/16 |
 | Asset/font licence manifest | Yes | `apps/web/ASSET_LICENSES.md`, `assets/3d/README.md` |
 | Bilingual planning journey, geolocation-denied journey, axe per page | Yes | `planner.spec.ts`, `geolocation.spec.ts`, `pages.spec.ts` |
 | EN/FR key parity test | Yes | `src/i18n/parity.test.ts` (keys, interpolation vars, no empty or untranslated strings) |
