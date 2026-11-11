@@ -412,3 +412,75 @@ def test_route_dict_shape(engine) -> None:
         "data_freshness",
         "unknown_share",
     }
+
+
+# --------------------------------------------------------------------------- closure activity
+# data-model v1.4: wp.closure_active_at is three-valued; only active=True AND blocks_passage=True
+# excludes. active=None (unknown schedule) is penalised and flagged, never treated as clear.
+
+
+def test_blocking_closure_with_unknown_activity_is_penalised_not_excluded(engine) -> None:
+    a, b = gid(0, 0), gid(0, 1)
+    hz = point_hazard("entrave:u1", mid(grid_node(0, 0), grid_node(0, 1)), blocks=True, active=None)
+    assert not hz.is_hard_closure and hz.is_possible_closure
+    clear = engine.compare(req(grid_node(0, 0), grid_node(0, 1)), NULL, [])
+    res = engine.compare(req(grid_node(0, 0), grid_node(0, 1)), NULL, [hz])
+    short, winter = res.routes
+    # not excluded: the shortest variant still uses the edge, and says so
+    assert short.edge_ids == [eid(a, b)]
+    assert short.hazards_on_route == ["entrave:u1"]
+    assert "PASSES_POSSIBLE_CLOSURE" in codes(short)
+    assert "EXCLUDES_CONFIRMED_CLOSURE" not in codes(short)
+    assert any("schedule at this time is unknown" in w for w in res.warnings)
+    # penalised: never cheaper than with no hazard at all (unknown is never "clear")
+    assert short.generalized_cost_s > clear.routes[0].generalized_cost_s
+    # on this grid the detour (3 edges) costs more than the 120 s penalty: the winter-aware
+    # route keeps the edge, and flags it
+    assert eid(a, b) in winter.edge_ids and "PASSES_POSSIBLE_CLOSURE" in codes(winter)
+    ev = {x.code: x.evidence_state for x in short.explanation}
+    assert ev["PASSES_POSSIBLE_CLOSURE"] is EvidenceState.UNKNOWN
+
+
+def test_possible_closure_penalty_enters_winter_aware_choice(toy_graph) -> None:
+    from winterpath_routing.costs import CostConfig
+
+    a, b = gid(0, 0), gid(0, 1)
+    eng = RoutingEngine(toy_graph, CostConfig(possible_closure_penalty_s=1000.0))
+    hz = point_hazard("entrave:u3", mid(grid_node(0, 0), grid_node(0, 1)), blocks=True, active=None)
+    short, winter = eng.compare(req(grid_node(0, 0), grid_node(0, 1)), NULL, [hz]).routes
+    assert eid(a, b) in short.edge_ids  # shortest: distance only, still flagged
+    assert eid(a, b) not in winter.edge_ids and eid(b, a) not in winter.edge_ids
+    assert winter.hazards_avoided == ["entrave:u3"]
+    assert "AVOIDS_POSSIBLE_CLOSURE" in codes(winter)
+
+
+def test_unknown_activity_penalty_exceeds_passable_disruption() -> None:
+    from winterpath_routing.costs import CostConfig
+
+    cfg = CostConfig()
+    assert cfg.possible_closure_penalty_s > cfg.confirmed_disruption_penalty_s > 0
+
+
+def test_unknown_activity_non_blocking_is_still_a_disruption(engine) -> None:
+    hz = point_hazard("entrave:u2", mid(grid_node(0, 0), grid_node(0, 1)), blocks=None, active=None)
+    res = engine.compare(req(grid_node(0, 0), grid_node(0, 1)), NULL, [hz])
+    assert res.routes[0].hazards_on_route == ["entrave:u2"]
+    assert "PASSES_CONFIRMED_DISRUPTION" in codes(res.routes[0])
+    assert not any("schedule at this time is unknown" in w for w in res.warnings)
+
+
+def test_active_blocking_closure_still_excluded(engine) -> None:
+    a, b = gid(0, 0), gid(0, 1)
+    hz = point_hazard("entrave:a1", mid(grid_node(0, 0), grid_node(0, 1)), blocks=True, active=True)
+    res = engine.compare(req(grid_node(0, 0), grid_node(0, 1)), NULL, [hz])
+    for r in res.routes:
+        assert eid(a, b) not in r.edge_ids and eid(b, a) not in r.edge_ids
+
+
+def test_possible_closure_texts_make_no_safety_claim() -> None:
+    from winterpath_routing.explain import CATALOG
+
+    for code in ("AVOIDS_POSSIBLE_CLOSURE", "PASSES_POSSIBLE_CLOSURE"):
+        _, en, fr = CATALOG[code]
+        for t in (en.lower(), fr.lower()):
+            assert not any(w in t for w in ("safe", "clear", "sûr", "dégag"))

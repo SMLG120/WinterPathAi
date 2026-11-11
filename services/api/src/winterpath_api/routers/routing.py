@@ -78,7 +78,7 @@ async def compare_routes(
     except SnapError as exc:
         raise ApiError(
             422,
-            "OUTSIDE_COVERAGE",
+            "OFF_NETWORK",
             str(exc),
             {
                 "which": exc.which,
