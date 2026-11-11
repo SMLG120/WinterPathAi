@@ -77,6 +77,12 @@ EXPECTED_0001 = sorted(
 EXPECTED = sorted([*EXPECTED_0001, "weather_daily"])  # head = 0002 (contract v1.2.0)
 V12_EDGE_COLS = {"crossing_type", "crossing_kerb", "highway", "osm_snapshot"}
 V12_CLOSURE_COLS = {"attrs", "backsidewalk_blocks_passage"}
+# v1.3.0 (migration 0003)
+V13_COLS = {("edge", "name"), ("community_report", "terminal_at")}
+
+
+def has_v13(url) -> set[bool]:
+    return {col in columns(url, table) for table, col in V13_COLS}
 
 
 def columns(url, table):
@@ -114,6 +120,14 @@ def test_migration_up_down_up(test_url):
         assert ("wp_reader", "weather_daily") in grants
     assert V12_EDGE_COLS <= columns(test_url, "edge")
     assert V12_CLOSURE_COLS <= columns(test_url, "closure")
+    assert has_v13(test_url) == {True}
+    # one step down: 0003 removed, v1.2 intact
+    alembic(test_url, "downgrade", "0002_contract_v1_2_0")
+    assert has_v13(test_url) == {False}
+    assert V12_EDGE_COLS <= columns(test_url, "edge")
+    assert wp_tables(test_url) == EXPECTED
+    alembic(test_url, "upgrade", "head")
+    assert has_v13(test_url) == {True}
     # one step down: back to exactly the v1 schema
     alembic(test_url, "downgrade", "0001_wp_schema_v1")
     assert wp_tables(test_url) == EXPECTED_0001

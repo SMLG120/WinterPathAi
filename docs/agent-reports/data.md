@@ -454,9 +454,14 @@ sources: eccc-geomet active, mtl-311 active, mtl-entraves active,
 $ ruff check . → All checks passed!   $ ruff format --check . → 26 files already formatted
 $ uv run pytest -q → 40 passed in 15.56s
 ```
-**Test gap:** the existing up/down test runs head → 0001 → head → base → head, so it does
-exercise 0003, but it does not yet assert the `name` and `terminal_at` columns explicitly.
-That assertion still needs adding.
+**Migration test:** `test_migration_up_down_up` now runs head → 0002 → head → 0001 → head →
+base → head. It asserts that `wp.edge.name` and `wp.community_report.terminal_at` exist at head,
+disappear at 0002 (with the v1.2 columns and tables still intact), and come back on re-upgrade:
+```text
+$ uv run pytest -q
+........................................                                 [100%]
+40 passed in 50.70s
+```
 
 ## Proposal — CR-ROUTING-7: `wp.closure.status` vocabulary
 Evidence from the 2026-11-10 Entraves file (1 974 permits): `currentstatus` has a single value,
