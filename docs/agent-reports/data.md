@@ -706,3 +706,14 @@ $ pip-audit (uv export) → No known vulnerabilities found   (new dep: osmium 4.
 ```
 QA: `data/qa/osm_pilot_gaps.json` (336), `data/qa/pipeline_stats.json` (refreshed with
 `osm_source` and `graph_policy`), and `data/qa/osm_source_comparison.json` (new).
+
+### Merge integration/winterpath (d04da54 + 2d37f32), post-checkpoint
+`git merge --no-edit integration/winterpath` → `bea2d96`. This includes `d04da54` (data@abcea83,
+routing@32e69f6, platform@89477f5) and `2d37f32` (`.env.example` weather names). No conflicts. The
+merge touched no file under `data/`, `db/`, `services/ingestion/` or `docs/contracts/`.
+```text
+$ ruff check . → All checks passed!
+$ uv run pytest -q
+................................................                         [100%]
+48 passed in 51.46s
+```
