@@ -46,13 +46,13 @@
       "steps": {
         "label": "Exterior stairs",
         "source": "Stairs and steps on the walking network come from OpenStreetMap (highway=steps).",
-        "use": "The step-free profile uses only segments that OpenStreetMap tags confirm as step-free. Steps, and segments whose status is unknown, are left out rather than guessed.",
-        "evidenceNote": "Step-free status of segments without such a tag."
+        "use": "The step-free profile uses only segments tagged as step-free in OpenStreetMap (community-mapped). Steps, and segments without such a tag, are left out rather than guessed.",
+        "evidenceNote": "Community-mapped tags, not a verified accessibility check. Segments without a tag are Unknown."
       },
       "closure": {
         "label": "Sidewalk work",
         "source": "Ville de Montréal roadwork permits (Entraves et travaux en cours).",
-        "use": "A sidewalk is avoided only while the permit is active and its sidewalk_blockedtype field says pedestrian passage is blocked. Roadwork alone never means a closed sidewalk.",
+        "use": "A sidewalk is avoided only while the permit is active and its sidewalk_blockedtype field says pedestrian passage is blocked. When the permit is confirmed but whether work is active at your walking time is not, that is shown as Unknown. Roadwork alone never means a closed sidewalk.",
         "evidenceNote": "The permit record is official data; it says nothing about snow or ice."
       },
       "reports": {
@@ -69,9 +69,9 @@
       },
       "weather": {
         "label": "Ice and fresh snow",
-        "source": "Environment and Climate Change Canada (ECCC) weather observations and forecasts.",
-        "use": "Weather describes the area, not a specific sidewalk. A winter-risk model can turn it into a per-segment estimate; see the model section for whether one is enabled and how it was evaluated. Without a risk layer, segment risk is Unknown, never low.",
-        "evidenceNote": "Only when a risk model is enabled."
+        "source": "Environment and Climate Change Canada (ECCC) weather observations.",
+        "use": "Weather describes the area, not a specific sidewalk. A risk layer (a validated model or a labelled heuristic) can turn it into a per-segment estimate; the model section shows which one is active and how it was evaluated. Without a risk layer, segment risk is Unknown, never low.",
+        "evidenceNote": "Only when a risk layer is on: a validated model or a labelled heuristic."
       }
     }
   },

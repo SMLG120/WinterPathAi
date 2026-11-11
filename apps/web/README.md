@@ -35,3 +35,31 @@ The compare tests read the `risk_layer` from the API response and assert the mat
 suite also runs with the ML layer: `RISK_PROVIDER=winterpath_ml.inference:load_provider` plus
 `MODEL_ARTIFACT_DIR=<path to models/artifacts>` (artifacts are git-ignored). Without them the provider
 falls back to `none` and logs `risk_artifacts_missing`; check `GET /models/status` (`risk_layer`).
+
+## Free-tier deployment (contract v1.7) — Cloudflare Pages
+Nothing here deploys anything; the coordinator does that with the user's approval.
+
+- **Build for upload:** `npm ci && npm run build:pages` in `apps/web` (output `dist`). It refuses an unsafe
+  environment before building (`VITE_USE_MOCKS=true`, a non-https or non-`/api/v1` `VITE_API_BASE_URL`,
+  `VITE_PUBLIC_WRITES` not `false`, a secret-looking `VITE_*` value), then scans `dist` (no MSW worker or
+  mock switches, no sourcemaps or `sourceMappingURL` comments, no `404.html`, filled `_headers` with an https API
+  origin, no secret-like strings). It prints rule ids and file names only. For a Pages Git build, use the same command.
+  Node comes from `.node-version` (24). There is deliberately no `404.html`, so Pages serves the SPA
+  fallback; the build fails if one appears, or if any sourcemap is emitted.
+- **Build env (public, baked into the bundle):** `VITE_API_BASE_URL` (the Render API, e.g.
+  `https://<service>.onrender.com/api/v1`), `VITE_PUBLIC_WRITES=false` (read-only demo: the report and
+  pilot forms are replaced by a "not available in this public demo" notice), optional
+  `VITE_API_TIMEOUT_MS` (default 15000), optional `VITE_MAP_STYLE_URL`.
+- **Headers:** `public/_headers` is a template; `build/cloudflarePages.ts` fills the CSP with the API
+  origin from `VITE_API_BASE_URL`, the map style origin, OpenFreeMap, and hashes of `index.html`'s inline
+  script. Also nosniff, `frame-ancestors 'none'`, Referrer-Policy, Permissions-Policy
+  (`geolocation=(self)`), and one-year immutable cache for `/assets/*`. `vite preview` serves the same
+  headers, so every e2e run happens under the production CSP. Non-mock builds drop `mockServiceWorker.js`.
+- **Cold start:** Render Free sleeps after ~15 min idle. Network errors, timeouts and proxy 502/503/504
+  without a WinterPath error body are retried with backoff (1, 2, 4, 8, then every 10 s) for about 90 s while a
+  "server is waking up" banner shows; then a clear error with a retry button. Writes that timed out are
+  never resent automatically. API answers (`UPSTREAM_UNAVAILABLE`, `WRITES_DISABLED`, …) are never retried
+  as a cold start. Nothing is rendered from a partial answer (`INCOMPLETE`).
+- **Tests:** `npm run e2e` (includes cold start, upstream-down, incomplete-answer, `WRITES_DISABLED`
+  and CSP-violation checks via mock-only switches in `src/mocks/handlers.ts`) and `npm run e2e:readonly`
+  (a `VITE_PUBLIC_WRITES=false` build).

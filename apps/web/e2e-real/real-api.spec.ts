@@ -95,7 +95,7 @@ test('step-free on real data: refusal explains distance to verified step-free ne
 
 test('winter page: ECCC 503 shows an error state with retry, never invented values', async ({ page }) => {
   await page.goto('/en/winter');
-  await expect(page.getByText('A data source is unavailable right now.').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/An external data provider \(such as Environment Canada weather\) is unavailable/).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'Retry' }).first()).toBeVisible();
   await expect(page.getByTestId('model-enabled')).toContainText('Disabled — not yet validated');
   await expect(page.getByText('°C')).toHaveCount(0);

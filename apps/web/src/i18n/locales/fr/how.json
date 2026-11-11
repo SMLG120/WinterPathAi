@@ -46,13 +46,13 @@
       "steps": {
         "label": "Escaliers extérieurs",
         "source": "Les escaliers et marches du réseau piéton proviennent d'OpenStreetMap (highway=steps).",
-        "use": "Le profil sans marches n'utilise que les segments confirmés sans marches par les étiquettes OpenStreetMap. Les marches et les segments au statut inconnu sont écartés plutôt que devinés.",
-        "evidenceNote": "Accessibilité sans marches des segments sans cette étiquette."
+        "use": "Le profil sans marches n'utilise que les segments étiquetés sans marches dans OpenStreetMap (cartographie communautaire). Les marches et les segments sans cette étiquette sont écartés plutôt que devinés.",
+        "evidenceNote": "Étiquettes cartographiées par la communauté, pas une vérification de l'accessibilité. Les segments sans étiquette sont Inconnus."
       },
       "closure": {
         "label": "Travaux sur le trottoir",
         "source": "Permis de travaux de la Ville de Montréal (Entraves et travaux en cours).",
-        "use": "Un trottoir n'est évité que pendant la période active du permis et si son champ sidewalk_blockedtype indique que le passage piéton est bloqué. Des travaux ne signifient jamais à eux seuls un trottoir fermé.",
+        "use": "Un trottoir n'est évité que pendant la période active du permis et si son champ sidewalk_blockedtype indique que le passage piéton est bloqué. Si le permis est confirmé mais qu'on ignore si les travaux sont actifs au moment de votre marche, c'est affiché comme Inconnu. Des travaux ne signifient jamais à eux seuls un trottoir fermé.",
         "evidenceNote": "Le permis est une donnée officielle; il ne dit rien sur la neige ou la glace."
       },
       "reports": {
@@ -69,9 +69,9 @@
       },
       "weather": {
         "label": "Glace et neige fraîche",
-        "source": "Observations et prévisions météo d'Environnement et Changement climatique Canada (ECCC).",
-        "use": "La météo décrit le secteur, pas un trottoir précis. Un modèle de risque hivernal peut en tirer une estimation par segment; voyez la section sur le modèle pour savoir s'il est activé et comment il a été évalué. Sans couche de risque, le risque d'un segment est Inconnu, jamais faible.",
-        "evidenceNote": "Seulement lorsqu'un modèle de risque est activé."
+        "source": "Observations météo d'Environnement et Changement climatique Canada (ECCC).",
+        "use": "La météo décrit le secteur, pas un trottoir précis. Une couche de risque (un modèle validé ou une heuristique identifiée comme telle) peut en tirer une estimation par segment; la section sur le modèle indique laquelle est active et comment elle a été évaluée. Sans couche de risque, le risque d'un segment est Inconnu, jamais faible.",
+        "evidenceNote": "Seulement lorsqu'une couche de risque est active : un modèle validé ou une heuristique identifiée comme telle."
       }
     }
   },

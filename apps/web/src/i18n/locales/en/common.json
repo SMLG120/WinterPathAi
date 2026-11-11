@@ -85,5 +85,13 @@
   "meta": {
     "lastUpdated": "Last updated",
     "source": "Source"
+  },
+  "backend": {
+    "waking": "The server is waking up. This public demo runs on a free plan that sleeps when idle, so the first request can take about a minute. Retrying automatically…"
+  },
+  "writesDisabled": {
+    "title": "Not available in this public demo",
+    "reports": "Sending winter reports is turned off in this public demo, so nothing would be stored. The planner, winter conditions and data pages work as usual.",
+    "pilot": "Pilot requests can't be sent from this public demo, so nothing would be stored. The rest of the site works as usual."
   }
 }

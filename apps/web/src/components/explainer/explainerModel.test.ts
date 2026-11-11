@@ -17,7 +17,7 @@ describe('condition explainer scene', () => {
 
   it('evidence per lens follows data-model.md; snow-loading never yields a sidewalk state', () => {
     expect(LENS_EVIDENCE).toEqual({
-      steps: 'unknown',
+      steps: 'unverified_report',
       closure: 'confirmed',
       reports: 'unverified_report',
       snowLoading: null,

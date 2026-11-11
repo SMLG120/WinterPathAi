@@ -21,7 +21,8 @@
   --primary-foreground: #ffffff;
   --accent: var(--frost);
   --accent-foreground: var(--navy);
-  --accent-text: var(--teal);
+  /* Teal text needs >= 4.5:1 on ice/white/muted (#087f8c on ice is 4.44): slightly darker than the brand fill. */
+  --accent-text: #067380;
   --ring: var(--teal);
   --warning: var(--amber);
   --warning-foreground: var(--navy);

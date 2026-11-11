@@ -21,7 +21,9 @@ const NotFound = lazy(() => import('@/pages/NotFound'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (n, e) => n < 2 && !(isApiError(e) && e.status >= 400 && e.status < 500),
+      // Cold starts, timeouts and network failures are already retried (bounded) in the fetch layer:
+      // only a live API's unexpected 5xx gets one more try here.
+      retry: (n, e) => n < 1 && isApiError(e) && e.status >= 500 && (e.code === 'INTERNAL' || e.code === 'UNKNOWN'),
       refetchOnWindowFocus: false,
     },
   },

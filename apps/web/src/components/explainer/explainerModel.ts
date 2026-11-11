@@ -15,11 +15,13 @@ export type Lens = (typeof LENSES)[number];
 
 /**
  * Evidence state WinterPath attaches to what each source yields (docs/contracts/data-model.md):
- * closures = official permit data → confirmed; 311 → unverified_report; risk layer → model_estimate;
- * untagged step-free status → unknown. Snow-loading plans are never turned into a sidewalk state.
+ * closures = official permit data → confirmed (activity unknown → unknown, said in the copy);
+ * 311 and community-mapped OSM step-free tags → unverified_report (openapi ExplanationItem v1.5 mapping);
+ * risk layer (validated model or labelled heuristic) → model_estimate.
+ * Snow-loading plans are never turned into a sidewalk state.
  */
 export const LENS_EVIDENCE: Record<Lens, EvidenceState | null> = {
-  steps: 'unknown',
+  steps: 'unverified_report',
   closure: 'confirmed',
   reports: 'unverified_report',
   snowLoading: null,

@@ -5,6 +5,7 @@ import { Header } from './Header';
 import { Footer } from './Footer';
 import { useApplyTheme } from '@/lib/useApplyTheme';
 import { ErrorBoundary } from './ErrorBoundary';
+import { BackendWaking } from './BackendWaking';
 import { USE_MOCKS } from '@/lib/env';
 import { isLang } from '@/i18n';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,6 +59,7 @@ export function Layout({ fullBleed = false }: { fullBleed?: boolean }) {
       </a>
       <Header />
       <DemoBanner />
+      <BackendWaking />
       <main id="main" tabIndex={-1} className={fullBleed ? 'flex min-h-0 flex-1 flex-col' : 'min-h-[calc(100dvh-4rem)] flex-1'}>
         <ErrorBoundary>
           <Suspense fallback={<PageFallback />}>

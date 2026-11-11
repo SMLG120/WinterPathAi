@@ -99,7 +99,25 @@
       "title": "Too far from the walking network",
       "body": "Your {{point}} is inside the pilot area but more than {{max}} m from any mapped walkway, so it can't be connected to a route. Move it closer to a sidewalk or path.",
       "nearest": "Nearest mapped walkway: about {{nearest}} m away."
-    }
+    },
+    "WAKE_TIMEOUT": {
+      "title": "The server is still asleep",
+      "body": "The routing server didn't wake up within about 90 seconds. It's on a free plan that sleeps when idle. No routes are shown. Try again in a moment."
+    },
+    "unreachable": {
+      "title": "Couldn't reach the routing server",
+      "body": "The request failed before the server answered. Check your connection and try again. No routes are shown."
+    },
+    "UPSTREAM_UNAVAILABLE": {
+      "title": "A data source is unavailable",
+      "body": "The server is up, but a data source it needs didn't respond. No routes are shown rather than routes built on missing data."
+    },
+    "INCOMPLETE": {
+      "title": "Incomplete answer",
+      "body": "The server's answer was missing parts of the result, so nothing is shown rather than a partial comparison."
+    },
+    "retry": "Try again",
+    "waking": "Waking the server (about a minute)…"
   },
   "overlays": {
     "title": "Map layers",

@@ -9,6 +9,10 @@ describe('ConditionExplainer', () => {
     expect(tabs).toHaveLength(5);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toHaveAttribute('data-lens', 'steps');
+    // OSM step-free tags are community-mapped: unverified, never "confirmed".
+    expect(screen.getByRole('tabpanel').querySelector('[data-evidence="unverified_report"]')).not.toBeNull();
+    expect(screen.getByRole('tabpanel').textContent).toMatch(/community-mapped/);
+    expect(screen.getByRole('tabpanel').textContent).not.toMatch(/confirm/i);
 
     fireEvent.keyDown(tabs[0]!, { key: 'ArrowRight' });
     expect(screen.getByRole('tabpanel')).toHaveAttribute('data-lens', 'closure');
@@ -27,6 +31,8 @@ describe('ConditionExplainer', () => {
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Snow removal' }), { key: 'End' });
     expect(screen.getByRole('tabpanel')).toHaveAttribute('data-lens', 'weather');
     expect(screen.getByRole('tabpanel').textContent).toMatch(/Unknown, never low/);
+    expect(screen.getByRole('tabpanel').textContent).toMatch(/labelled heuristic/);
+    expect(screen.getByRole('tabpanel').textContent).not.toMatch(/forecast/i);
   });
 
   it('without WebGL (jsdom) shows no 3D stage — the text panel stands alone', () => {

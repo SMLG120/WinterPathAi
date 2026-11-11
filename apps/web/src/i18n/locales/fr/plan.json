@@ -101,7 +101,25 @@
       "title": "Trop loin du réseau piétonnier",
       "body": "Votre {{point}} est dans la zone pilote, mais à plus de {{max}} m de tout chemin piétonnier cartographié ; il ne peut donc pas être relié à un trajet. Rapprochez-le d'un trottoir ou d'un sentier.",
       "nearest": "Chemin cartographié le plus proche : environ {{nearest}} m."
-    }
+    },
+    "WAKE_TIMEOUT": {
+      "title": "Le serveur dort encore",
+      "body": "Le serveur d'itinéraires ne s'est pas réveillé en 90 secondes environ. Il est sur une offre gratuite qui se met en veille quand elle est inactive. Aucun trajet n'est affiché. Réessayez dans un instant."
+    },
+    "unreachable": {
+      "title": "Impossible de joindre le serveur d'itinéraires",
+      "body": "La requête a échoué avant que le serveur réponde. Vérifiez votre connexion et réessayez. Aucun trajet n'est affiché."
+    },
+    "UPSTREAM_UNAVAILABLE": {
+      "title": "Une source de données est indisponible",
+      "body": "Le serveur fonctionne, mais une source de données dont il a besoin n'a pas répondu. Aucun trajet n'est affiché plutôt que des trajets fondés sur des données manquantes."
+    },
+    "INCOMPLETE": {
+      "title": "Réponse incomplète",
+      "body": "Il manquait des parties du résultat dans la réponse du serveur ; rien n'est affiché plutôt qu'une comparaison partielle."
+    },
+    "retry": "Réessayer",
+    "waking": "Réveil du serveur (environ une minute)…"
   },
   "overlays": {
     "title": "Couches de la carte",

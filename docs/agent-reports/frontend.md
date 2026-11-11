@@ -2,7 +2,7 @@
 
 - **Status:** READY FOR REVIEW
 - **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
-- **Date (UTC):** 2026-11-11 (update 6: condition explainer; merged integration 6a712e9)
+- **Date (UTC):** 2026-11-11 (update 9: production-bundle guard; merged integration 5238c45)
 - **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts. Contract **v1.4.0/v1.5.0** + routing/data/platform merged after 249570b — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
@@ -446,6 +446,106 @@ real-API, RISK_PROVIDER=winterpath_ml.inference:load_provider, MODEL_ARTIFACT_DI
                                  →  16 passed (53.3s)
 scripts/check-ownership.sh frontend → ownership OK for agent/frontend
 ```
+
+## Update 7 — explainer wording fixes (coordinator review); merge of integration `3aa6438`
+**Merge:** `git merge --no-edit integration/winterpath` (3aa6438), once, no conflicts. Outside agent reports it changed only `services/api/uv.lock`; no contract, fixture or `apps/web` change, so `gen:api` was not needed.
+
+**Wording fixes in `how.json` (EN + FR)**, checked against the openapi evidence descriptions (Evidence: "model_estimate = validated model or labeled heuristic"; ExplanationItem v1.5: step-free tags → unverified_report, "permit confirmed, activity unknown" → unknown):
+- `steps.use`: "tagged as step-free in OpenStreetMap (community-mapped)" (no longer "confirm"). The steps lens badge is now **Unverified report** (was Unknown), and the note says untagged segments are Unknown. `LENS_EVIDENCE.steps = 'unverified_report'`.
+- `weather.source`: ECCC weather **observations** only ("forecasts" removed).
+- `weather.use` / `weather.evidenceNote`: "a risk layer (a validated model or a labelled heuristic)", which covers the heuristic layer that is on today. FR uses "heuristique identifiée", as `plan.json` already does.
+- Optional point done: `closure.use` now says that a confirmed permit whose activity at the walking time is unknown is shown as Unknown.
+- Tests: `ConditionExplainer.test.tsx` asserts that the steps panel has an unverified badge, says "community-mapped" and never says "confirm", and that the weather panel says "labelled heuristic" and never mentions "forecast". `explainerModel.test.ts` has the updated mapping.
+
+Literal results:
+```
+npm run lint                  → exit 0 (eslint . --max-warnings 0)
+npx vitest run                →  Test Files  13 passed (13) /  Tests  112 passed (112)
+npm run build && npm run size → ✓ built in 6.34s / TOTAL initial JS: 145.5 KB gz (budget 250 KB, excludes map + 3D chunks)
+npx playwright test           →  104 passed (3.0m)
+real-API (RISK_PROVIDER=none) →  16 passed (58.5s)
+```
+The heuristic-layer real-API run was not repeated, because no API or ML code changed since update 6.
+
+## Update 8 — contract v1.7.0, free-tier deployment (Cloudflare Pages): read-only mode, cold start, headers
+**Merge:** `git merge --no-edit integration/winterpath` (07a1f29) → `9bd9672`, no conflicts. `npm run gen:api` adds `WRITES_DISABLED` to the `Error.code` union (`schema.d.ts`). Nothing was pushed or deployed, and no external resource was created.
+
+**(1) Read-only demo.** `VITE_PUBLIC_WRITES=false` (`src/lib/env.ts` `PUBLIC_WRITES`) replaces the report and pilot forms with a notice, "Not available in this public demo" / "Non disponible dans cette démo publique" (`src/features/WritesDisabled.tsx`, copy in `common.json`). The same notice replaces a form when the API answers 503 `WRITES_DISABLED`, in builds where writes are on. Reads are unaffected.
+
+**(2) Timeout, cold start and distinct failure states.**
+- `src/api/resilientFetch.ts` (used through openapi-fetch's `fetch` option): each attempt has an AbortController timeout (`VITE_API_TIMEOUT_MS`, default 15000).
+- Network errors, timeouts and 502/503/504 **without** a WinterPath error body (Render's proxy while the host sleeps) are retried with backoff (1, 2, 4, 8, then every 10 s), within a 90 s budget. Meanwhile a `role="status"` banner says "The server is waking up… about a minute", and the planner says "Waking the server". After the budget, a clear error appears with a retry button.
+- A 503 that carries an API code (`UPSTREAM_UNAVAILABLE`, `WRITES_DISABLED`, `INTERNAL`) is a live API and is returned as is.
+- Writes that **timed out** are never resent automatically, because the request may still land once the host wakes (no duplicate reports). Writes rejected by the sleeping proxy (502/503 with no body) are retried.
+- Caller aborts pass straight through.
+- New client codes: `TIMEOUT`, `WAKE_TIMEOUT`, `INCOMPLETE` (a 2xx with an unparsable body, or a compare answer without drawable routes; nothing partial is rendered). EN/FR copy is in `errors.json` and `plan.json`.
+- The planner (`RouteError`) has distinct titles for: no route, outside coverage / off network, rate limited, server still asleep, unreachable, data source unavailable (503 `UPSTREAM_UNAVAILABLE`), incomplete answer, and other failures. A retry button appears where a retry can help. "No risk data" (`risk_layer=none`) is unchanged: it is a successful answer with explicit copy.
+- Data views (`DataState`) show the code-specific reason plus Retry. Weather 503 now says an external provider is down and shows no values.
+- The TanStack Query retry policy no longer stacks on the fetch-layer retries: one extra try, only for a live API's `INTERNAL`/`UNKNOWN` 5xx.
+
+**(3) Cloudflare Pages.**
+- `public/_headers` is a template filled at build time by `build/cloudflarePages.ts`:
+  - CSP: `default-src 'self'`; `script-src 'self'` plus the sha256 of index.html's inline theme script (no unsafe-inline/eval); `connect-src 'self'`, the API origin from `VITE_API_BASE_URL`, OpenFreeMap and any custom style origin; img `data: blob:` plus map origins; `worker-src 'self' blob:` for MapLibre; `object-src 'none'`; `base-uri 'self'`; `form-action 'self'`; `frame-ancestors 'none'`.
+  - Also nosniff, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy `geolocation=(self)` (camera, microphone, payment, usb and browsing-topics off), COOP same-origin, HSTS, and `/assets/*` `Cache-Control: public, max-age=31536000, immutable`.
+- The build fails on any `.map` file or a `404.html`. Non-mock builds drop `mockServiceWorker.js`. `.node-version` = 24.
+- `vite preview` serves the generated headers, so **all mock, read-only and real-API e2e now run under the production CSP**.
+- zod is set to `jitless`, so its `new Function` probe never triggers a CSP violation.
+- `style-src` keeps `'unsafe-inline'`: MapLibre, Motion and React `style` attributes need it.
+- Verified production build (`VITE_API_BASE_URL=https://winterpath-api.example.onrender.com/api/v1 VITE_PUBLIC_WRITES=false`, placeholder host): dist = `_headers assets favicon.svg index.html robots.txt`; connect-src = `'self' https://winterpath-api.example.onrender.com https://tiles.openfreemap.org`; the mock-only wake-budget override is not in the bundle.
+
+**(4) Tests.**
+- Unit: `resilientFetch.test.ts` (9), `build/cloudflarePages.test.ts` (4), new RouteError cases.
+- Mock e2e: `e2e/resilience.spec.ts` covers cold start then recovery; never-ending cold start then bounded give-up, error and working retry (EN planner, FR data view); weather upstream down; compare upstream down then incomplete answer; API `WRITES_DISABLED` on both forms; production headers served, plus zero `securitypolicyviolation` events across landing, planner (MapLibre), the 3D explainer and a zod form. Failures are driven by mock-only localStorage switches in `src/mocks/handlers.ts`.
+- `e2e-readonly/` runs with `playwright.readonly.config.ts` (build with `VITE_PUBLIC_WRITES=false`, port 5174) and covers EN/FR notices, no form and no POST, axe on both pages, and the planner still working.
+
+**Accessibility fixes found by these runs (pre-existing, now fixed):**
+- The active nav link (`--accent-text` #087f8c) on the ice background was 4.44:1. Light-mode `--accent-text` is now #067380 (≥ 4.76:1 on white, ice and muted); brand fills are unchanged.
+- In error alerts, muted grey text on the danger tint was 4.04:1. Error detail text now uses the foreground colour.
+
+**Not verified:** the API has no `API_PUBLIC_WRITES` / `WRITES_DISABLED` implementation on integration yet (`grep -rl WRITES_DISABLED services/` → no match), so that path is tested against mocks only. The cold-start behaviour is tested against simulated proxy responses, not a real sleeping Render instance. The `_headers` file is tested by parsing it and by vite preview, not on Cloudflare itself.
+
+Literal results (tree = `9bd9672` + this commit):
+```
+npm run lint                     → eslint . --max-warnings 0 (exit 0)
+npx vitest run                   →  Test Files  15 passed (15) /  Tests  131 passed (131)
+npm run build && npm run size    → ✓ built in 6.43s / TOTAL initial JS: 147.6 KB gz (budget 250 KB, excludes map + 3D chunks)
+npx playwright test              →  118 passed (3.7m)
+npm run e2e:readonly             →  10 passed (28.8s)
+real-API (RISK_PROVIDER=none)    →  16 passed (54.9s)   [under the CSP; connect-src 'self' http://localhost:8104 https://tiles.openfreemap.org data:]
+```
+Earlier in this cycle, before the fixes above: read-only axe failed 3/3 on the nav-link contrast; real-API 14/16 (stale UPSTREAM copy in the test, and the error-detail contrast). Both are fixed, and the green runs are listed above.
+
+## Update 9 — merge of integration `5238c45`; production-bundle guard (`npm run build:pages`)
+**Merge:** `git merge --no-edit integration/winterpath` (5238c45) → `92a88e4`, no conflicts. It brought deployment docs (`docs/SECURITY.md`, `ENVIRONMENT_VARIABLES.md`, `FREE_TIER_LIMITS.md`, `RECOVERY.md`, `DATA_COMPLIANCE.md`) and `.gitignore`. There was no contract, fixture or app change, so `gen:api` was not needed. The docs' description of the frontend (env names, `_headers` contents, waking state, SPA fallback, `.node-version`) matches what update 8 built.
+
+**Gap closed:** `docs/SECURITY.md` says the mock-free production build is "not yet enforced by a CI check". `npm run build:pages` (`build/pagesCheck.ts`, run directly by Node 24) now does two things:
+- **Before building**, it refuses `VITE_USE_MOCKS=true`, a `VITE_API_BASE_URL` that isn't absolute https ending in `/api/v1`, `VITE_PUBLIC_WRITES` other than `false` (the read-only decision), a non-numeric timeout, and any `VITE_*` value that looks like a secret.
+- **After building**, it scans `dist` for the MSW worker or mock switches (`setupWorker`, `mockServiceWorker`, `wp-mock-`), `.map` files or `sourceMappingURL` comments, a `404.html`, unfilled or test-only `_headers` (needs an https API origin, no `data:` in connect-src, `frame-ancestors 'none'`, nosniff, `geolocation=(self)`, immutable `/assets/*`), and secret-like strings (postgres URL, private key, JWT, `service_role`, `API_ADMIN_TOKEN`, `DATABASE_URL`).
+
+It prints rule ids and file names, never the matched values. A CI job could call it, but CI isn't in my owned paths; this is a suggestion for the platform agent or coordinator.
+
+**Found by the guard:** MapLibre's prebuilt worker kept `//# sourceMappingURL=maplibre-gl-worker.mjs.map` (the map file isn't shipped). The Pages plugin now strips `sourceMappingURL` comments from emitted JS and CSS.
+
+Literal results:
+```
+VITE_USE_MOCKS=true npm run build:pages
+  → pages-check env: FAILED
+      - VITE_USE_MOCKS must be unset/false for a production build
+      - VITE_API_BASE_URL must be an absolute https:// URL (the Render API)
+      - VITE_PUBLIC_WRITES must be "false" (user decision: read-only public demo)
+VITE_API_BASE_URL=https://winterpath-api.example.onrender.com/api/v1 VITE_PUBLIC_WRITES=false npm run build:pages
+  → pages-check env: OK / ✓ built in 8.27s / pages-check dist: OK
+  (before the comment strip: pages-check dist: FAILED - assets/maplibre-gl-worker-CZtFQQIV.mjs: sourceMappingURL comment)
+node build/pagesCheck.ts dist dist-mock   → FAILED (as intended: mockServiceWorker.js, msw chunk, mock switches, data: connect-src, no https API origin)
+npm run lint                     → exit 0
+npx vitest run                   →  Test Files  16 passed (16) /  Tests  135 passed (135)
+npm run build && npm run size    → ✓ built in 7.16s / TOTAL initial JS: 147.6 KB gz
+npx playwright test              →  118 passed (4.0m)
+npm run e2e:readonly             →  10 passed (34.8s)
+```
+`https://winterpath-api.example.onrender.com` is a placeholder; there is no real service URL yet. The real-API e2e was not re-run in this update: no API or client code changed, and the only build change strips comments.
+
+**Suggestion for `docs/RECOVERY.md` step 5 (not my file):** "Build `apps/web` with `npm run build:pages` and production `VITE_*` values, then upload `dist`."
 
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
