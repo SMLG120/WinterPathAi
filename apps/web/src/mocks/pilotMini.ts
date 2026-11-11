@@ -72,3 +72,8 @@ export function pilotMiniSegments(): SegmentFeature[] {
   });
   return cache;
 }
+
+/** Edges whose OSM tags verify step-free access (step_free === true), counted from the fixture. */
+export function pilotMiniStepFreeCount(): number {
+  return pilotMiniSegments().filter((f) => f.properties.accessibility.step_free === true).length;
+}

@@ -100,11 +100,13 @@ test('winter page: ECCC 503 shows an error state with retry, never invented valu
   await expect(page.getByText('°C')).toHaveCount(0);
 });
 
-test('how-it-works renders real /data-sources and /coverage', async ({ page }) => {
+test('how-it-works renders real /data-sources and /coverage', async ({ page, request }) => {
+  // Counts come from the API, so the test survives fixture regeneration.
+  const cov = (await (await request.get(`${API}/coverage`)).json()) as { graph: { node_count: number; edge_count: number } };
   await page.goto('/en/how-it-works');
   await expect(page.getByRole('rowheader', { name: /OpenStreetMap/ }).first()).toBeVisible();
-  await expect(page.locator('#coverage')).toContainText('200');
-  await expect(page.locator('#coverage')).toContainText('88');
+  await expect(page.locator('#coverage')).toContainText(String(cov.graph.edge_count));
+  await expect(page.locator('#coverage')).toContainText(String(cov.graph.node_count));
 });
 
 test('community report lifecycle against the real API, then moderation', async ({ page }) => {

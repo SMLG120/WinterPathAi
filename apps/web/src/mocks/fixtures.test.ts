@@ -7,6 +7,7 @@ import * as fx from './fixtures';
 import { mockCompare } from './routes';
 import { nearestLineM, pointSegmentM } from './geo-mock';
 import { pilotMiniSegments, PILOT_MINI } from './pilotMini';
+import edgesRaw from '../../../../data/fixtures/pilot_mini/edges.geojson?raw';
 
 const v = contractValidator();
 const server = setupServer(...handlers);
@@ -162,9 +163,13 @@ describe('mock honesty invariants', () => {
     }
   });
   it('step_free passes through from OSM unchanged — unknown stays null, never upgraded to true', () => {
-    const counts = { true: 0, false: 0, null: 0 };
-    for (const s of pilotMiniSegments()) counts[String(s.properties.accessibility.step_free) as keyof typeof counts]++;
-    expect(counts).toEqual({ true: 2, false: 10, null: 188 });
+    // Compared edge-by-edge with the raw fixture, so it holds whenever pilot_mini is regenerated.
+    const raw = new Map(
+      (JSON.parse(edgesRaw) as { features: { id: string; properties: { step_free: boolean | null } }[] }).features.map((f) => [f.id, f.properties.step_free]),
+    );
+    const segs = pilotMiniSegments();
+    expect(segs).toHaveLength(raw.size);
+    for (const s of segs) expect(s.properties.accessibility.step_free).toBe(raw.get(String(s.id)) ?? null);
   });
   it('steps edges are never marked step-free', () => {
     for (const s of pilotMiniSegments()) if (s.properties.edge_kind === 'steps') expect(s.properties.accessibility.step_free).not.toBe(true);
@@ -179,7 +184,8 @@ describe('mock honesty invariants', () => {
   });
   it('coverage reports the fixture graph and declares the rest of the pilot a gap', () => {
     const c = fx.coverage();
-    expect(c.graph).toMatchObject({ node_count: 88, edge_count: 200, osm_snapshot: PILOT_MINI.osmSnapshot });
+    expect(c.graph).toMatchObject({ node_count: PILOT_MINI.nodeCount, edge_count: PILOT_MINI.edgeCount, osm_snapshot: PILOT_MINI.osmSnapshot });
+    expect(PILOT_MINI.edgeCount).toBe(pilotMiniSegments().length); // metadata agrees with the edges file
     expect(c.known_gaps[0]!.description).toMatch(/only the pilot_mini fixture/);
   });
   it('route explanations are labelled simulated/unknown', () => {
