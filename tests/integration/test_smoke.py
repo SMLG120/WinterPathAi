@@ -80,3 +80,34 @@ def test_admin_invalid_input_rejected_when_authorized(client, target, method, pa
     r = client.request(method, path, headers={"Authorization": f"Bearer {target.admin_token}"}, **kwargs)
     assert r.status_code in (400, 422), r.text
     assert r.json()["code"] == "VALIDATION_ERROR"
+
+
+# Optional properties the contract declares as plain (non-nullable) strings. An explicit JSON
+# `null` is schema-invalid and must be rejected, not treated as "absent". Found by Schemathesis
+# at CONTRACT_MAX_EXAMPLES=150 against the merged real API (integration/winterpath 2d37f32);
+# this deterministic check stops it depending on random generation.
+PILOT_BASE = {"organization": "x", "contact_email": "a@example.org", "segment": "other", "consent": True}
+REPORT_BASE = {
+    "category": "other",
+    "location": {"lon": -73.575, "lat": 45.505},  # pilot bbox centre, 3 dp (not a user location)
+    "location_consent": True,
+}
+NULLABLE_GAP = "API-NULL-1: real API accepts null for optional non-nullable fields (routing-owned schemas.py)"
+
+
+@pytest.mark.parametrize(
+    ("path", "base", "field"),
+    [
+        ("/pilot-requests", PILOT_BASE, "contact_name"),
+        ("/pilot-requests", PILOT_BASE, "message"),
+        ("/pilot-requests", PILOT_BASE, "locale"),
+        ("/reports", REPORT_BASE, "description"),
+        ("/reports", REPORT_BASE, "locale"),
+    ],
+)
+def test_explicit_null_rejected_for_non_nullable_optional(client, target, request, path, base, field) -> None:
+    if not target.is_stub:
+        request.applymarker(pytest.mark.xfail(reason=NULLABLE_GAP, strict=True))
+    r = client.post(path, json={**base, field: None})
+    assert r.status_code in (400, 422), f"{path} {field}=null -> {r.status_code}"
+    assert r.json()["code"] == "VALIDATION_ERROR"

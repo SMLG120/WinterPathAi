@@ -1,0 +1,89 @@
+{
+  "brand": "WinterPath AI",
+  "tagline": "Traversez l'hiver montréalais, un meilleur pas à la fois.",
+  "nav": {
+    "label": "Navigation principale",
+    "home": "Accueil",
+    "plan": "Planifier un trajet",
+    "winter": "Conditions hivernales",
+    "reports": "Signaler un problème",
+    "how": "Fonctionnement",
+    "pilot": "Projets pilotes",
+    "menu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "skip": "Aller au contenu principal"
+  },
+  "lang": {
+    "label": "Langue",
+    "switchTo": "English",
+    "switchToLabel": "Switch to English"
+  },
+  "theme": {
+    "label": "Thème de couleur",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système"
+  },
+  "demo": {
+    "badge": "Données de démo",
+    "banner": "Mode démo — tout le contenu de ce site provient de données d'essai identifiées. Rien ne reflète les conditions réelles à Montréal."
+  },
+  "evidence": {
+    "label": "Fiabilité",
+    "confirmed": "Confirmé",
+    "unverified_report": "Signalement non vérifié",
+    "model_estimate": "Estimation du modèle",
+    "unknown": "Inconnu",
+    "simulated": "SIMULÉ",
+    "desc": {
+      "confirmed": "Observation officielle ou vérifiée provenant d'une source citée.",
+      "unverified_report": "Une requête 311 ou un signalement citoyen. Confirmé par personne.",
+      "model_estimate": "Résultat d'un modèle validé ou d'une heuristique identifiée. Une estimation, pas une observation.",
+      "unknown": "Aucune donnée. « Inconnu » ne veut jamais dire « sans risque ».",
+      "simulated": "Données de démonstration seulement. Pas une observation réelle."
+    }
+  },
+  "states": {
+    "loading": "Chargement…",
+    "empty": "Rien à afficher pour l'instant.",
+    "error": "Un problème est survenu pendant le chargement.",
+    "retry": "Réessayer",
+    "stale": "Périmé",
+    "staleDesc": "Dernière mise à jour il y a plus de 6 heures.",
+    "offline": "Vous semblez hors ligne. Les données affichées pourraient ne pas être à jour.",
+    "outsidePilot": "Hors de la zone pilote",
+    "updated": "Mis à jour {{time}}",
+    "never": "Jamais",
+    "notAvailable": "Non disponible"
+  },
+  "actions": {
+    "copy": "Copier",
+    "copied": "Copié",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "learnMore": "En savoir plus"
+  },
+  "footer": {
+    "attributionTitle": "Attribution des données et de la carte",
+    "osm": "© les contributeurs d'OpenStreetMap",
+    "osmLicence": "Données cartographiques disponibles sous la licence Open Database License (ODbL).",
+    "openfreemap": "Fond de carte : OpenFreeMap © OpenMapTiles, données d'OpenStreetMap.",
+    "vdm": "Contient des données de la Ville de Montréal, sous licence CC BY 4.0.",
+    "eccc": "Source des données : Environnement et Changement climatique Canada.",
+    "disclaimer": "WinterPath AI est un outil d'information. Il ne certifie pas qu'un trottoir est sécuritaire, déneigé, sans glace ou accessible en fauteuil roulant. Faites toujours preuve de jugement.",
+    "privacy": "Vie privée et données",
+    "sources": "Sources et licences",
+    "pilot": "Projets pilotes",
+    "independent": "Projet indépendant. Ni affilié à la Ville de Montréal ni à Environnement et Changement climatique Canada, ni approuvé par eux."
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Cette adresse n'existe pas. Elle a peut-être été déplacée.",
+    "home": "Retour à l'accueil"
+  },
+  "meta": {
+    "lastUpdated": "Dernière mise à jour",
+    "source": "Source"
+  }
+}

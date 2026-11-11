@@ -1,0 +1,77 @@
+{
+  "title": "Signaler un problème hivernal",
+  "intro": "Signalez-nous de la neige, de la glace ou un obstacle dans la zone pilote. Les signalements sont examinés par une personne modératrice avant d'être visibles, et ils expirent automatiquement.",
+  "form": {
+    "category": "Qu'avez-vous constaté ?",
+    "categories": {
+      "snow": "Neige non déblayée",
+      "ice": "Glace",
+      "obstructed_ramp": "Bateau de trottoir obstrué",
+      "construction": "Chantier bloquant le passage",
+      "other": "Autre"
+    },
+    "location": "Emplacement",
+    "locationHelp": "Entrez les coordonnées du problème ou utilisez votre position actuelle.",
+    "lat": "Latitude",
+    "lon": "Longitude",
+    "useLocation": "Utiliser ma position",
+    "locating": "Localisation…",
+    "geoDenied": "L'autorisation de localisation a été refusée. Entrez plutôt des coordonnées.",
+    "geoUnavailable": "Votre position n'est pas disponible. Entrez plutôt des coordonnées.",
+    "consent": "J'accepte d'envoyer cet emplacement exact avec mon signalement.",
+    "consentHelp": "Obligatoire. L'emplacement est conservé uniquement avec votre signalement et supprimé lorsque celui-ci est supprimé ou expire.",
+    "description": "Description (facultative)",
+    "counter": "{{count}} / 280 caractères",
+    "submit": "Envoyer le signalement",
+    "submitting": "Envoi…"
+  },
+  "validation": {
+    "category": "Choisissez une catégorie.",
+    "coords": "Entrez une latitude et une longitude valides.",
+    "outside": "Cet emplacement est hors de la zone pilote.",
+    "consent": "Vous devez consentir à l'envoi de l'emplacement.",
+    "tooLong": "La description doit compter 280 caractères ou moins."
+  },
+  "receipt": {
+    "title": "Signalement reçu",
+    "body": "Merci. Votre signalement est en attente de modération et n'apparaîtra pas sur la carte avant d'être approuvé.",
+    "id": "Numéro du signalement",
+    "status": "Statut",
+    "expires": "Expire",
+    "token": "Code de suppression",
+    "tokenWarn": "Conservez ce code dès maintenant. Il n'est affiché qu'une fois et c'est le seul moyen de supprimer votre signalement.",
+    "delete": "Supprimer mon signalement",
+    "deleting": "Suppression…",
+    "deleted": "Votre signalement a été supprimé.",
+    "deleteFailed": "Impossible de supprimer le signalement. Il a peut-être déjà expiré ou été retiré.",
+    "another": "Envoyer un autre signalement"
+  },
+  "status": {
+    "title": "Ce qu'il advient d'un signalement",
+    "pending": "En attente — une personne modératrice doit l'examiner. Visible par personne.",
+    "approved": "Approuvé — affiché sur la carte comme signalement non vérifié, jamais comme un état confirmé.",
+    "rejected": "Refusé — non affiché.",
+    "expired": "Expiré — retiré de la carte.",
+    "deleted": "Supprimé — retiré par vous ou par la modération."
+  },
+  "expiry": "Les signalements expirent 72 heures après leur envoi. Toutes les données d'un signalement sont supprimées définitivement 30 jours après son refus, son expiration ou sa suppression.",
+  "rateLimited": "Vous avez envoyé plusieurs signalements récemment. Veuillez attendre {{minutes}} minutes avant d'en envoyer un autre.",
+  "rateLimitedNoTime": "Vous avez envoyé plusieurs signalements récemment. Veuillez patienter avant d'en envoyer un autre.",
+  "admin": {
+    "title": "Modération",
+    "intro": "Zone réservée. Le jeton est conservé en mémoire pour cet onglet seulement.",
+    "token": "Jeton d'administration",
+    "signIn": "Charger les signalements",
+    "signOut": "Oublier le jeton",
+    "filter": "Statut",
+    "all": "Tous",
+    "empty": "Aucun signalement avec ce statut.",
+    "unauthorized": "Le jeton a été refusé.",
+    "created": "Créé",
+    "note": "Note de modération (facultative)",
+    "approve": "Approuver",
+    "reject": "Refuser",
+    "expire": "Faire expirer",
+    "noDescription": "Aucune description"
+  }
+}

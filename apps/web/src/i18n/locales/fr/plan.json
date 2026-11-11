@@ -1,0 +1,158 @@
+{
+  "title": "Planifier une marche hivernale",
+  "intro": "Choisissez un départ et une arrivée dans la zone pilote, puis comparez les trajets.",
+  "points": {
+    "origin": "Départ",
+    "destination": "Arrivée",
+    "notSet": "Non défini",
+    "setOnMap": "Choisir sur la carte",
+    "picking": "Cliquez sur la carte pour définir : {{point}}",
+    "clear": "Effacer",
+    "swap": "Inverser départ et arrivée"
+  },
+  "manual": {
+    "legend": "Entrer des coordonnées",
+    "lat": "Latitude",
+    "lon": "Longitude",
+    "apply": "Définir : {{point}}",
+    "invalid": "Entrez une latitude entre −90 et 90 et une longitude entre −180 et 180.",
+    "outsideHint": "Ce point est hors de la zone pilote ; le calcul d'itinéraire sera refusé."
+  },
+  "search": {
+    "label": "Rechercher une adresse",
+    "disabled": "La recherche d'adresse est désactivée : aucun fournisseur de géocodage autorisé n'est configuré pour ce déploiement. Choisissez un point sur la carte ou entrez des coordonnées."
+  },
+  "geo": {
+    "button": "Utiliser ma position",
+    "consentTitle": "Partager votre position ?",
+    "consentBody": "Votre navigateur vous demandera l'autorisation. Votre position sert une seule fois à définir le départ, reste uniquement dans cette page et n'est jamais conservée ni journalisée par WinterPath.",
+    "allow": "Continuer",
+    "locating": "Localisation…",
+    "denied": "L'autorisation de localisation a été refusée. Vous pouvez toujours choisir un point sur la carte ou entrer des coordonnées.",
+    "unavailable": "Votre position n'est pas disponible pour le moment. Choisissez un point sur la carte ou entrez des coordonnées.",
+    "unsupported": "Ce navigateur ne prend pas en charge la localisation. Choisissez un point sur la carte ou entrez des coordonnées.",
+    "success": "Départ défini à partir de votre position."
+  },
+  "profile": {
+    "label": "Profil de marche",
+    "standard": "Standard",
+    "step_free": "Sans marche",
+    "reduced_mobility": "Mobilité réduite",
+    "desc": {
+      "standard": "Vitesse de marche habituelle.",
+      "step_free": "N'utilise que des chemins vérifiés sans marche. Tout ce qui n'est pas vérifié est exclu ; il se peut donc qu'aucun trajet n'existe.",
+      "reduced_mobility": "Vitesse de marche plus lente pour l'estimation du temps."
+    }
+  },
+  "avoidReports": {
+    "label": "Éviter les signalements non vérifiés si possible",
+    "desc": "Pénalise les chemins visés par des requêtes 311 ou des signalements citoyens. Ce sont des signalements, pas des obstacles confirmés."
+  },
+  "compare": "Comparer les trajets",
+  "computing": "Calcul des trajets…",
+  "needPoints": "Définissez un départ et une arrivée.",
+  "results": {
+    "title": "Comparaison des trajets",
+    "shortest": "Le plus court",
+    "winter_aware": "Adapté à l'hiver",
+    "distance": "Distance",
+    "duration": "Temps de marche",
+    "unknownShare": "Sans donnée d'état",
+    "unknownShareDesc": "{{pct}} de ce trajet a un état inconnu — inconnu ne veut pas dire sans risque.",
+    "explanation": "Pourquoi ce trajet",
+    "freshness": "Fraîcheur des données",
+    "steps": "Instructions étape par étape",
+    "identical": "Les deux trajets sont identiques : aucune meilleure option adaptée à l'hiver n'a été trouvée.",
+    "riskLayer": {
+      "label": "Couche de risque",
+      "model": "Modèle validé",
+      "heuristic": "Heuristique identifiée",
+      "none": "Aucune — risque inconnu"
+    },
+    "warnings": "Avertissements",
+    "hazardsAvoided_one": "Évite {{count}} problème connu",
+    "hazardsAvoided_many": "Évite {{count}} problèmes connus",
+    "hazardsAvoided_other": "Évite {{count}} problèmes connus",
+    "hazardsOnRoute_one": "{{count}} problème connu sur le trajet",
+    "hazardsOnRoute_many": "{{count}} problèmes connus sur le trajet",
+    "hazardsOnRoute_other": "{{count}} problèmes connus sur le trajet",
+    "show": "Afficher sur la carte",
+    "shown": "Affiché sur la carte",
+    "computedAt": "Calculé {{time}}"
+  },
+  "errors": {
+    "NO_ROUTE": {
+      "title": "Aucun trajet trouvé",
+      "body": "Il n'existe aucun chemin piétonnier permis avec ces paramètres. Avec le profil sans marche, tout chemin non vérifié comme tel est exclu. Essayez le profil standard ou d'autres points."
+    },
+    "OUTSIDE_COVERAGE": {
+      "title": "Hors de la zone pilote",
+      "body": "Les deux points doivent se trouver dans la zone pilote McGill / centre-ville (hachurée à l'extérieur). Déplacez votre départ ou votre arrivée à l'intérieur."
+    },
+    "RATE_LIMITED": {
+      "title": "Trop de demandes",
+      "body": "Veuillez patienter un instant avant de comparer à nouveau."
+    },
+    "generic": {
+      "title": "Impossible de calculer les trajets",
+      "body": "Le service d'itinéraires n'a pas répondu comme prévu."
+    },
+    "OFF_NETWORK": {
+      "title": "Trop loin du réseau piétonnier",
+      "body": "Votre {{point}} est dans la zone pilote, mais à plus de {{max}} m de tout chemin piétonnier cartographié ; il ne peut donc pas être relié à un trajet. Rapprochez-le d'un trottoir ou d'un sentier.",
+      "nearest": "Chemin cartographié le plus proche : environ {{nearest}} m."
+    }
+  },
+  "overlays": {
+    "title": "Couches de la carte",
+    "segments": "État des trottoirs",
+    "hazards": "Fermetures et signalements",
+    "zoomIn": "Zoomez pour charger les couches.",
+    "outsidePilot": "Cette vue est hors de la zone pilote.",
+    "loading": "Chargement des couches…",
+    "error": "Impossible de charger les couches.",
+    "inView": "Problèmes dans la vue",
+    "none": "Aucune fermeture ni aucun signalement dans cette vue.",
+    "demoNote": "Les fermetures et signalements sont simulés. Les tracés de trottoirs sont de vraies données OpenStreetMap (jeu pilot_mini, quelques îlots autour de McGill) dont l'état est inconnu — aucune couche de risque n'est active."
+  },
+  "legend": {
+    "title": "Légende",
+    "risk": {
+      "low": "Faible",
+      "moderate": "Modéré",
+      "elevated": "Élevé",
+      "high": "Très élevé",
+      "unknown": "Inconnu (tirets)"
+    },
+    "riskTitle": "Estimation de l'état des trottoirs",
+    "hazardTitle": "Fermetures et signalements",
+    "routeTitle": "Trajets",
+    "outside": "Hors de la zone pilote (hachuré)"
+  },
+  "hazard": {
+    "kind": {
+      "sidewalk_closure": "Fermeture de trottoir",
+      "construction_impact": "Impact de chantier",
+      "report_311_aggregate": "Requêtes 311 (agrégées)",
+      "community_report": "Signalement citoyen"
+    },
+    "blocks": {
+      "true": "Passage bloqué (selon la source)",
+      "false": "Passage non bloqué (selon la source)",
+      "null": "Passage non précisé"
+    },
+    "reportCount_one": "{{count}} requête",
+    "reportCount_many": "{{count}} requêtes",
+    "reportCount_other": "{{count}} requêtes"
+  },
+  "map": {
+    "label": "Carte de planification de trajet",
+    "fallback": "La carte interactive ne peut pas s'afficher dans ce navigateur (WebGL indisponible). Vous pouvez quand même entrer des coordonnées et lire le trajet sous forme de liste.",
+    "loadError": "Le fond de carte n'a pas pu se charger. Vous pouvez quand même entrer des coordonnées et lire le trajet sous forme de liste.",
+    "hint": "La carte est facultative : toutes les actions sont aussi offertes dans le panneau."
+  },
+  "sheet": {
+    "expand": "Agrandir le panneau",
+    "collapse": "Réduire le panneau"
+  }
+}

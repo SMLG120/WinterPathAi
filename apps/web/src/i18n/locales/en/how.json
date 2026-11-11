@@ -1,0 +1,74 @@
+{
+  "title": "How WinterPath works",
+  "intro": "What data we use, how we label it, what our model does and doesn't do, and how we treat your privacy.",
+  "toc": "On this page",
+  "sources": {
+    "title": "Sources and licences",
+    "intro": "This list comes from the API, which reports each source's licence and last successful refresh.",
+    "name": "Source",
+    "publisher": "Publisher",
+    "licence": "Licence",
+    "commercial": "Commercial use",
+    "status": "Status",
+    "lastSuccess": "Last refresh",
+    "commercialUse": {
+      "allowed": "Allowed",
+      "allowed_with_conditions": "Allowed with conditions",
+      "not_allowed": "Not allowed",
+      "unverified": "Unverified"
+    },
+    "statusValue": {
+      "active": "Active",
+      "stale": "Stale",
+      "disabled": "Disabled",
+      "requires_credentials": "Requires credentials",
+      "error": "Error"
+    }
+  },
+  "attribution": {
+    "title": "Map attribution",
+    "body": "The planner map uses OpenFreeMap vector tiles built from OpenStreetMap. Attribution stays visible on the map at all times."
+  },
+  "evidence": {
+    "title": "Evidence states",
+    "intro": "Every condition, closure, report or estimate carries exactly one of these labels, always shown with an icon and text."
+  },
+  "model": {
+    "title": "Model card",
+    "intro": "Our optional risk layer predicts reporting activity, not ice. It is only switched on after it beats a simple baseline on held-out data."
+  },
+  "coverage": {
+    "title": "Coverage",
+    "pilot": "Pilot area",
+    "bbox": "Bounding box (W, S, E, N)",
+    "graph": "Pedestrian network",
+    "nodes": "Nodes",
+    "edges": "Edges",
+    "built": "Built",
+    "snapshot": "OpenStreetMap snapshot",
+    "gaps": "Known gaps",
+    "noGaps": "No gaps reported.",
+    "schematic": "Schematic of the pilot area (not to scale with streets)."
+  },
+  "privacy": {
+    "title": "Privacy (Québec Law 25)",
+    "points": [
+      "No accounts and no route history. Route requests are processed in memory.",
+      "Your location is requested only when you press \"Use my location\", and only after we explain why.",
+      "Server logs keep only coarse location (about 100 m), never your precise coordinates.",
+      "Community reports store an exact location only with your explicit consent, expire after 72 hours, and can be deleted with your deletion code.",
+      "Pilot enquiries keep minimal contact details for 12 months."
+    ],
+    "review": "This privacy approach has not yet been reviewed by legal counsel."
+  },
+  "limitations": {
+    "title": "Limitations",
+    "points": [
+      "We never describe a sidewalk as safe, cleared, ice-free or wheelchair accessible unless an official source verifies it.",
+      "311 requests are reports, not confirmed obstacles. Many conditions are never reported.",
+      "Snow-loading plans do not certify that a sidewalk has been cleared.",
+      "Roadwork does not mean the sidewalk is closed unless the permit data says so.",
+      "Coverage is limited to the pilot area; network gaps are reported, not guessed."
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "title": "Pilot programs",
+  "intro": "We're looking for organisations in Montréal that want to test transparent winter walking information with their communities.",
+  "segments": {
+    "title": "Who a pilot is for",
+    "items": [
+      { "title": "Universities", "body": "Students and staff crossing a downtown campus in winter." },
+      { "title": "Campuses", "body": "Hospitals, colleges and corporate campuses with many building entrances." },
+      { "title": "Municipalities", "body": "Mobility teams who want aggregated insight into pedestrian winter barriers." },
+      { "title": "Property managers", "body": "Owners and managers who want to see reported issues around their buildings." }
+    ]
+  },
+  "includes": {
+    "title": "What a pilot includes",
+    "items": [
+      "A defined coverage area with its pedestrian network built and checked for gaps.",
+      "The bilingual route planner, configured for your area.",
+      "A moderated community-report channel for your users.",
+      "A written report of what worked and what didn't, using only measured results."
+    ]
+  },
+  "analytics": {
+    "title": "Privacy-respecting analytics",
+    "body": "Pilot analytics are aggregated only: counts of route requests and reports per coarse area and day. No individual trips, no tracking, and no personal data is shared with partners."
+  },
+  "honesty": "We don't have published pilot results yet. We'll share measured outcomes, not projections.",
+  "form": {
+    "title": "Request a pilot conversation",
+    "organization": "Organisation",
+    "contactName": "Your name (optional)",
+    "email": "Email",
+    "segment": "Type of organisation",
+    "segments": {
+      "university": "University",
+      "campus": "Campus",
+      "municipality": "Municipality",
+      "property_manager": "Property manager",
+      "other": "Other"
+    },
+    "message": "Message (optional)",
+    "consent": "I agree that WinterPath may keep these details for 12 months to respond to this request.",
+    "submit": "Send request",
+    "submitting": "Sending…",
+    "success": "Thank you — we've received your request.",
+    "required": "This field is required.",
+    "invalidEmail": "Enter a valid email address.",
+    "consentRequired": "You need to agree before sending."
+  }
+}
