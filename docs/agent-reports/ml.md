@@ -220,6 +220,12 @@ No known vulnerabilities found
 ### Open items
 - CR-ML-2: user decision.
 - Integration still lacks 0006. This branch now contains `agent/data` ee5f1fc, so merging `agent/ml` also brings that commit; the coordinator may prefer to merge Data first.
+- **`scripts/check-ownership.sh ml` currently reports violations, all caused by that authorised merge** (data/fixtures, data/qa, db/migrations/0006, services/ingestion, docs/agent-reports/data.md). Proof that ML edited none of them:
+```text
+$ git diff --name-only ee5f1fc HEAD | grep -v -E '^(services/ml/|models/|docs/agent-reports/ml.md)'
+(no output)
+```
+  Every non-ML file is byte-identical to `agent/data` ee5f1fc. The check passes again once integration contains ee5f1fc, which moves the merge-base.
 - After Data's v1.5 migration lands: add the nature-summing reader and compare it with the CSV labels. The difference must equal the 18 cell-days predicted above.
 - Routing/API: wire `api_provider` as described above.
 - **2027-05-08 or later:** run `uv run python -m winterpath_ml.gate_logreg_2026` once. If the decision is PASS, open a reviewed commit that promotes `winter311-logreg-v1` in the registry, as the gate document describes.
