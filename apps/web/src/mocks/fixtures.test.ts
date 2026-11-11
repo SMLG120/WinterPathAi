@@ -2,18 +2,20 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { setupServer } from 'msw/node';
 import { contractValidator } from '@/test/openapi';
+import { PTS } from '@/test/pilotPoints';
 import { handlers, resetMockState } from './handlers';
 import * as fx from './fixtures';
 import { mockCompare } from './routes';
-import { nearestLineM, pointSegmentM } from './geo-mock';
+import { haversineM, nearestLineM, pointSegmentM } from './geo-mock';
+import { isInPilot } from '@/lib/geo';
 import { pilotMiniSegments, PILOT_MINI } from './pilotMini';
+import edgesRaw from '../../../../data/fixtures/pilot_mini/edges.geojson?raw';
 
 const v = contractValidator();
 const server = setupServer(...handlers);
 const BASE = 'http://localhost/api/v1';
-const IN_A = { lon: -73.5772, lat: 45.5048 };
-const IN_B = { lon: -73.5745, lat: 45.504 };
-const OFF_NET = { lon: -73.5698, lat: 45.5017 }; // inside pilot bbox, outside pilot_mini network
+// Derived from the checked-out pilot_mini fixture (inside pilot bbox; OFF_NET outside the network).
+const { A: IN_A, B: IN_B, OFF_NET } = PTS;
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterAll(() => server.close());
@@ -84,6 +86,13 @@ describe('mock payloads validate against docs/contracts/openapi.yaml', () => {
   it('test points actually snap to the real pilot_mini network (≤ 75 m)', () => {
     const lines = pilotMiniSegments().map((f) => f.geometry.coordinates as [number, number][]);
     for (const p of [IN_A, IN_B]) expect(nearestLineM([p.lon, p.lat], lines)).toBeLessThanOrEqual(75);
+  });
+
+  it('derived OFF_NET point is inside the pilot bbox and well beyond the 75 m snap limit; A ≠ B', () => {
+    const lines = pilotMiniSegments().map((f) => f.geometry.coordinates as [number, number][]);
+    expect(nearestLineM([OFF_NET.lon, OFF_NET.lat], lines)).toBeGreaterThan(100);
+    expect(isInPilot(OFF_NET)).toBe(true);
+    expect(haversineM([IN_A.lon, IN_A.lat], [IN_B.lon, IN_B.lat])).toBeGreaterThan(30);
   });
 
   it('POST /routes/compare step_free → 404 NO_ROUTE (no edge verified step-free in demo)', async () => {
@@ -162,9 +171,13 @@ describe('mock honesty invariants', () => {
     }
   });
   it('step_free passes through from OSM unchanged — unknown stays null, never upgraded to true', () => {
-    const counts = { true: 0, false: 0, null: 0 };
-    for (const s of pilotMiniSegments()) counts[String(s.properties.accessibility.step_free) as keyof typeof counts]++;
-    expect(counts).toEqual({ true: 2, false: 10, null: 188 });
+    // Compared edge-by-edge with the raw fixture, so it holds whenever pilot_mini is regenerated.
+    const raw = new Map(
+      (JSON.parse(edgesRaw) as { features: { id: string; properties: { step_free: boolean | null } }[] }).features.map((f) => [f.id, f.properties.step_free]),
+    );
+    const segs = pilotMiniSegments();
+    expect(segs).toHaveLength(raw.size);
+    for (const s of segs) expect(s.properties.accessibility.step_free).toBe(raw.get(String(s.id)) ?? null);
   });
   it('steps edges are never marked step-free', () => {
     for (const s of pilotMiniSegments()) if (s.properties.edge_kind === 'steps') expect(s.properties.accessibility.step_free).not.toBe(true);
@@ -179,7 +192,8 @@ describe('mock honesty invariants', () => {
   });
   it('coverage reports the fixture graph and declares the rest of the pilot a gap', () => {
     const c = fx.coverage();
-    expect(c.graph).toMatchObject({ node_count: 88, edge_count: 200, osm_snapshot: PILOT_MINI.osmSnapshot });
+    expect(c.graph).toMatchObject({ node_count: PILOT_MINI.nodeCount, edge_count: PILOT_MINI.edgeCount, osm_snapshot: PILOT_MINI.osmSnapshot });
+    expect(PILOT_MINI.edgeCount).toBe(pilotMiniSegments().length); // metadata agrees with the edges file
     expect(c.known_gaps[0]!.description).toMatch(/only the pilot_mini fixture/);
   });
   it('route explanations are labelled simulated/unknown', () => {
@@ -187,15 +201,17 @@ describe('mock honesty invariants', () => {
     if (r.status !== 200) throw new Error('expected 200');
     for (const route of r.body.routes) for (const e of route.explanation) expect(['simulated', 'unknown']).toContain(e.evidence_state);
   });
-  it('route explanation codes are canonical routing codes (openapi v1.5 mapping)', () => {
-    // Codes emitted by services/routing; the demo must not invent a parallel vocabulary.
-    const canonical = new Set(['SIMULATED_DATA', 'SHORTEST_DISTANCE', 'RISK_LAYER_UNAVAILABLE', 'AVOIDS_POSSIBLE_CLOSURE']);
+  it('route explanation codes follow the openapi v1.5 code → evidence mapping', () => {
+    // Subset of the contract's mapping (ExplanationItem description) that the demo uses.
+    const mapping: Record<string, string> = {
+      SIMULATED_DATA: 'simulated',
+      SHORTEST_DISTANCE: 'unknown',
+      RISK_LAYER_UNAVAILABLE: 'unknown',
+    };
     const r = mockCompare({ origin: IN_A, destination: IN_B });
     if (r.status !== 200) throw new Error('expected 200');
     for (const route of r.body.routes) {
-      for (const e of route.explanation) expect(canonical).toContain(e.code);
-      const shortest = route.explanation.find((e) => e.code === 'SHORTEST_DISTANCE');
-      if (shortest) expect(shortest.evidence_state).toBe('unknown');
+      for (const e of route.explanation) expect(e.evidence_state).toBe(mapping[e.code]);
     }
   });
   it('sources are not reported as active in demo', () => {

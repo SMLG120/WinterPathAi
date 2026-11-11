@@ -2,7 +2,7 @@
 
 - **Status:** READY FOR REVIEW
 - **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
-- **Date (UTC):** 2026-11-11 (update 4: coordinator follow-up after merge 3b189bd)
+- **Date (UTC):** 2026-11-11 (update 5: contract v1.6.0, data ee5f1fc fixture check, visual QA fixes)
 - **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts. Contract **v1.4.0/v1.5.0** + routing/data/platform merged after 249570b — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
@@ -376,13 +376,59 @@ compare risk_layer: heuristic identical: True evidence: ['unknown']
 
 **Finding for the ML agent (not a frontend change):** `RISK_PROVIDER=winterpath_ml.inference:load_provider` **silently falls back to `NullRiskProvider`** in a worktree without `models/artifacts/v2-8d19aa86/`. `_coverage()` reads `REPO_ROOT / registry["coverage"]["path"]` and ignores `MODEL_ARTIFACT_DIR`, so setting that env var does not help, and nothing is logged. `/models/status` then reports `none`. For the heuristic run above I added a temporary, git-ignored symlink `models/artifacts/v2-8d19aa86 → ../winterpath-ml/models/artifacts/v2-8d19aa86` and removed it afterwards; nothing outside my owned paths was committed. Suggestion: resolve the coverage path via `config.ARTIFACT_DIR` and log a warning when falling back.
 
+## Update 5 — contract v1.5 clarification + v1.6.0, data `ee5f1fc` fixture check, visual-QA fixes
+**Merges:** `integration/winterpath` eb92007 and then a292b63 (contract v1.6.0) merged with `--no-edit`, no conflicts. `npm run gen:api` was run after each. eb92007 changed one `ExplanationItem` description in `schema.d.ts`; a292b63 changed only `info.version`/`summary`, which the generated types don't include, so there was no diff.
+- **v1.5 evidence-mapping clarification:** `AVOIDS_POSSIBLE_CLOSURE` now maps to `unknown`. The demo's invented closure must stay visibly `simulated`, so its explanation now uses `SIMULATED_DATA` (→ `simulated`). `fixtures.test.ts` checks every demo code against the contract mapping.
+- **v1.6 alley categories (`snow_clearing_alley`, `snow_dumping_alley`):** **no UI change needed.** The UI has no 311-category label or icon map. Hazard icons and labels key off `kind` (closure / 311 report / community report / …), and titles come from the API (`title_en`/`title_fr`). Verified with `grep` of `apps/web/src` for the category names: no matches outside the generated types.
+
+**Data `ee5f1fc` check** (regenerated pilot_mini: 92 nodes / 200 edges, 40/200 edge ids unchanged). I did a trial `git merge --no-commit --no-ff ee5f1fc`, ran the suites, then `git merge --abort`. **No data commit is on `agent/frontend`.**
+
+*Did anything hard-code fixture ids or coordinates?*
+- **Edge ids: no.** Nothing in `apps/web` references a pilot_mini edge id (`grep` for `osm:n…` and id-like literals: none). Mock segments, coverage and snapping read the fixture files at build time.
+- **Coordinates: yes.** The planner test points `A (45.5048, -73.5772)`, `B (45.5040, -73.5745)` and `OFF_NET` were hand-picked against the old network. On ee5f1fc, A is **156.6 m** from the nearest edge (> 75 m snap limit). First run on ee5f1fc, before the fix: unit **7 failed**, mock e2e **10 failed / 92 passed** (planning journey, language switch, step-free, geolocation-denied journey), all with 422 instead of 200/404.
+- **Counts: yes**, in tests and in one demo string. The unit tests asserted `88/200` and step-free `2/10/188`; the real-API test looked for `88`; the demo step-free refusal said "only 2 of 200 edges". (They still passed on ee5f1fc only because those numbers happen to match or weren't reached.)
+
+*Fix:* `src/test/pilotPoints.ts` derives A/B from the endpoints of the longest non-steps edge: 0 m snap, and connected, so the real router can always route A→B. OFF_NET is the grid point in the pilot bbox farthest from every edge, unit-tested at > 100 m. Unit tests, mock e2e, real-API e2e and `scripts/screenshots.mjs` all use these points. Counts now come from `metadata.json`, per-edge comparison with `edges.geojson`, or `/coverage`. `PILOT_BBOX` moved to `src/lib/pilot.ts` (no `import.meta.env`) so Playwright can import it.
+
+Results with the fix:
+```text
+# on data ee5f1fc (trial merge; API log: "nodes": 92, "edges": 200)
+$ npx vitest run
+ Test Files  11 passed (11)
+      Tests  107 passed (107)
+$ npx playwright test --reporter=line
+  102 passed (2.7m)
+$ npx playwright test -c playwright.real.config.ts   (RISK_PROVIDER=none)
+  16 passed (46.3s)
+
+# after merge --abort, on the branch's fixture (API log: "nodes": 88, "edges": 200)
+$ npx tsc -b && npx eslint . --max-warnings 0 → LINT_OK
+$ npx vitest run
+ Test Files  11 passed (11)
+      Tests  107 passed (107)
+$ npx playwright test --reporter=line
+  102 passed (2.4m)
+$ npx playwright test -c playwright.real.config.ts   (RISK_PROVIDER=none)
+  16 passed (43.7s)
+$ npm run build → exit 0; node scripts/bundle-size.mjs
+initial (entry + modulepreload):
+     143.9 KB gz  assets/index-CKct_qwq.js
+  TOTAL initial JS:    143.9 KB gz  (budget 250 KB, excludes map + 3D chunks)
+```
+The heuristic-layer real-API run (update 4) was not repeated in this cycle.
+
+**Visual QA via screenshots** (`apps/web/docs/screenshots/`, 12 PNGs: 6 pages × {desktop EN light, 390 px FR dark}, mock build, reduced motion; regenerate with `node scripts/screenshots.mjs`). This found three bugs the automated suites had missed:
+1. **The planner map was 0 px tall in every build.** `maplibre-gl.css` is unlayered CSS and sets `.maplibregl-map { position: relative }`, which beats Tailwind 4's layered `absolute inset-0`. The canvas existed and attribution/axe checks passed, but nothing rendered. Fixed with an inline style; new e2e test checks that the map fills its pane.
+2. **Dark-mode map attribution was unreadable**: light text on maplibre's translucent white background, which loads later with the map chunk at equal specificity. Fixed with higher-specificity selectors; new e2e test checks the computed background.
+3. **The French Winter page showed English model limitations.** This text comes from `/models/status`, which has no locale. It is now marked `lang="en"`, and the French page says it is API text in English only, rather than showing an invented translation (e2e). → **CR-FE-3** below.
+
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
 |---|---|---|
 | Six pages render EN + FR, desktop + 390 px, light + dark | Yes (automated) | `pages.spec.ts` matrix: 7 pages × 2 langs × 2 themes × 2 viewports, h1 + no horizontal overflow + axe clean |
 | Planner end-to-end against mocks; real API is env-only | Yes, both | mock: `planner.spec.ts`; real: `e2e-real/real-api.spec.ts` 16/16 against local `services/api` (fixture graph, memory store) |
 | Evidence states icon + text everywhere; no unlabelled demo data | Yes | `EvidenceBadge.test.tsx`, honesty tests in `fixtures.test.ts`, demo banner asserted on every page |
-| build / lint / test / playwright pass, bundle sizes | Yes | Outputs above; initial JS 143.9 KB gz (budget 250); vitest 106/106; mock e2e 96/96; real-API e2e 16/16 with risk layer none and heuristic |
+| build / lint / test / playwright pass, bundle sizes | Yes | Outputs above; initial JS 143.9 KB gz (budget 250); vitest 107/107; mock e2e 102/102; real-API e2e 16/16 (none; heuristic in update 4); also green on data ee5f1fc |
 | Asset/font licence manifest | Yes | `apps/web/ASSET_LICENSES.md`, `assets/3d/README.md` |
 | Bilingual planning journey, geolocation-denied journey, axe per page | Yes | `planner.spec.ts`, `geolocation.spec.ts`, `pages.spec.ts` |
 | EN/FR key parity test | Yes | `src/i18n/parity.test.ts` (keys, interpolation vars, no empty or untranslated strings) |
@@ -390,7 +436,7 @@ compare risk_layer: heuristic identical: True evidence: ['unknown']
 ## Not done / not measured (stated plainly)
 - Real-API e2e used a local API with the fixture graph, memory store and no risk provider. Not tested against Postgres/PostGIS or a real risk layer.
 - **LCP < 2.5 s not met** in local Lighthouse mobile runs (see Update 2). CLS and a11y targets met there. No field data.
-- **No manual screen-reader or visual QA, no screenshots.** Axe passing ≠ WCAG conformance; I'm not claiming compliance.
+- **Screenshots + a visual pass done (update 5); no manual screen-reader QA.** Axe passing ≠ WCAG conformance; I'm not claiming compliance.
 - 3D frame rate (60 fps target) not measured on real hardware; e2e uses SwiftShader.
 - Optional "sidewalk condition explainer" 3D scene not built.
 - `npm audit`: 7 moderate findings remain, all the same `minimatch` ReDoS in dev-only lint tooling (`typescript-eslint`). Critical `maplibre-gl` ≤6.4 and high `zod` <4.6.6 advisories were avoided by using maplibre-gl 6.17.0 / zod 4.6.7; vitest 4.1.12 avoids the critical tinypool/vitest advisories.
@@ -412,6 +458,7 @@ See `apps/web/ASSET_LICENSES.md`. Fonts are OFL 1.1 and self-hosted; the 3D scen
 ## Change requests (contracts)
 <a id="change-request"></a>
 - **CR-FE-1 (additive):** `GET /reports-311/history?days=&bbox=` → `[{day, category, n}]` aggregated per day for the pilot (k-anonymity floor applied server-side, n<3 suppressed), with `evidence` (state `unverified_report`) and `retrieved_at`. Needed for the ux-spec "311 winter-report history chart (aggregated)". Data already exists in `wp.report_311_cell`.
+- **CR-FE-3 (additive):** `GET /models/status?locale=en|fr` (or `limitations_fr`) so model limitations can be shown in French; today the UI shows the English API text marked `lang="en"`.
 - **CR-FE-2 (additive, optional):** `GET /geocode?q=&locale=` backed by a provider that permits autocomplete (never public Nominatim), returning `[{label, location: LonLat}]` restricted to the pilot bbox; `503 UPSTREAM_UNAVAILABLE` when no provider is configured so the UI can keep the current disabled state.
 
 ## Review readiness

@@ -1,13 +1,15 @@
 import { test as base, expect, type Page } from '@playwright/test';
+import { PTS_INPUT } from '../src/test/pilotPoints';
 
 /** The basemap stub is injected at build time (playwright.config.ts webServer.env). */
 export const test = base;
 export { expect };
 
-export const IN_A = { lat: '45.5048', lon: '-73.5772' };
-export const IN_B = { lat: '45.5040', lon: '-73.5745' };
+// Derived from the checked-out pilot_mini fixture (see src/test/pilotPoints.ts).
+export const IN_A = PTS_INPUT.A;
+export const IN_B = PTS_INPUT.B;
 /** Inside the pilot bbox but > 75 m from the pilot_mini network → 422 OFF_NETWORK. */
-export const OFF_NET = { lat: '45.5017', lon: '-73.5698' };
+export const OFF_NET = PTS_INPUT.OFF_NET;
 export const OUTSIDE = { lat: '45.5300', lon: '-73.6200' };
 
 export async function setPoint(page: Page, which: 'origin' | 'destination', p: { lat: string; lon: string }) {

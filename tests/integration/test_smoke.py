@@ -92,7 +92,6 @@ REPORT_BASE = {
     "location": {"lon": -73.575, "lat": 45.505},  # pilot bbox centre, 3 dp (not a user location)
     "location_consent": True,
 }
-NULLABLE_GAP = "API-NULL-1: real API accepts null for optional non-nullable fields (routing-owned schemas.py)"
 
 
 @pytest.mark.parametrize(
@@ -105,9 +104,7 @@ NULLABLE_GAP = "API-NULL-1: real API accepts null for optional non-nullable fiel
         ("/reports", REPORT_BASE, "locale"),
     ],
 )
-def test_explicit_null_rejected_for_non_nullable_optional(client, target, request, path, base, field) -> None:
-    if not target.is_stub:
-        request.applymarker(pytest.mark.xfail(reason=NULLABLE_GAP, strict=True))
+def test_explicit_null_rejected_for_non_nullable_optional(client, path, base, field) -> None:
     r = client.post(path, json={**base, field: None})
     assert r.status_code in (400, 422), f"{path} {field}=null -> {r.status_code}"
     assert r.json()["code"] == "VALIDATION_ERROR"

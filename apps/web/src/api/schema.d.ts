@@ -489,7 +489,7 @@ export interface components {
             unknown_share: number;
             hazards_avoided?: string[];
             hazards_on_route?: string[];
-            /** @description v1.5 (CR-ROUTING-9) evidence mapping: SHORTEST_DISTANCE, WINTER_AWARE_COST, IDENTICAL_TO_SHORTEST, RISK_LAYER_UNAVAILABLE → unknown; STEP_FREE_TAGGED_ONLY, INCLUDES_STEPS → unverified_report (community-mapped OSM tags); closures/confirmed disruptions → confirmed; 311/community reports → unverified_report; LOWER_MODELED_RISK → model_estimate; SIMULATED_DATA → simulated. */
+            /** @description v1.5 (CR-ROUTING-9) evidence mapping: SHORTEST_DISTANCE, WINTER_AWARE_COST, IDENTICAL_TO_SHORTEST, RISK_LAYER_UNAVAILABLE → unknown; STEP_FREE_TAGGED_ONLY, INCLUDES_STEPS → unverified_report (community-mapped OSM tags); closures/confirmed disruptions active at the requested time → confirmed; PASSES_POSSIBLE_CLOSURE, AVOIDS_POSSIBLE_CLOSURE (permit confirmed, activity unknown) → unknown; REDUCED_MOBILITY_SPEED (assumed speed, labelled heuristic) → model_estimate; RISK_UNKNOWN_SHARE → unknown; 311/community reports → unverified_report; LOWER_MODELED_RISK → model_estimate; SIMULATED_DATA → simulated. */
             explanation: {
                 /** @example AVOIDS_CONFIRMED_CLOSURE */
                 code: string;
