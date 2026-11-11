@@ -1,0 +1,10 @@
+{
+  "label": "RECORDED real response (not synthetic)",
+  "source_url": "https://api.weather.gc.ca/collections/citypageweather-realtime/items/qc-99999?f=json",
+  "retrieved_at": "2026-11-11T23:49:44+00:00",
+  "http_status": 404,
+  "sha256": "2d9bd297c82b8d2bec044d03243ebbb6cf9ad3e5f9ae3fd20b960a6cff1c0457",
+  "bytes": 74,
+  "attribution": "Data Source: Environment and Climate Change Canada",
+  "licence": "ECCC Data Server End-use Licence (https://eccc-msc.github.io/open-data/licence/readme_en/)"
+}
