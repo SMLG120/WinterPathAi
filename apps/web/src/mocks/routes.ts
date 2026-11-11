@@ -64,10 +64,11 @@ function buildRoute(
     hazards_on_route: [],
     explanation: [
       // Canonical routing codes + evidence mapping (openapi v1.5, CR-ROUTING-9). The demo
-      // closure is invented, so it stays `simulated` rather than `confirmed`.
+      // closure is invented, so it uses SIMULATED_DATA (→ simulated); a closure code would map
+      // to unknown/confirmed and hide that it is made up.
       { code: 'SIMULATED_DATA', text: t.sim, evidence_state: 'simulated' },
       variant === 'winter_aware'
-        ? { code: 'AVOIDS_POSSIBLE_CLOSURE', text: t.closure, evidence_state: 'simulated' }
+        ? { code: 'SIMULATED_DATA', text: t.closure, evidence_state: 'simulated' }
         : { code: 'SHORTEST_DISTANCE', text: t.shortest, evidence_state: 'unknown' },
       { code: 'RISK_LAYER_UNAVAILABLE', text: t.unknown, evidence_state: 'unknown' },
     ],
