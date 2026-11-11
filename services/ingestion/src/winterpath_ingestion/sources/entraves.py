@@ -48,6 +48,35 @@ BACKSIDEWALK_BLOCKS_PASSAGE: dict[str, bool | None] = {
 }
 
 
+# CR-ROUTING-7 (accepted): wp.closure.status = publisher lifecycle only, never time-derived.
+# Only "Permis émis" observed (1 974/1 974 on 2026-11-10); cancelled/completed are reserved.
+# Unmapped raw values → "unknown" (raw kept in attrs.currentstatus) and reported in `unmapped`.
+CLOSURE_STATUS: dict[str, str] = {"Permis émis": "permit_issued"}
+CLOSURE_STATUS_VALUES = ("permit_issued", "cancelled", "completed", "unknown")
+
+
+def map_status(raw: str | None) -> str:
+    return CLOSURE_STATUS.get((raw or "").strip(), "unknown")
+
+
+DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def weekly_schedule(m: dict) -> dict:
+    """Publisher's per-weekday activity, verbatim semantics: active (t/f), all_day (t/f),
+    start/end local times ('' → None). Unknown flag values → None (never assumed active)."""
+    flag = {"t": True, "f": False}
+    out = {}
+    for d in DAYS:
+        out[d] = {
+            "active": flag.get(m.get(f"duration_days_{d}_active", "")),
+            "all_day": flag.get(m.get(f"duration_days_{d}_all_day_round", "")),
+            "start": m.get(f"duration_days_{d}_start_time") or None,
+            "end": m.get(f"duration_days_{d}_end_time") or None,
+        }
+    return out
+
+
 def map_blocked(value: str | None, table: dict[str, bool | None]) -> bool | None:
     if value is None:
         return None
@@ -90,6 +119,9 @@ def build_closures(main_rows: list[dict], impact_rows: list[dict], bbox=PILOT_BB
             if v not in SIDEWALK_BLOCKS_PASSAGE:
                 unmapped[f"sidewalk_blockedtype={v!r}"] += 1
         bp = aggregate([map_blocked(v, SIDEWALK_BLOCKS_PASSAGE) for v in side])
+        status = map_status(m.get("currentstatus"))
+        if status == "unknown":
+            unmapped[f"currentstatus={m.get('currentstatus')!r}"] += 1
         rows.append(
             {
                 "closure_id": f"entrave:{m['id']}",
@@ -100,11 +132,14 @@ def build_closures(main_rows: list[dict], impact_rows: list[dict], bbox=PILOT_BB
                 ),
                 "valid_from": m["duration_start_date"] or None,
                 "valid_to": m["duration_end_date"] or None,
-                "status": m["currentstatus"] or None,
+                "status": status,
                 "evidence_state": "confirmed",
                 "attrs": {
                     "permit_id": m.get("permit_permit_id"),
                     "reason_category": m.get("reason_category"),
+                    # raw publisher status, kept verbatim (CR-ROUTING-7)
+                    "currentstatus": m.get("currentstatus"),
+                    "weekly_schedule": weekly_schedule(m),
                     "impacts": [
                         {
                             k: x.get(k)

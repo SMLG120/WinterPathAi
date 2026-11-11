@@ -1,5 +1,6 @@
-# Data model — PostGIS contract v1.3.0
+# Data model — PostGIS contract v1.4.0
 
+> v1.4.0 (2026-11-10, CR-ROUTING-7): `wp.closure.status` vocabulary + `wp.closure_active_at(c wp.closure, t timestamptz)` (three-valued: true/false/null = unknown) (migration 0004).
 > v1.3.0 (2026-11-10, CR-ROUTING-5/6/8): `wp.edge.name`; `wp.community_report.terminal_at`; canonical source ids.
 > v1.2.0 (2026-11-10, CR-DATA-1/2/3/5): additive columns on `wp.edge` and `wp.closure`; new `wp.weather_daily`.
 
@@ -55,6 +56,8 @@ Indexes: GiST(geom), btree(from_node_id), btree(to_node_id), btree(component_id)
 
 ### `wp.closure` — Entraves
 `closure_id text PK` (`entrave:<id>`), `geom geometry(Geometry,4326)` (Entraves publishes the **permit point**; edge matching is approximate), `sidewalk_blockedtype text`, `blocks_passage boolean null`, `backsidewalk_blocks_passage boolean null` (v1.2; same rule applied to `backsidewalk_blockedtype`), `attrs jsonb` (v1.2; permit id and named affected street sections — never geocoded into certainty) (true **only** if `sidewalk_blockedtype` explicitly indicates blocked pedestrian passage; mapping table documented by Data agent), `valid_from`, `valid_to`, `status`, `source_id`, `ingest_run_id`. GiST. Evidence state: `confirmed` (official permit data).
+
+**Closure status (v1.4):** `status` is the publisher lifecycle only — `permit_issued` (from `Permis émis`) · `cancelled` · `completed` · `unknown` (CHECK constraint; unmapped raw values → `unknown`, raw kept in `attrs.currentstatus`). Time-derived states are **never stored**. Consumers call `wp.closure_active_at(c wp.closure, t timestamptz)` (three-valued: true/false/null = unknown): `status='permit_issued'` AND `valid_from <= t` AND (`valid_to` IS NULL OR `t < valid_to`) AND the weekly schedule in `attrs.weekly_schedule` (America/Montreal local weekday; partial-day windows respected) permits `t`. A `null` schedule flag means **unknown activity** — routing must flag or penalise it, never treat it as clear. Routing excludes an edge only when the closure is active at `t` **and** `blocks_passage` is true. Evidence (2026-11-10 file): 1 974 permits all `Permis émis`; 347 already ended and 80 not started despite the feed title; 942 partial-day.
 
 ### `wp.report_311_cell` — aggregated, privacy-preserving
 `h3 text`, `day date`, `category text` (normalised winter category), `n int`, PK(h3, day, category). **No raw rows stored in the DB**; raw CSV stays in git-ignored `data/raw/`. Cells with n<3 per day are kept for training but suppressed in public API output (k-anonymity floor; ML agent may use them).
