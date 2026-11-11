@@ -58,7 +58,7 @@ export function Layout({ fullBleed = false }: { fullBleed?: boolean }) {
       </a>
       <Header />
       <DemoBanner />
-      <main id="main" tabIndex={-1} className={fullBleed ? 'flex min-h-0 flex-1 flex-col' : 'flex-1'}>
+      <main id="main" tabIndex={-1} className={fullBleed ? 'flex min-h-0 flex-1 flex-col' : 'min-h-[calc(100dvh-4rem)] flex-1'}>
         <ErrorBoundary>
           <Suspense fallback={<PageFallback />}>
             <Outlet />

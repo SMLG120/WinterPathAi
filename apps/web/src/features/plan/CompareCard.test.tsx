@@ -6,7 +6,7 @@ import { mockCompare } from '@/mocks/routes';
 import { ApiRequestError } from '@/api/client';
 
 const A = { lon: -73.5772, lat: 45.5048 };
-const B = { lon: -73.5698, lat: 45.5017 };
+const B = { lon: -73.5745, lat: 45.504 };
 
 function data() {
   const r = mockCompare({ origin: A, destination: B, locale: 'en' }, new Date());
@@ -45,6 +45,23 @@ describe('RouteError', () => {
   it('OUTSIDE_COVERAGE points to the pilot area', () => {
     render(<RouteError error={new ApiRequestError(422, { code: 'OUTSIDE_COVERAGE', message: 'x' }, null)} />);
     expect(screen.getByRole('alert')).toHaveTextContent('Outside the pilot area');
+  });
+  it('OFF_NETWORK names the point and the snap distance', () => {
+    render(
+      <RouteError
+        error={new ApiRequestError(422, { code: 'OFF_NETWORK', message: 'x', details: { which: 'destination', max_snap_distance_m: 75, nearest_network_m: 412.3 } }, null)}
+      />,
+    );
+    const a = screen.getByRole('alert');
+    expect(a).toHaveTextContent('Too far from the walking network');
+    expect(a).toHaveTextContent('Your destination is inside the pilot area but more than 75 m');
+    expect(a).toHaveTextContent('about 412 m away');
+  });
+  it('legacy snap error (OUTSIDE_COVERAGE + snap details) gets the same network copy', () => {
+    render(
+      <RouteError error={new ApiRequestError(422, { code: 'OUTSIDE_COVERAGE', message: 'x', details: { which: 'origin', max_snap_distance_m: 75 } }, null)} />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Your start is inside the pilot area');
   });
   it('RATE_LIMITED shows Retry-After', () => {
     render(<RouteError error={new ApiRequestError(429, { code: 'RATE_LIMITED', message: 'x' }, '30')} />);

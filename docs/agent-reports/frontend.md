@@ -1,9 +1,9 @@
 # Agent report — frontend
 
 - **Status:** READY FOR REVIEW
-- **Branch / SHA:** agent/frontend @ 9489975 (code); this report is committed on top of it
-- **Date (UTC):** 2026-11-10 21:44
-- **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts.
+- **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
+- **Date (UTC):** 2026-11-10 (update 2: post contract v1.3.0 merge)
+- **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
 `123 files changed, 18459 insertions(+)` (all under `apps/web/`, `assets/3d/`, plus this report). `scripts/check-ownership.sh frontend` → `ownership OK for agent/frontend`.
@@ -245,20 +245,82 @@ Running 94 tests using 2 workers
   94 passed (3.8m)
 ```
 
+## Update 2 — after contract v1.3.0 merge
+**Changes**
+- `OFF_NETWORK` (422) handled: `ApiRequestError.details` surfaced; `RouteError` names which point is off the network and by how far (also maps the real API's current legacy `OUTSIDE_COVERAGE` + `details.max_snap_distance_m` to the same copy). EN/FR keys added (`errors.codes.OFF_NETWORK`, plan copy). Mock `/routes/compare` now snaps against pilot_mini (`MAX_SNAP_M=75`) and returns `OFF_NETWORK` beyond it; e2e test points moved onto the real fixture.
+- `schema.d.ts` regenerated from openapi 1.3.0. Mock source ids already matched the canonical ones.
+- **Real-API e2e suite** (`e2e-real/`, `playwright.real.config.ts`, `npm run e2e:real`) — builds `dist-real` without MSW and drives a locally started `services/api`.
+- **Performance (from Lighthouse diagnosis):** non-full-bleed `<main>` reserves `min-height: calc(100dvh - 4rem)` so the footer no longer jumps when a lazy page replaces its skeleton (that was the 0.382 CLS); 3D hero chunk now waits for `load` + idle + 2 s (`src/lib/afterLoad.ts`); the planner mounts the MapLibre chunk only after the panel has painted; Legend headings `h4→h3` (Lighthouse heading-order); eslint ignores `dist-real`.
+
+**Real API run** — started locally: `ROUTING_GRAPH_SOURCE=fixture API_STORE_BACKEND=memory RISK_PROVIDER=none uv run --project services/api uvicorn winterpath_api.main:app --port 8104` (CORS origin :5174, admin token hash of a throwaway local token). `E2E_ADMIN_TOKEN=… npx playwright test -c playwright.real.config.ts --reporter=line`:
+```text
+[1/16] [desktop] › e2e-real/real-api.spec.ts:21:1 › no demo labelling in real-API mode
+[2/16] [desktop] › e2e-real/real-api.spec.ts:29:3 › compare on the real pilot_mini graph (en)
+[3/16] [desktop] › e2e-real/real-api.spec.ts:29:3 › compare on the real pilot_mini graph (fr)
+[4/16] [desktop] › e2e-real/real-api.spec.ts:48:1 › snap failure from the real API (legacy OUTSIDE_COVERAGE + details) gets network-distance copy
+[5/16] [desktop] › e2e-real/real-api.spec.ts:58:1 › step-free on real data: refusal explains distance to verified step-free network
+[6/16] [desktop] › e2e-real/real-api.spec.ts:69:1 › winter page: ECCC 503 shows an error state with retry, never invented values
+[7/16] [desktop] › e2e-real/real-api.spec.ts:77:1 › how-it-works renders real /data-sources and /coverage
+[8/16] [desktop] › e2e-real/real-api.spec.ts:84:1 › community report lifecycle against the real API, then moderation
+[9/16] [desktop] › e2e-real/real-api.spec.ts:107:1 › admin rejects a wrong token
+[10/16] [desktop] › e2e-real/real-api.spec.ts:114:1 › pilot request 201 against the real API
+[11/16] [desktop] › e2e-real/real-api.spec.ts:125:3 › axe clean with real data: /
+[12/16] [desktop] › e2e-real/real-api.spec.ts:125:3 › axe clean with real data: /plan
+[13/16] [desktop] › e2e-real/real-api.spec.ts:125:3 › axe clean with real data: /winter
+[14/16] [desktop] › e2e-real/real-api.spec.ts:125:3 › axe clean with real data: /reports
+[15/16] [desktop] › e2e-real/real-api.spec.ts:125:3 › axe clean with real data: /how-it-works
+[16/16] [desktop] › e2e-real/real-api.spec.ts:125:3 › axe clean with real data: /pilot
+  16 passed (54.4s)
+```
+Observed real-API facts (for the routing/API agents, not frontend bugs): fastest/lowest-risk routes are identical and `unknown_share=1.0` (no risk layer); snap failures still use `OUTSIDE_COVERAGE` + `details` rather than `OFF_NETWORK`; `step_free` fails at snapping (nearest verified step-free edge 259.6 m from origin); `/weather/current` → 503 `UPSTREAM_UNAVAILABLE` (no ECCC fetch in this setup); `/hazards` empty; `/coverage.known_gaps` is `[]`.
+
+**Lighthouse 12.8.2** (`npx lighthouse`, mobile preset, simulated throttling, headless Chrome for Testing 1254, against `vite preview` of `dist-real` + local API; 3 runs/page). Before the changes: `/en` LCP 3931/2581/2985 ms, CLS 0.382, a11y 100; `/en/plan` LCP 6630/5582/5137 ms, CLS 0, a11y 98; `/en/how-it-works` LCP ≈2.85 s, CLS 0.382. After:
+```text
+en_1 perf 84 a11y 100 LCP 2915 CLS 0.001 TBT 356
+en_2 perf 88 a11y 100 LCP 3042 CLS 0.001 TBT 228
+en_3 perf 66 a11y 100 LCP 3263 CLS 0.001 TBT 1035
+en_plan_1 perf 49 a11y 100 LCP 5017 CLS 0.000 TBT 2920
+en_plan_2 perf 85 a11y 100 LCP 3555 CLS 0.000 TBT 171
+en_plan_3 perf 81 a11y 100 LCP 3627 CLS 0.000 TBT 340
+en_how-it-works_1 perf 91 a11y 100 LCP 3107 CLS 0.000 TBT 100
+en_how-it-works_2 perf 93 a11y 100 LCP 2736 CLS 0.000 TBT 44
+en_how-it-works_3 perf 96 a11y 100 LCP 2625 CLS 0.000 TBT 79
+```
+CLS fixed (≤0.001) and a11y 100 on all three. **LCP is still above the 2.5 s target** (≈2.6–3.3 s on content pages, 3.6–5.0 s on `/plan`); the remaining cost is render delay from executing the 157 KB-gz entry + lazy route chunk under 4× CPU throttling. Possible next steps (not done): prerender/SSG of static pages, splitting i18n so only the active locale loads, slimming the entry (zod/RHF only on form pages). Local simulated runs vary run to run (see `/en/plan` run 1); field LCP not measured.
+
+**Re-run after these changes**
+```text
+$ npx tsc -b && npx eslint . --max-warnings 0 && echo LINT_OK
+LINT_OK
+$ npx vitest run
+ Test Files  10 passed (10)
+      Tests  104 passed (104)
+$ npx playwright test --reporter=line   (mock build)
+[95/96] [mobile-390] › e2e/planner.spec.ts:94:1 › address search is disabled with an explanation (no public Nominatim)
+[96/96] [mobile-390] › e2e/planner.spec.ts:101:1 › map attribution stays visible (desktop bottom-right, mobile top-left above the sheet)
+  96 passed (3.7m)
+$ npm run build → exit 0; node scripts/bundle-size.mjs
+initial (entry + modulepreload):
+     157.5 KB gz  assets/index-C-pJ6y1H.js
+  TOTAL initial JS:    157.5 KB gz  (budget 250 KB, excludes map + 3D chunks)
+largest lazy chunks:
+     290.7 KB gz  assets/PlannerMap-Db3_R_bg.js
+```
+
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
 |---|---|---|
 | Six pages render EN + FR, desktop + 390 px, light + dark | Yes (automated) | `pages.spec.ts` matrix: 7 pages × 2 langs × 2 themes × 2 viewports, h1 + no horizontal overflow + axe clean |
-| Planner end-to-end against mocks; real API is env-only | Mocks: yes. Real API: **not exercised** | `planner.spec.ts`; real build has 0 MSW refs (`grep` of `dist/`), switch = `VITE_USE_MOCKS`/`VITE_API_BASE_URL` |
+| Planner end-to-end against mocks; real API is env-only | Yes, both | mock: `planner.spec.ts`; real: `e2e-real/real-api.spec.ts` 16/16 against local `services/api` (fixture graph, memory store) |
 | Evidence states icon + text everywhere; no unlabelled demo data | Yes | `EvidenceBadge.test.tsx`, honesty tests in `fixtures.test.ts`, demo banner asserted on every page |
-| build / lint / test / playwright pass, bundle sizes | Yes | Outputs above; initial JS 157.2 KB gz (budget 250) |
+| build / lint / test / playwright pass, bundle sizes | Yes | Outputs above; initial JS 157.5 KB gz (budget 250); mock e2e 96/96 |
 | Asset/font licence manifest | Yes | `apps/web/ASSET_LICENSES.md`, `assets/3d/README.md` |
 | Bilingual planning journey, geolocation-denied journey, axe per page | Yes | `planner.spec.ts`, `geolocation.spec.ts`, `pages.spec.ts` |
 | EN/FR key parity test | Yes | `src/i18n/parity.test.ts` (keys, interpolation vars, no empty or untranslated strings) |
 
 ## Not done / not measured (stated plainly)
-- **Not run against the real API** (services/api not started in this worktree). Platform contract and integration tests should cover this after merge.
-- **Lighthouse/LCP not measured.** Only bundle sizes are measured. I'm not claiming LCP < 2.5 s.
+- Real-API e2e used a local API with the fixture graph, memory store and no risk provider. Not tested against Postgres/PostGIS or a real risk layer.
+- **LCP < 2.5 s not met** in local Lighthouse mobile runs (see Update 2). CLS and a11y targets met there. No field data.
 - **No manual screen-reader or visual QA, no screenshots.** Axe passing ≠ WCAG conformance; I'm not claiming compliance.
 - 3D frame rate (60 fps target) not measured on real hardware; e2e uses SwiftShader.
 - Optional "sidewalk condition explainer" 3D scene not built.

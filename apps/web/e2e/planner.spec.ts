@@ -1,4 +1,4 @@
-import { test, expect, IN_A, IN_B, OUTSIDE, setPoint, openSheetIfMobile } from './fixtures';
+import { test, expect, IN_A, IN_B, OUTSIDE, OFF_NET, setPoint, openSheetIfMobile } from './fixtures';
 
 const COPY = {
   en: { title: 'Plan a winter walk', results: 'Route comparison', sim: 'SIMULATED', demo: 'Demo data', winter: 'Winter-aware' },
@@ -58,6 +58,18 @@ test('outside coverage shows helpful 422 copy', async ({ page }) => {
   const err = page.getByTestId('route-error');
   await expect(err).toHaveAttribute('data-code', 'OUTSIDE_COVERAGE');
   await expect(err).toContainText('Outside the pilot area');
+});
+
+test('point off the mapped network → 422 OFF_NETWORK copy names the point', async ({ page }) => {
+  await page.goto('/fr/plan');
+  await openSheetIfMobile(page);
+  await setPoint(page, 'origin', IN_A);
+  await setPoint(page, 'destination', OFF_NET);
+  await page.getByTestId('compare').click();
+  const err = page.getByTestId('route-error');
+  await expect(err).toHaveAttribute('data-code', 'OFF_NETWORK');
+  await expect(err).toContainText('Trop loin du réseau piétonnier');
+  await expect(err).toContainText('Votre arrivée est dans la zone pilote');
 });
 
 test('step-free profile in demo → 404 NO_ROUTE copy', async ({ page }) => {

@@ -14,6 +14,7 @@ export class ApiRequestError extends Error {
   readonly code: ErrorCode | 'NETWORK' | 'UNKNOWN';
   readonly retryAfterS: number | null;
   readonly requestId: string | null;
+  readonly details: Record<string, unknown>;
 
   constructor(status: number, body: Partial<ApiErrorBody> | undefined, retryAfter: string | null) {
     super(body?.message ?? `HTTP ${status}`);
@@ -23,6 +24,7 @@ export class ApiRequestError extends Error {
     const n = retryAfter ? Number.parseInt(retryAfter, 10) : Number.NaN;
     this.retryAfterS = Number.isFinite(n) ? n : null;
     this.requestId = body?.request_id ?? null;
+    this.details = (body?.details as Record<string, unknown> | undefined) ?? {};
   }
 }
 

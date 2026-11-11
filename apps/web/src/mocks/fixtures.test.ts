@@ -5,13 +5,15 @@ import { contractValidator } from '@/test/openapi';
 import { handlers, resetMockState } from './handlers';
 import * as fx from './fixtures';
 import { mockCompare } from './routes';
+import { nearestLineM, pointSegmentM } from './geo-mock';
 import { pilotMiniSegments, PILOT_MINI } from './pilotMini';
 
 const v = contractValidator();
 const server = setupServer(...handlers);
 const BASE = 'http://localhost/api/v1';
 const IN_A = { lon: -73.5772, lat: 45.5048 };
-const IN_B = { lon: -73.5698, lat: 45.5017 };
+const IN_B = { lon: -73.5745, lat: 45.504 };
+const OFF_NET = { lon: -73.5698, lat: 45.5017 }; // inside pilot bbox, outside pilot_mini network
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterAll(() => server.close());
@@ -70,6 +72,20 @@ describe('mock payloads validate against docs/contracts/openapi.yaml', () => {
     expect(v('Error', body)).toEqual([]);
   });
 
+  it('POST /routes/compare far from the real network → 422 OFF_NETWORK with snap details (v1.3)', async () => {
+    const { status, body } = await post('/routes/compare', { origin: IN_A, destination: OFF_NET, locale: 'fr' });
+    expect(status).toBe(422);
+    expect(v('Error', body)).toEqual([]);
+    expect(body.code).toBe('OFF_NETWORK');
+    expect(body.details).toMatchObject({ which: 'destination', max_snap_distance_m: 75 });
+    expect(body.details.nearest_network_m).toBeGreaterThan(75);
+  });
+
+  it('test points actually snap to the real pilot_mini network (≤ 75 m)', () => {
+    const lines = pilotMiniSegments().map((f) => f.geometry.coordinates as [number, number][]);
+    for (const p of [IN_A, IN_B]) expect(nearestLineM([p.lon, p.lat], lines)).toBeLessThanOrEqual(75);
+  });
+
   it('POST /routes/compare step_free → 404 NO_ROUTE (no edge verified step-free in demo)', async () => {
     const { status, body } = await post('/routes/compare', { origin: IN_A, destination: IN_B, profile: 'step_free' });
     expect(status).toBe(404);
@@ -117,6 +133,13 @@ describe('mock payloads validate against docs/contracts/openapi.yaml', () => {
     expect(ok.status).toBe(201);
     const bad = await post('/pilot-requests', { organization: 'Org', contact_email: 'a@example.org', segment: 'university', consent: false });
     expect(bad.status).toBe(422);
+  });
+});
+
+describe('mock geometry helper', () => {
+  it('point-to-segment distance ≈ haversine scale (100 m north of a segment)', () => {
+    const d = pointSegmentM([-73.575, 45.505 + 100 / 110_540], [-73.576, 45.505], [-73.574, 45.505]);
+    expect(d).toBeCloseTo(100, 0);
   });
 });
 

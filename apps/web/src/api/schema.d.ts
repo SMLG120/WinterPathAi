@@ -238,7 +238,7 @@ export interface components {
     schemas: {
         Error: {
             /** @enum {string} */
-            code: "VALIDATION_ERROR" | "OUTSIDE_COVERAGE" | "BBOX_TOO_LARGE" | "NO_ROUTE" | "NOT_FOUND" | "UNAUTHORIZED" | "RATE_LIMITED" | "UPSTREAM_UNAVAILABLE" | "INTERNAL";
+            code: "VALIDATION_ERROR" | "OUTSIDE_COVERAGE" | "OFF_NETWORK" | "BBOX_TOO_LARGE" | "NO_ROUTE" | "NOT_FOUND" | "UNAUTHORIZED" | "RATE_LIMITED" | "UPSTREAM_UNAVAILABLE" | "INTERNAL";
             message: string;
             details?: {
                 [key: string]: unknown;
@@ -605,7 +605,7 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Valid syntax but rejected (OUTSIDE_COVERAGE, BBOX_TOO_LARGE, VALIDATION_ERROR). */
+        /** @description Valid syntax but rejected: OUTSIDE_COVERAGE (point outside pilot bbox), OFF_NETWORK (v1.3: inside bbox but > 75 m from the routable network; details.which and details.max_snap_distance_m), BBOX_TOO_LARGE, VALIDATION_ERROR. */
         Unprocessable: {
             headers: {
                 [name: string]: unknown;
@@ -726,6 +726,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataSource"][];
                 };
             };
+            503: components["responses"]["Unavailable"];
         };
     };
     getCurrentWeather: {
@@ -769,6 +770,8 @@ export interface operations {
                     "application/json": components["schemas"]["WeatherForecast"];
                 };
             };
+            400: components["responses"]["BadRequest"];
+            422: components["responses"]["Unprocessable"];
             503: components["responses"]["Unavailable"];
         };
     };
@@ -801,6 +804,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             422: components["responses"]["Unprocessable"];
+            503: components["responses"]["Unavailable"];
         };
     };
     listSegments: {
@@ -831,6 +835,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             422: components["responses"]["Unprocessable"];
+            503: components["responses"]["Unavailable"];
         };
     };
     getModelStatus: {
@@ -901,6 +906,7 @@ export interface operations {
             };
             422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
+            503: components["responses"]["Unavailable"];
         };
     };
     createReport: {
@@ -950,7 +956,10 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
         };
     };
     listReportsForModeration: {
@@ -978,7 +987,9 @@ export interface operations {
                     };
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     moderateReport: {
@@ -1009,8 +1020,10 @@ export interface operations {
                     "application/json": components["schemas"]["ReportAdminView"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     createPilotRequest: {
@@ -1033,6 +1046,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["BadRequest"];
             422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };

@@ -96,6 +96,11 @@
     "generic": {
       "title": "Impossible de calculer les trajets",
       "body": "Le service d'itinéraires n'a pas répondu comme prévu."
+    },
+    "OFF_NETWORK": {
+      "title": "Trop loin du réseau piétonnier",
+      "body": "Votre {{point}} est dans la zone pilote, mais à plus de {{max}} m de tout chemin piétonnier cartographié ; il ne peut donc pas être relié à un trajet. Rapprochez-le d'un trottoir ou d'un sentier.",
+      "nearest": "Chemin cartographié le plus proche : environ {{nearest}} m."
     }
   },
   "overlays": {

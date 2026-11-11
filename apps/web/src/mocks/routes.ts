@@ -6,7 +6,11 @@
 import type { ApiError, Route, RouteCompareRequest, RouteCompareResponse } from '@/api/types';
 import { isInPilot } from '@/lib/geo';
 import { DEMO_SOURCE_ID } from './fixtures';
-import { lineLength, type Pos } from './geo-mock';
+import { lineLength, nearestLineM, type Pos } from './geo-mock';
+import { pilotMiniSegments } from './pilotMini';
+
+/** Same snap threshold as the routing API (contract v1.3 OFF_NETWORK). */
+export const MAX_SNAP_M = 75;
 
 export type MockResult = { status: 200; body: RouteCompareResponse } | { status: 404 | 422; body: ApiError };
 
@@ -21,6 +25,7 @@ const T = {
     turn: 'Turn at the corner',
     noRoute: 'Demo mode cannot compute step-free routes (that needs the real routing API). In the pilot_mini OSM fixture only 2 of 200 edges are verified step-free.',
     outside: 'Origin or destination is outside the pilot coverage area.',
+    offNetwork: (w: string) => `The ${w} is more than ${MAX_SNAP_M} m from the routable network (pilot_mini fixture).`,
   },
   fr: {
     sim: 'Explication de démonstration simulée — aucune condition réelle évaluée.',
@@ -32,6 +37,7 @@ const T = {
     turn: 'Tournez au coin',
     noRoute: 'Le mode démo ne peut pas calculer de trajets sans marche (il faut l’API d’itinéraires réelle). Dans le jeu OSM pilot_mini, seuls 2 tronçons sur 200 sont vérifiés sans marche.',
     outside: 'Le départ ou l’arrivée est hors de la zone pilote.',
+    offNetwork: (w: string) => `Le point ${w === 'origin' ? 'de départ' : 'd’arrivée'} est à plus de ${MAX_SNAP_M} m du réseau (jeu pilot_mini).`,
   },
 };
 
@@ -82,6 +88,22 @@ export function mockCompare(req: RouteCompareRequest, now = new Date()): MockRes
   const t = T[locale];
   if (!isInPilot(req.origin) || !isInPilot(req.destination)) {
     return { status: 422, body: { code: 'OUTSIDE_COVERAGE', message: t.outside, request_id: 'mock' } };
+  }
+  const lines = pilotMiniSegments().map((f) => f.geometry.coordinates as Pos[]);
+  for (const which of ['origin', 'destination'] as const) {
+    const p = req[which];
+    const nearest = nearestLineM([p.lon, p.lat], lines);
+    if (nearest > MAX_SNAP_M) {
+      return {
+        status: 422,
+        body: {
+          code: 'OFF_NETWORK',
+          message: t.offNetwork(which),
+          details: { which, max_snap_distance_m: MAX_SNAP_M, nearest_network_m: Math.round(nearest * 10) / 10 },
+          request_id: 'mock',
+        },
+      };
+    }
   }
   if (req.profile === 'step_free') {
     return { status: 404, body: { code: 'NO_ROUTE', message: t.noRoute, request_id: 'mock' } };

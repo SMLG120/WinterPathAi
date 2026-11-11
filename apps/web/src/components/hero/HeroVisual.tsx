@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { HeroPoster } from './HeroPoster';
 import { cn } from '@/lib/utils';
 import { canUseWebGL } from '@/lib/webgl';
+import { afterLoadAndIdle } from '@/lib/afterLoad';
 
 const Scene3D = lazy(() => import('./Scene3D'));
 
@@ -26,14 +27,8 @@ export function HeroVisual({ className }: { className?: string }) {
 
   useEffect(() => {
     if (prefersReducedMotion() || saveData() || !canUseWebGL()) return;
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
-    const start = () => setLoad3d(true);
-    if (w.requestIdleCallback) {
-      const id = w.requestIdleCallback(start, { timeout: 2500 });
-      return () => (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id);
-    }
-    const id = window.setTimeout(start, 1200);
-    return () => window.clearTimeout(id);
+    // Keep the 3D chunk (~220 KB gz, heavy parse) out of the LCP window: poster first.
+    return afterLoadAndIdle(() => setLoad3d(true), 2000);
   }, []);
 
   return (

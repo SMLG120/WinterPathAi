@@ -5,7 +5,9 @@ export const test = base;
 export { expect };
 
 export const IN_A = { lat: '45.5048', lon: '-73.5772' };
-export const IN_B = { lat: '45.5017', lon: '-73.5698' };
+export const IN_B = { lat: '45.5040', lon: '-73.5745' };
+/** Inside the pilot bbox but > 75 m from the pilot_mini network → 422 OFF_NETWORK. */
+export const OFF_NET = { lat: '45.5017', lon: '-73.5698' };
 export const OUTSIDE = { lat: '45.5300', lon: '-73.6200' };
 
 export async function setPoint(page: Page, which: 'origin' | 'destination', p: { lat: string; lon: string }) {

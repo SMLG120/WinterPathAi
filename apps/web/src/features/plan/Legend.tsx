@@ -13,7 +13,7 @@ export function Legend() {
       <summary className="cursor-pointer font-semibold">{t('legend.title')}</summary>
       <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
         <div>
-          <h4 className="mb-1 font-medium">{t('legend.routeTitle')}</h4>
+          <h3 className="mb-1 text-sm font-medium">{t('legend.routeTitle')}</h3>
           <ul className="space-y-1">
             {(['winter_aware', 'shortest'] as const).map((v) => (
               <li key={v} className="flex items-center gap-2">
@@ -26,7 +26,7 @@ export function Legend() {
           </ul>
         </div>
         <div>
-          <h4 className="mb-1 font-medium">{t('legend.riskTitle')}</h4>
+          <h3 className="mb-1 text-sm font-medium">{t('legend.riskTitle')}</h3>
           <ul className="space-y-1">
             {LEVELS.map((l) => (
               <li key={l} className="flex items-center gap-2">
@@ -39,7 +39,7 @@ export function Legend() {
           </ul>
         </div>
         <div>
-          <h4 className="mb-1 font-medium">{t('legend.hazardTitle')}</h4>
+          <h3 className="mb-1 text-sm font-medium">{t('legend.hazardTitle')}</h3>
           <ul className="space-y-1">
             {KINDS.map((k) => (
               <li key={k} className="flex items-center gap-2">

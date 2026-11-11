@@ -16,3 +16,17 @@ Env (all public, `VITE_*`): `VITE_USE_MOCKS`, `VITE_API_BASE_URL`, `VITE_MAP_STY
 (default OpenFreeMap positron). Switching mocks ↔ real API is env-only.
 
 Routes: `/en|fr/` · `/plan` · `/winter` · `/reports` · `/how-it-works` · `/pilot` · `/admin` (unlinked, noindex).
+
+## Real-API e2e
+Runs the production (non-mock) build against a live API. From the repo root, start the API on the
+frontend's assigned port (fixture graph = real `data/fixtures/pilot_mini`, in-memory stores):
+
+```bash
+API_CORS_ORIGINS=http://localhost:5174 \
+API_ADMIN_TOKEN_HASH=$(printf '<local test token>' | shasum -a 256 | cut -d' ' -f1) \
+ROUTING_GRAPH_SOURCE=fixture API_STORE_BACKEND=memory RISK_PROVIDER=none \
+uv run --project services/api uvicorn winterpath_api.main:app --host 127.0.0.1 --port 8104
+```
+
+then `cd apps/web && E2E_ADMIN_TOKEN='<local test token>' npm run e2e:real`
+(`E2E_API_BASE_URL` overrides the default `http://localhost:8104/api/v1`).

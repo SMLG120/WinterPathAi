@@ -94,6 +94,11 @@
     "generic": {
       "title": "Couldn't compute routes",
       "body": "The routing service didn't respond as expected."
+    },
+    "OFF_NETWORK": {
+      "title": "Too far from the walking network",
+      "body": "Your {{point}} is inside the pilot area but more than {{max}} m from any mapped walkway, so it can't be connected to a route. Move it closer to a sidewalk or path.",
+      "nearest": "Nearest mapped walkway: about {{nearest}} m away."
     }
   },
   "overlays": {

@@ -21,6 +21,7 @@ import { USE_MOCKS } from '@/lib/env';
 import { useLang } from '@/lib/i18n-routing';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { cn } from '@/lib/utils';
+import { afterPaint } from '@/lib/afterLoad';
 import { usePlannerStore } from '@/stores/planner';
 import type { RouteProfile } from '@/api/types';
 
@@ -42,6 +43,10 @@ export default function Plan() {
   const [showSegments, setShowSegments] = useState(true);
   const [showHazards, setShowHazards] = useState(true);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
+  // Mount the map (≈290 KB gz MapLibre chunk) only after the panel has painted, so the
+  // usable, text-first planner reaches LCP before the map parse starts.
+  const [mountMap, setMountMap] = useState(false);
+  useEffect(() => afterPaint(() => setMountMap(true)), []);
 
   const overlay = useOverlayBbox();
   const segments = useSegments(showSegments ? overlay.bbox : null);
@@ -225,6 +230,7 @@ export default function Plan() {
         ) : (
           <ErrorBoundary fallback={<Alert variant="warning" className="m-4 max-w-md bg-card">{t('map.fallback')}</Alert>}>
             <Suspense fallback={<Skeleton className="absolute inset-0 rounded-none" />}>
+              {mountMap ? (
               <PlannerMap
                 origin={s.origin}
                 destination={s.destination}
@@ -239,6 +245,9 @@ export default function Plan() {
                 onViewport={overlay.setViewport}
                 onStatus={setMapStatus}
               />
+              ) : (
+                <Skeleton className="absolute inset-0 rounded-none" />
+              )}
             </Suspense>
           </ErrorBoundary>
         )}
