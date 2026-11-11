@@ -1,7 +1,7 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 1–2 work was MERGED into `integration/winterpath` at `517a493`; this update adds the ECCC WeatherAdapter (cycle 3).
-- **Branch / SHA:** `agent/routing` @ `d179845` (code; fast-forwarded to `517a493`, then the weather commit). This report is committed on top.
+- **Status:** READY FOR REVIEW. Cycle 4 adopts contract **v1.3.0** and wires the ML risk layer. Earlier cycles were merged into `integration/winterpath` at `517a493` (cycles 1–2), and cycle 3 (weather) at `d179845`.
+- **Branch / SHA:** `agent/routing` @ `4c2386d` (code). `integration/winterpath` was merged in first (`3725295`, including v1.3.0 `51f808c` and agent/ml `fa8b4ea`). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -17,11 +17,46 @@ services/api/       winterpath_api — FastAPI
   src/…/main.py, schemas.py, routers/{system,map,routing,reports}.py,
   repositories/{reports,hazards,sources}.py (in-memory + PostGIS), adapters.py (risk/weather),
   compute.py (pre-warmed route pool), errors.py, logs.py, params.py, security.py, settings.py, state.py
-  tests/  test_api_{contract,adapters,pilot_mini,postgis}.py, api_testlib.py
+  weather.py (ECCC observations, cycle 3)
+  tests/  test_api_{contract,adapters,pilot_mini,postgis,weather,ml_risk}.py, api_testlib.py
+  pyproject.toml / uv.lock: path dependency on ../ml (winterpath-ml), cycle 4
 docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
+### 0. Cycle 4 run (contract v1.3.0 + ML risk) — current
+`uptime` at start: `load averages: 27.01 18.65 11.32`. The ML artifacts (`models/artifacts/v2-8d19aa86/`, git-ignored) were copied from the ML worktree so the real-provider tests run; without them those 3 tests skip with a reason.
+```text
+$ set -a; source .env.local; set +a; uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider -s   # filtered to latency + summary
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=3.1 ms p95=7.2 ms max=26.2 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=22.0 ms p95=63.1 ms max=130.8 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=0.7 ms p95=1.3 ms max=1.7 ms (rejected >75 m from network: 48)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=2.6 ms p95=5.9 ms max=9.7 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=3.1 ms p95=7.0 ms max=10.5 ms
+======================= 281 passed, 1 warning in 13.03s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0}
+```
+(The `risk_provider_failed` warnings in the unfiltered output come from tests that deliberately use a failing provider.)
+
+Live uvicorn :8102 with `RISK_PROVIDER=winterpath_ml.inference:load_provider` (fixture graph = real pilot_mini), then stopped:
+```text
+GET /models/status → {'risk_layer': 'heuristic', 'enabled': False, 'model_id': 'winter311-hgb-v1'}
+  limitations[0]: "The ML model did not pass its pre-registered evaluation gate; the map shows a labelled heuristic and no probab…"
+POST /routes/compare (2026-01-14T15:00Z) → risk_layer heuristic, unknown_share [0.0, 0.0]
+  warnings: ['Risk levels are a heuristic (historical winter 311 report frequency × observed weather): not probabilities and not sidewalk conditions.']
+POST /routes/compare, destination >75 m off network → OFF_NETWORK {'which': 'destination', 'max_snap_distance_m': 75.0, 'nearest_network_m': None}
+GET /map/segments (pilot_mini bbox, today) → Counter({('low', None, 'model_estimate'): 188, ('moderate', None, 'model_estimate'): 12})
+```
+
 Environment: Apple M4 (10 cores, 16 GB), macOS (Darwin 25.6.0), Python 3.12.13, uv 0.10.7. FastAPI 0.162.4, Starlette 1.10.0, Pydantic 2.14.3. PostGIS in the shared Docker container (:55432), DB `wp_routing`. **Shared machine: `uptime` load averages 32.41 / 37.81 / 39.25 during the final runs** (other agent sessions), so latency figures are noisy upper bounds.
 
 ### 1. Full routing + API suites, PostGIS enabled (`DATABASE_URL` → `wp_routing`) — cycle 3 run
@@ -85,13 +120,49 @@ Size proxies (SYNTHETIC grids over PILOT_BBOX, final run): 2 400 edges p50 9.1 /
 | Dijkstra = A* cost | Yes | synthetic (5 seeds × 15 pairs, random risk + hazards) and real pilot_mini (≥ 100 random pairs) |
 | Prohibited edges never used; closures excluded, not penalised | Yes | `test_prohibited_edges_never_used_random_pairs`, `test_confirmed_blocking_closure_is_excluded_not_penalised`, `test_confirmed_closure_excluded_end_to_end` |
 | Step-free hard; no route → 404 `NO_ROUTE`, no fallback | Yes | synthetic tests + `test_step_free_on_real_data_never_relaxed` (only 2 directed edges in pilot_mini are tagged step-free; requests fail or use only those) |
-| `/routes/compare` schema-valid vs openapi.yaml; 422 outside coverage; 400/422 on bad input | Yes | `test_api_contract.py`, `test_api_pilot_mini.py` (3 profiles × 2 locales on real graph); Platform harness 54 passed |
+| `/routes/compare` schema-valid vs openapi.yaml; 422 `OUTSIDE_COVERAGE` / `OFF_NETWORK`; 400/422 on bad input | Yes | `test_api_contract.py`, `test_api_pilot_mini.py` (3 profiles × 2 locales on real graph); Platform harness 54 passed |
 | No fabricated weather/risk; unknown flows through | Yes | weather: observations served unaltered, 503 when stale/absent, forecast always 503 (`test_api_weather.py`); risk: `unknown_share == 1.0`, `RISK_LAYER_UNAVAILABLE`, segments `unknown`, malformed or failing provider → unknown |
 | Weather endpoints call an ECCC adapter interface | Yes | `ObservationWeatherAdapter` over `WeatherStore` (fake + PostGIS); PostGIS end-to-end test passes |
 | `PostgisGraphProvider` against data-model | Yes | `test_postgis_graph_provider_integration`: real pilot_mini loaded into `wp_routing`, read back identical to `FixtureGraphProvider` (ids, lengths, kinds, access, step_free) |
 | `/reports` + moderation + deletion, in-memory + PostGIS | Yes | in-memory lifecycle/expiry/purge tests; `test_api_postgis.py` runs the full lifecycle, hazards, sources and pilot requests on PostGIS |
 | Latency p50/p95, 100 pilot OD pairs | Yes (pilot_mini) | table above; full pilot graph pending |
-| `pytest services/routing services/api` green; ruff clean | Yes | 257 passed, 0 skipped; ruff output above |
+| `pytest services/routing services/api` green; ruff clean | Yes | 281 passed, 0 skipped (cycle 4); ruff output above |
+
+## Cycle 4 — contract v1.3.0 and ML risk layer
+| Item | Done | Where / evidence |
+|---|---|---|
+| 422 `OFF_NETWORK` when a point is inside the bbox but > 75 m from the network (`details.which`, `max_snap_distance_m`, plus `nearest_network_m`) | Yes | `routers/routing.py`; `test_api_contract.py`, `test_api_pilot_mini.py`. Outside the bbox is still `OUTSIDE_COVERAGE`. |
+| 503 `UPSTREAM_UNAVAILABLE` on `/routes/compare`, `/map/segments`, `/hazards`, `/data-sources` | Already implemented; now validated against the v1.3 declarations | `test_api_contract.py` (graph/store down) |
+| `CONTRACT_VERSION` | `1.3.0` | `winterpath_api/__init__.py` |
+| `wp.edge.name` | Read when the column exists (same presence check as the v1.2 columns) | `providers.py` `OPTIONAL_EDGE_COLS`. Not exercised against PostGIS: no migration creates the column yet. |
+| `wp.community_report.terminal_at` | **Not adopted yet** | No migration creates it, so I can't test it. Purge still uses `COALESCE(moderated_at, expires_at)`; I'll switch it once the column is migrated. In-memory repo already tracks `terminal_at`. |
+| Canonical source ids | Already in use | `/data-sources` registry |
+| ML risk: `RISK_PROVIDER=winterpath_ml.inference:load_provider` | Yes | see below |
+
+**ML wiring.** `winterpath_ml.inference.RiskProvider.edge_risk` takes edge **coordinates** (`[lon, lat]` polyline) and a time, not edge ids. `adapters.CoordinateRiskAdapter` therefore:
+- looks each edge's geometry up in the loaded routing graph (`build_state` passes the lookup);
+- takes `risk_layer` from `status()["risk_layer"]`. The registry's active layer is `heuristic`, and `/models/status` is the ML package's `model_status()`, validated against the contract;
+- normalises each estimate. A provider exception, missing geometry or a malformed value becomes `unknown`, and unknown keeps the +3 s/100 m penalty (`test_unknown_keeps_unknown_penalty_in_routing`);
+- caches per (edge id, Montréal local day), because the ML layers are daily score tables;
+- without a graph returns `NullRiskProvider`, since there is no geometry to look up.
+
+The heuristic layer gives `probability: null` and evidence `model_estimate` with `source_ids ["mtl-311", "eccc-geomet"]`. Out of season (May–Oct) or outside coverage everything is `unknown`. Real pilot_mini, 200 edges:
+
+| Day | Result (level × count) |
+|---|---|
+| 2026-11-10 | low 188, moderate 12 |
+| 2026-01-14 | moderate 140, elevated 48, high 12 |
+| 2026-07-01 | unknown 200 |
+
+Every estimate had probability None.
+
+**Honesty addition:** when `risk_layer == "heuristic"` the route response carries a localized warning (EN/FR) saying the levels are a heuristic of 311 reporting × observed weather, not probabilities and not sidewalk conditions. CR-9's explanation evidence states and CR-4's 404 on a wrong deletion token are **unchanged**, pending the decision.
+
+Tests (`services/api/tests/test_api_ml_risk.py`, 7):
+- 4 use a fake coordinate provider labelled TEST FIXTURE: normalisation and caching; failure → unknown; unknown keeps the penalty; loader without a graph → Null.
+- 3 use the real ML package and registry artifacts: in season through the API with schema validation and `/models/status`; probability null with `model_estimate`; out of season → `unknown_share` 1.0. They **skip with a reason when the git-ignored artifacts are absent**, so a fresh checkout shows 3 skips until `models/artifacts/v2-8d19aa86/` is present.
+
+FYI for ML: `model_status()` reports `model_id: "winter311-hgb-v1"` (the gated-off model) while the active layer is the heuristic `winter311-heuristic-v1`. The API passes it through unchanged. Consider reporting the active layer's id, or say which you intend.
 
 ## Cycle 3 — ECCC WeatherAdapter (`services/api/src/winterpath_api/weather.py`)
 Reads `wp.weather_obs` (migration 0001) and, when the table exists, `wp.weather_daily` (data-model v1.2; **no migration creates it yet**, so it is detected with `to_regclass` and treated as absent).
@@ -144,14 +215,15 @@ Not done or not verifiable here:
 |---|---|---|
 | Full pilot graph (whole PILOT_BBOX) not built | Real-data latency known only for 200 edges; synthetic 14k-edge proxy given | Data agent; rerun `test_routing_latency` pattern on it (routing) |
 | Migration `0001` lacks v1.2 columns (`wp.edge.crossing_type/crossing_kerb/highway/osm_snapshot`, `wp.closure.attrs/backsidewalk_blocks_passage`, `wp.weather_daily`) | From PostGIS, crossing type/kerb come only from node tags until the v1.2 migration lands (handled; selected automatically once present) | Data agent: migration 0002 |
-| ML `RiskProvider` not landed | Only the `none` layer is exercised end-to-end | ML; then set `RISK_PROVIDER=winterpath_ml.inference:<factory>` |
+| ML artifacts are git-ignored | Real-ML tests skip in a checkout without `models/artifacts/<run_id>/`; the API falls back to `NullRiskProvider` (all unknown) | Coordinator: decide how artifacts reach the integration worktree |
+| Migrations for v1.2/v1.3 columns (`wp.edge.name`, `wp.community_report.terminal_at`, `wp.weather_daily`, …) | Code reads them when present; untested against PostGIS | Data agent: migration 0002 |
 | No forecast source ingested | `/weather/forecast` is always 503 (by design) | Decision (coordinator/user): ingest ECCC `citypageweather-realtime` into a table, or approve a live adapter |
 | No near-real-time weather ingest confirmed | `/weather/current` answers 503 (stale) unless `weather_obs` has a row newer than 180 min | Data agent: schedule a `swob-realtime` ingest (scheduled jobs need approval) |
 | Report `purge()` not scheduled | Expiry is enforced on read; 30-day hard delete only when `purge()` is called | Platform/coordinator (scheduled jobs need approval) |
 
 ## Dependencies on other agents
 - **Data:** fixture layout as delivered (`edges/nodes.geojson`, `metadata.json` with explicit `simulated`, `manifest.json`). `wp.source` ids are canonical.
-- **ML:** `edge_risk(edge_ids, at)`, plus optional `risk_layer` attribute and `model_status()` dict.
+- **ML:** `winterpath_ml.inference.load_provider()` → `edge_risk(coords, valid_from)`, `cell_risk`, `status()` (coordinate-keyed; adapted). Id-keyed providers (`edge_risk(edge_ids, at)`) are still accepted.
 - **Platform:** harness passes against this API.
 - **Frontend:** both routes are always returned; `explanation[].evidence_state` drives badges; `warnings` are localized.
 
@@ -162,12 +234,11 @@ Not done or not verifiable here:
 - `/data-sources` licence and attribution text is transcribed from `docs/data-sources-and-licenses.md`. Licence URLs for CC BY 4.0, ODbL 1.0 and the ECCC licence page come from my own knowledge, not re-fetched — please verify.
 - Integration tests write to `wp_routing` (my own DB) only and clean up after themselves.
 
-## Change requests (contracts) — still open (pending coordinator/user decision; not implemented)
-1. `.env.example`: add `ROUTING_GRAPH_SOURCE`, `ROUTING_FIXTURE_DIR`, `API_STORE_BACKEND`, `RISK_PROVIDER`, `ROUTING_WORKERS`, and (cycle 3) `WEATHER_SOURCE`, `WEATHER_MAX_AGE_MINUTES`, `WEATHER_STATION_IDS`. `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
-2. openapi.yaml (additive): declare `503 Unavailable` on `/routes/compare`, `/map/segments`, `/hazards`, `/data-sources`. These return `503 UPSTREAM_UNAVAILABLE` when the graph or a store is down.
-3. openapi.yaml (clarify): a point > 75 m from the routable network returns `422 OUTSIDE_COVERAGE` with `details.which`/`max_snap_distance_m`. Consider a distinct code (e.g. `OFF_NETWORK`).
-4. data-model (additive): `wp.edge.name text null`. pilot_mini also has no `name`, so `steps[].street_name` is always null on real data and instructions carry no street names.
-5. data-model (additive): `wp.community_report.terminal_at timestamptz`. Hard delete currently approximates with `COALESCE(moderated_at, expires_at)`.
+## Change requests (contracts)
+Resolved by v1.3.0 and adopted in cycle 4: 503 declarations (old #2), `OFF_NETWORK` (old #3), `wp.edge.name` (old #4; read when migrated), `wp.community_report.terminal_at` (old #5; awaiting migration), and `.env.example` routing names (old #1, partly).
+
+Still open (pending coordinator/user decision; not implemented):
+1. `.env.example`: still missing `WEATHER_SOURCE`, `WEATHER_MAX_AGE_MINUTES`, `WEATHER_STATION_IDS`. Also: `RISK_PROVIDER=winterpath_ml.inference:load_provider` enables the ML layer, and `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
 6. data-model (clarify): `wp.closure.status` vocabulary (closures are currently filtered by validity window only).
 7. Confirm the evidence states chosen for explanation codes, and that both routes are returned when they are identical.
 8. **Platform (FYI, not a contract change):** `tests/integration/log_scan.py` flags fractional seconds of microsecond ISO timestamps (e.g. `…:40.010135Z`) as latitudes. I avoided this by logging milliseconds, but other services may trip it.
@@ -176,7 +247,7 @@ Not done or not verifiable here:
 (Withdrawn: the source-id CR is resolved by the Data agent's canonical ids. The `DELETE /reports` 404/422 question is resolved by v1.1.0.)
 
 ## Review readiness
-READY FOR REVIEW. The worktree is clean after this commit. Coordinator re-run:
+READY FOR REVIEW. The worktree is clean after this commit. Coordinator re-run (copy `models/artifacts/v2-8d19aa86/` from the ML worktree first, or expect 3 reasoned skips):
 ```bash
 cd ../winterpath-routing
 set -a; source .env.local; set +a          # DATABASE_URL → wp_routing (schema: alembic -c db/alembic.ini upgrade head)
