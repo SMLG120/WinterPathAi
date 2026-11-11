@@ -1,7 +1,10 @@
 import { lazy } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
+import { LazyMotion, MotionConfig } from 'motion/react';
+// Section fade-ins are progressive enhancement: animation features arrive in their own
+// chunk (Motion's async LazyMotion pattern); see lib/motionReady.ts.
+import { loadMotionFeatures } from '@/lib/motionReady';
 import { Layout } from '@/components/layout/Layout';
 import { detectLang } from '@/i18n';
 import { isApiError } from '@/api/client';
@@ -48,7 +51,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
-        <LazyMotion features={domAnimation} strict>
+        <LazyMotion features={loadMotionFeatures} strict>
           <RouterProvider router={router} />
         </LazyMotion>
       </MotionConfig>

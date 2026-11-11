@@ -176,7 +176,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** @description Reporter deletes own report with the deletion token from the receipt. */
+        /** @description Reporter deletes own report with the deletion token from the receipt. v1.5 (CR-ROUTING-4): a wrong, missing or malformed token, or an unknown/non-UUID id, returns 404 NOT_FOUND so the response never reveals whether a report exists. 400/422/429 remain declared for transport-level errors and rate limiting. */
         delete: operations["deleteOwnReport"];
         options?: never;
         head?: never;
@@ -489,6 +489,7 @@ export interface components {
             unknown_share: number;
             hazards_avoided?: string[];
             hazards_on_route?: string[];
+            /** @description v1.5 (CR-ROUTING-9) evidence mapping: SHORTEST_DISTANCE, WINTER_AWARE_COST, IDENTICAL_TO_SHORTEST, RISK_LAYER_UNAVAILABLE → unknown; STEP_FREE_TAGGED_ONLY, INCLUDES_STEPS → unverified_report (community-mapped OSM tags); closures/confirmed disruptions → confirmed; 311/community reports → unverified_report; LOWER_MODELED_RISK → model_estimate; SIMULATED_DATA → simulated. */
             explanation: {
                 /** @example AVOIDS_CONFIRMED_CLOSURE */
                 code: string;
