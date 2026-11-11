@@ -13,6 +13,7 @@ import csv
 import json
 import os
 from collections.abc import Iterable
+from datetime import date
 from pathlib import Path
 
 import psycopg
@@ -107,6 +108,11 @@ def _stage_and_merge(
     return n
 
 
+def _record_count(counts: dict) -> int:
+    """Rows written; keys starting with `_` are diagnostics (e.g. rows skipped by a bound)."""
+    return sum(v for k, v in counts.items() if not k.startswith("_"))
+
+
 def _run_log(manifest: dict, counts: dict) -> dict:
     """ingest_run.log: counts plus the source's provenance (URL, file date, checksums) when the
     pipeline recorded it — e.g. Geofabrik for OSM (contract v1.5.0)."""
@@ -134,7 +140,7 @@ def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict
                 cur.execute(
                     "UPDATE wp.ingest_run SET status='succeeded', finished_at=now(), "
                     "record_count=%s, log=%s WHERE ingest_run_id=%s",
-                    (sum(counts.values()), Jsonb(_run_log(manifest, counts)), run_id),
+                    (_record_count(counts), Jsonb(_run_log(manifest, counts)), run_id),
                 )
                 cur.execute(
                     "UPDATE wp.source SET last_success_at=now(), status='active' "
@@ -456,9 +462,16 @@ def _r311(settings: Settings):
     return "mtl-311", m, fn
 
 
-def _weather(settings: Settings):
+def _weather(settings: Settings, since: date | None = None):
+    """`since` bounds wp.weather_obs (hourly) to observed_at >= `since` 00:00 America/Montreal:
+    older staged rows are not inserted AND older rows already in the table are deleted, so a
+    hosted DB stays bounded. weather_daily (small, used for ML features) is not bounded. The
+    cutoff is part of the load checksum, so a bounded and an unbounded load never no-op each
+    other."""
     d = settings.processed_dir / "weather_obs"
     m = read_manifest(d)
+    if m is not None and since is not None:
+        m = {**m, "input_checksum": f"{m['input_checksum']}|weather_since={since.isoformat()}"}
 
     def fn(cur, run_id):
         cols = [
@@ -490,13 +503,24 @@ def _weather(settings: Settings):
                 cp.write_row(r)
                 n += 1
         upd = ", ".join(f"{c}=EXCLUDED.{c}" for c in cols[2:])
+        counts = {"weather_obs": n}
+        cutoff = "(%(since)s::date)::timestamp AT TIME ZONE 'America/Montreal'"
+        bound = f"WHERE observed_at >= {cutoff} " if since is not None else ""
+        params = {"since": since}
+        if since is not None:
+            cur.execute(f"DELETE FROM stage_weather WHERE NOT (observed_at >= {cutoff})", params)
+            counts["_weather_obs_skipped_before_since"] = cur.rowcount
+            counts["weather_obs"] = n - cur.rowcount
         cur.execute(
             f"INSERT INTO wp.weather_obs ({', '.join(cols)}) SELECT {', '.join(cols)} FROM "
-            f"stage_weather ON CONFLICT (station_id, observed_at) DO UPDATE SET {upd} "
+            f"stage_weather {bound}ON CONFLICT (station_id, observed_at) DO UPDATE SET {upd} "
             "WHERE wp.weather_obs.source_collection='swob-realtime' "
-            "OR EXCLUDED.source_collection='climate-hourly'"
+            "OR EXCLUDED.source_collection='climate-hourly'",
+            params if since is not None else None,
         )
-        counts = {"weather_obs": n}
+        if since is not None:
+            cur.execute(f"DELETE FROM wp.weather_obs WHERE observed_at < {cutoff}", params)
+            counts["_weather_obs_pruned_before_since"] = cur.rowcount
         daily_csv = d / "weather_daily.csv"
         if daily_csv.exists():
             dcols = [
@@ -532,17 +556,32 @@ def _weather(settings: Settings):
 
 
 LOADERS = {"osm": _osm, "voirie": _voirie, "entraves": _entraves, "311": _r311, "eccc": _weather}
+# canonical source_id (contract v1.3, wp.source) → LOADERS key; `wp-ingest load --source <id>`
+SOURCE_LOADERS = {
+    "osm": "osm",
+    "mtl-voirie": "voirie",
+    "mtl-entraves": "entraves",
+    "mtl-311": "311",
+    "eccc-geomet": "eccc",
+}
 
 
 def load(
-    settings: Settings, which: list[str], url: str | None = None, force: bool = False
+    settings: Settings,
+    which: list[str],
+    url: str | None = None,
+    force: bool = False,
+    weather_since: date | None = None,
 ) -> list[dict]:
     results = []
     with connect(url) as conn:
         with conn.transaction():
             upsert_sources(conn)
         for name in which:
-            source_id, manifest, fn = LOADERS[name](settings)
+            if name == "eccc":
+                source_id, manifest, fn = _weather(settings, weather_since)
+            else:
+                source_id, manifest, fn = LOADERS[name](settings)
             if manifest is None:
                 results.append({"source_id": source_id, "skipped": "no processed output"})
                 continue
