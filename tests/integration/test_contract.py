@@ -3,8 +3,13 @@
 * test_positive: schema-valid requests → every response must be declared by the contract,
   match its schema/content-type/headers, and never be a 5xx.
 * test_negative: schema-invalid requests must be rejected with a declared 4xx. Since contract
-  v1.1.0 (CR-PLAT-1) every operation that accepts input declares 400/422, so there are no
-  expected failures.
+  v1.1.0 (CR-PLAT-1) every operation that accepts input declares 400/422.
+
+Known real-API gap API-NULL-1 (routing-owned): explicit ``null`` for optional non-nullable body
+fields is accepted with 201. Whether Schemathesis generates such a body is data-dependent, so the
+two affected operations get a NON-strict xfail when targeting the real API only. The strict,
+deterministic tracker is ``test_smoke.py::test_explicit_null_rejected_for_non_nullable_optional``;
+remove both together once the API is fixed.
 """
 
 from __future__ import annotations
@@ -64,6 +69,10 @@ def _call(case, target, checks, *, inject_auth: bool) -> None:
     case.call_and_validate(base_url=target.base_url, headers=headers, checks=checks)
 
 
+API_NULL_1_OPS = {("POST", "/pilot-requests"), ("POST", "/reports")}
+API_NULL_1 = pytest.mark.xfail(reason="API-NULL-1: null accepted for non-nullable optional", strict=False)
+
+
 @positive_schema.parametrize()
 @settings(deadline=None, suppress_health_check=list(HealthCheck), derandomize=True)
 def test_positive(case, target) -> None:
@@ -72,5 +81,7 @@ def test_positive(case, target) -> None:
 
 @negative_schema.parametrize()
 @settings(deadline=None, suppress_health_check=list(HealthCheck), derandomize=True)
-def test_negative(case, target) -> None:
+def test_negative(case, target, request) -> None:
+    if not target.is_stub and (case.operation.method.upper(), case.operation.path) in API_NULL_1_OPS:
+        request.applymarker(API_NULL_1)
     _call(case, target, [*BASE_CHECKS, negative_data_rejection], inject_auth=False)
