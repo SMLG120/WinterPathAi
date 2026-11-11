@@ -11,7 +11,7 @@ Deploy steps: `docs/DEPLOYMENT.md`. Incidents: `docs/RECOVERY.md`. Local runbook
 | Database size check | Supabase dashboard, or `select pg_size_pretty(pg_database_size(current_database()))` | weekly |
 | Logical backup | `pg_dump` (see RECOVERY) | before each migration or bulk load |
 | Render free hours | Render dashboard → Billing (750 h/month shared with the workspace's other free services) | monthly |
-| Credential expiry | Cloudflare API token expires 2026-11-19; rotate the Supabase and Render tokens yearly | — |
+| Credential expiry | Cloudflare API token: check its TTL in the dashboard (the old token expired 2026-11-19); rotate the Supabase and Render tokens yearly | — |
 
 ## Health checks
 - `GET https://winterpath-api.onrender.com/api/v1/health` reports four checks: `graph`, `database`, `risk` (layer and score source), and `weather` (latest observation time).
@@ -32,6 +32,7 @@ Deploy steps: `docs/DEPLOYMENT.md`. Incidents: `docs/RECOVERY.md`. Local runbook
 - **None external yet.** There is no uptime monitor or alerting. Any monitor added must respect Render's free-tier policy: no artificial keep-alive pings.
 
 ## Known operational limits
+- GitHub Actions cron is best-effort: scheduled runs can be delayed or skipped (the 21:17 UTC weather run on 2026-11-11 never fired). If `/health` shows weather `degraded`, run `gh workflow run scheduled.yml -f job=weather`.
 - Render Free sleeps after 15 min idle, so the first request takes about a minute.
 - Supabase Free pauses after 1 week of inactivity. The scheduled jobs are real database activity.
 - Supabase Free has no backups.

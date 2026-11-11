@@ -26,7 +26,7 @@ All numbers below were measured; none are estimates. Load-test method: sequentia
 ## Web bundle (`npm run build:pages`, `b81b5b9`)
 - 52 files, no source maps. The largest chunk is `PlannerMap` (MapLibre): 1,085 kB, 298 kB gzip. It is lazy-loaded on the planner route only.
 - LCP measured earlier at about 3 s (local Lighthouse). Pre-rendering the landing page is pending an owner decision.
-- Not yet measured on the live Pages deployment (blocked: Cloudflare token).
+- Live on Pages since 2026-11-11. LCP has not been re-measured on the live deployment.
 
 ## Database
 - 49 MB of the Supabase Free limit of 500 MB.

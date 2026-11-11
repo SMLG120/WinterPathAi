@@ -9,14 +9,14 @@ States: **Deployed** (live and verified by request), **Configured** (set up and 
 | PostGIS database (Supabase Free, us-east-1) | Deployed | Migrated to 0007; 49 MB; least-privilege roles verified (`wp_api` cannot insert) |
 | API (Render Free, Virginia) | Deployed | `/health` returns `ok` for graph, database, risk and weather; compare returns 200; p95 806 ms over 60 live requests |
 | Read-only mode | Deployed | `POST /reports` and `/pilot-requests` return 503 `WRITES_DISABLED` (live) |
-| CORS allow-list | Configured | Exact origin `https://winterpath.pages.dev`; a foreign origin gets no allow-origin header. The real Pages origin can only be confirmed after the Pages deploy |
-| Closures and 311 hazards in production routing | **Not yet**: production uses `API_STORE_BACKEND=memory` | Switching to `postgis` returned 503 (the `wp_reader` PII revoke on `community_report`). The fix is pending from routing. Until then, live routes do **not** avoid active closures |
-| Weather (ECCC) | Deployed and scheduled | Latest observation is served live; the cron job succeeded (runs 43084925719 and 43086426247) |
+| CORS allow-list | Deployed | Exact origin `https://winterpath.pages.dev` (the real Pages origin); a foreign origin gets no allow-origin header and its preflight is rejected (400) |
+| Closures and 311 hazards in production routing | Deployed | `API_STORE_BACKEND=postgis` with routing fix 8252f2e; `/hazards` serves 108 confirmed features; a live route reported "22 officially permitted closure(s) that block pedestrian passage were excluded". 311 cell hazards are currently absent because the aggregates end 2026-11-07 |
+| Weather (ECCC) | Deployed and scheduled | Latest observation served live. GitHub skipped the 21:17 UTC cron on 2026-11-11 (health went `degraded` for weather until a manual run 43116467754); cron is best-effort |
 | Daily risk scores | Deployed and scheduled | Run 43086426247 wrote 2,930 heuristic scores for 2026-11-11 from a GitHub runner |
 | Risk model | Heuristic only | Labelled as a heuristic, not probabilities (API warning on every route). No trained model is deployed |
 | 311 / closure refresh | Manual | `wp.report_311_cell` currently ends 2026-11-07 |
-| Web app (Cloudflare Pages) | **Blocked** | The bundle is built and checked locally (no maps, no mocks, no secrets, CSP uses the Render origin). The API token is active but can see 0 accounts |
-| Security headers on the live site | Blocked | Depends on the Pages deploy |
+| Web app (Cloudflare Pages) | Deployed | `https://winterpath.pages.dev`; live bundle scanned (no source maps, no mock code, no localhost, none of the deploy secrets, gitleaks clean); browser test passed: basemap, layers, route comparison, FR, 390 px mobile; no console/CSP errors |
+| Security headers on the live site | Deployed | CSP, HSTS, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, COOP verified via `curl -D -` |
 | Secrets hygiene | Configured | gitleaks clean on the repo history and on `dist/`; secrets only in Render env, a GitHub secret, and `.env.deploy` (mode 600) |
 | Backups | Not implemented | Manual `pg_dump` procedure only (`RECOVERY.md`) |
 | Monitoring and alerting | Not implemented | — |

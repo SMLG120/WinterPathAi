@@ -3,7 +3,7 @@
 Status as of 2026-11-11. Limits and their sources: `docs/FREE_TIER_LIMITS.md`. Variables: `docs/ENVIRONMENT_VARIABLES.md`. Recovery: `docs/RECOVERY.md`.
 
 ```
- Browser ──HTTPS──► Cloudflare Pages (static SPA, _headers CSP)          [BLOCKED: token has no account access]
+ Browser ──HTTPS──► Cloudflare Pages  https://winterpath.pages.dev  (static SPA, _headers CSP)
     │
     ├──HTTPS──► tiles.openfreemap.org (basemap style + tiles)
     │
@@ -18,8 +18,8 @@ Status as of 2026-11-11. Limits and their sources: `docs/FREE_TIER_LIMITS.md`. V
 | Component | State | Identifier |
 |---|---|---|
 | Database | **Deployed**: migrated to `0007_risk_cell_score`, data loaded | Supabase project `WinterPathAI`, us-east-1 |
-| API | **Deployed and live** | Render `srv-dbqbv3ui0phs73c82qng`, `https://winterpath-api.onrender.com` |
-| Web | **Built and checked locally; not deployed**. The Cloudflare API token verifies as active but can see 0 accounts. | Pages project `winterpath` (to be created) |
+| API | **Deployed and live** (`129ffb7`, `API_STORE_BACKEND=postgis`) | Render `srv-dbqbv3ui0phs73c82qng`, `https://winterpath-api.onrender.com` |
+| Web | **Deployed and live**: direct upload of `main` 129ffb7 (wrangler 4.154.0). Security headers, API calls and route comparison verified in a browser | Pages project `winterpath`, `https://winterpath.pages.dev` |
 | Scheduled jobs | **Configured**. Weather job verified (run 43084925719); scoring fixed in `cb5226a`, re-run 43086426247 | `.github/workflows/scheduled.yml`, secret `WP_ETL_DATABASE_URL` |
 
 ## 1. Database (Supabase Free)
@@ -56,8 +56,8 @@ cd apps/web && npm ci
 VITE_API_BASE_URL=https://winterpath-api.onrender.com/api/v1 VITE_PUBLIC_WRITES=false \
 VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/positron VITE_API_TIMEOUT_MS=15000 \
 npm run build:pages          # refuses unsafe env; checks dist/ for maps, mocks, secrets, headers
-npx wrangler pages project create winterpath --production-branch main   # once
-npx wrangler pages deploy dist --project-name winterpath --branch main
+npx wrangler@4.154.0 pages project create winterpath --production-branch main   # once (done 2026-11-11)
+npx wrangler@4.154.0 pages deploy dist --project-name winterpath --branch main --commit-hash <sha>
 ```
 - `wrangler` needs `CLOUDFLARE_API_TOKEN` (permission **Account → Cloudflare Pages → Edit**, scoped to the account) and `CLOUDFLARE_ACCOUNT_ID`.
 - Then set Render `API_CORS_ORIGINS=https://winterpath.pages.dev` (the exact origin wrangler prints) and redeploy the API.

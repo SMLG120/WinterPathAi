@@ -41,4 +41,4 @@ Private repository; report issues to the repository owner. No bug-bounty program
 ## Known gaps (2026-11-11)
 - No WAF or bot protection beyond Cloudflare's defaults for static assets and the API's in-process rate limiter (resets on restart; single instance).
 - No external uptime monitoring or alerting yet (`docs/OPERATIONS.md`).
-- Security headers and CSP must be verified on the live deployment, not just in config.
+- Security headers and CSP verified on the live deployment (2026-11-11, `curl -D -` and a browser session with no CSP violations); re-check after any `_headers` change.
