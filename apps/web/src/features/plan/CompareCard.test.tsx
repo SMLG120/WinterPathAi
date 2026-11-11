@@ -67,8 +67,27 @@ describe('RouteError', () => {
     render(<RouteError error={new ApiRequestError(429, { code: 'RATE_LIMITED', message: 'x' }, '30')} />);
     expect(screen.getByRole('alert')).toHaveTextContent('Try again in 30 seconds');
   });
-  it('network failure gets generic copy', () => {
+  it('network failure gets "unreachable" copy, distinct from a server-side failure', () => {
     render(<RouteError error={new ApiRequestError(0, undefined, null)} />);
-    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't compute routes");
+    expect(screen.getByRole('alert')).toHaveAttribute('data-kind', 'unreachable');
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't reach the routing server");
+  });
+
+  it.each([
+    [new ApiRequestError(0, undefined, null, 'WAKE_TIMEOUT'), 'WAKE_TIMEOUT', 'The server is still asleep'],
+    [new ApiRequestError(0, undefined, null, 'TIMEOUT'), 'unreachable', "Couldn't reach the routing server"],
+    [new ApiRequestError(503, { code: 'UPSTREAM_UNAVAILABLE', message: 'x' }, null), 'UPSTREAM_UNAVAILABLE', 'A data source is unavailable'],
+    [new ApiRequestError(200, undefined, null, 'INCOMPLETE'), 'INCOMPLETE', 'Incomplete answer'],
+    [new ApiRequestError(500, { code: 'INTERNAL', message: 'x' }, null), 'generic', "Couldn't compute routes"],
+  ])('distinct copy per failure: %#', (error, kind, title) => {
+    render(<RouteError error={error} onRetry={() => {}} />);
+    expect(screen.getByRole('alert')).toHaveAttribute('data-kind', kind);
+    expect(screen.getByRole('alert')).toHaveTextContent(title);
+    expect(screen.getByTestId('route-retry')).toBeInTheDocument();
+  });
+
+  it('no retry button for answers that a retry cannot change (no route)', () => {
+    render(<RouteError error={new ApiRequestError(404, { code: 'NO_ROUTE', message: 'x' }, null)} onRetry={() => {}} />);
+    expect(screen.queryByTestId('route-retry')).toBeNull();
   });
 });

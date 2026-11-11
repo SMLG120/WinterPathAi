@@ -85,5 +85,13 @@
   "meta": {
     "lastUpdated": "Dernière mise à jour",
     "source": "Source"
+  },
+  "backend": {
+    "waking": "Le serveur se réveille. Cette démo publique tourne sur une offre gratuite qui se met en veille quand elle est inactive ; la première requête peut prendre environ une minute. Nouvel essai automatique…"
+  },
+  "writesDisabled": {
+    "title": "Non disponible dans cette démo publique",
+    "reports": "L'envoi de signalements hivernaux est désactivé dans cette démo publique ; rien ne serait enregistré. Le planificateur, les conditions hivernales et les pages de données fonctionnent normalement.",
+    "pilot": "Les demandes de projet pilote ne peuvent pas être envoyées depuis cette démo publique ; rien ne serait enregistré. Le reste du site fonctionne normalement."
   }
 }

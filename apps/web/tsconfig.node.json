@@ -13,5 +13,5 @@
     "strict": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "playwright.real.config.ts", "e2e", "e2e-real"]
+  "include": ["vite.config.ts", "build", "playwright.config.ts", "playwright.real.config.ts", "playwright.readonly.config.ts", "e2e-readonly", "e2e", "e2e-real"]
 }

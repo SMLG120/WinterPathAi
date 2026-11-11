@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import { ArrowDownUp, ChevronDown, ChevronUp, Route as RouteIcon, Search } from 'lucide-react';
 import { useCompareRoutes, useHazards, useSegments } from '@/api/queries';
+import { useBackendStore } from '@/stores/backend';
 import type { HazardFeature, RouteCompareRequest, SegmentFeature } from '@/api/types';
 import { DemoBadge } from '@/components/evidence/DemoBadge';
 import { SimulatedBanner } from '@/components/evidence/EvidenceBadge';
@@ -36,6 +37,7 @@ export default function Plan() {
   useDocumentTitle(t('title'));
   const s = usePlannerStore();
   const compare = useCompareRoutes();
+  const waking = useBackendStore((st) => st.waking > 0);
   const [lastReq, setLastReq] = useState<RouteCompareRequest | null>(null);
   const [needPoints, setNeedPoints] = useState(false);
   const [mapStatus, setMapStatus] = useState<'ok' | 'no-webgl' | 'style-error' | 'loading'>('loading');
@@ -174,13 +176,19 @@ export default function Plan() {
       <div aria-live="polite" aria-busy={compare.isPending}>
         {compare.isPending && (
           <div className="space-y-2">
-            <span className="sr-only">{t('computing')}</span>
+            {waking ? (
+              <p className="text-sm" data-testid="compare-waking">
+                {t('errors.waking')}
+              </p>
+            ) : (
+              <span className="sr-only">{t('computing')}</span>
+            )}
             <Skeleton className="h-6 w-1/2" />
             <Skeleton className="h-32 w-full" />
             <Skeleton className="h-32 w-full" />
           </div>
         )}
-        {compare.isError && <RouteError error={compare.error} />}
+        {compare.isError && <RouteError error={compare.error} onRetry={lastReq ? () => run(lastReq) : undefined} />}
         {compare.isSuccess && compare.data && (
           <CompareCard ref={resultsHeading} data={compare.data} selected={s.selected} onSelect={s.setSelected} />
         )}

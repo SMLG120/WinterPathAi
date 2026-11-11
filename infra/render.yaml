@@ -1,46 +1,68 @@
 # DRAFT Render blueprint — NOT APPLIED. Creating these resources requires explicit user
-# approval (docs/architecture.md §10). Review plans/pricing before any use: the values
-# below select free/starter tiers where Render offers them, but tier availability and
-# limits must be re-verified at deployment time.
+# approval (docs/architecture.md §10). Contract v1.7.0 deployment decisions (data-model.md
+# changelog): read-only demo, Render Virginia + Supabase Canada, GitHub Actions cron for jobs.
+# Plan limits (Free: sleeps when idle, small RAM/CPU) must be re-verified at deployment time.
 #
 # Database: Supabase (Postgres + PostGIS), not Render Postgres — see infra/SUPABASE.md.
-# Secrets are `sync: false` (entered in the Render dashboard, never committed).
+# `sync: false` = value entered in the Render dashboard, never committed: used for every secret
+# and for deployment-specific values that are not known yet (origins, station ids).
+# PORT is NOT declared: Render injects it and the image binds 0.0.0.0:$PORT (v1.7).
+# Web build variables (VITE_API_BASE_URL, VITE_MAP_STYLE_URL, VITE_PUBLIC_WRITES=false,
+# VITE_API_TIMEOUT_MS) belong to the Vercel project, not this service (infra/vercel/).
 services:
   - type: web
     name: winterpath-api
     runtime: docker
     dockerfilePath: ./infra/docker/api.Dockerfile
     dockerContext: .
-    plan: free            # verify; free web services sleep when idle
-    region: ohio          # verify latency to Montréal; no Canadian region assumed
+    plan: free            # verify; free web services sleep when idle (web shows cold-start state)
+    region: virginia      # v1.7 decision; Supabase project is in Canada
     autoDeploy: false     # deploys are manual and approval-gated
     healthCheckPath: /api/v1/health
     envVars:
-      - key: DATABASE_URL           # Supabase pooler URL, login user in role wp_reader/wp_writer
+      # --- secrets ---
+      - key: DATABASE_URL           # Supabase SESSION pooler URL; login user in role wp_reader (+wp_writer only if writes are enabled)
         sync: false
-      - key: API_ADMIN_TOKEN_HASH
-        sync: false
-      - key: API_CORS_ORIGINS       # exact production web origin(s), comma-separated
-        sync: false
-      - key: API_LOG_LEVEL
-        value: info
-      - key: API_RATE_LIMIT_PER_MINUTE
-        value: "60"
-      - key: GEOCODER_PROVIDER      # empty = no geocoder (v1 default)
+      - key: API_ADMIN_TOKEN_HASH   # SHA-256 hex of the admin token (optional "sha256:" prefix); empty => admin always 401
         sync: false
       - key: GEOCODER_API_KEY
         sync: false
-      - key: HTTP_USER_AGENT
+      # --- deployment-specific, not secret, value not known yet ---
+      - key: API_CORS_ORIGINS       # exact production web origin(s), comma-separated; never "*"
         sync: false
+      - key: WEATHER_STATION_IDS    # ECCC station priority order; empty = most recent across stations
+        sync: false
+      - key: GEOCODER_PROVIDER      # empty = no geocoder (v1 default)
+        sync: false
+      - key: HTTP_USER_AGENT        # generic client name; no personal contact details
+        sync: false
+      # --- v1.7 read-only demo ---
+      - key: API_PUBLIC_WRITES      # false => POST /reports and /pilot-requests return 503 WRITES_DISABLED
+        value: "false"
+      # --- data sources: everything from PostGIS (Supabase) ---
+      - key: ROUTING_GRAPH_SOURCE
+        value: postgis
+      - key: API_STORE_BACKEND
+        value: postgis
+      - key: WEATHER_SOURCE
+        value: postgis
+      - key: WEATHER_MAX_AGE_MINUTES  # ingest runs every 3 h (scheduled.yml) + ECCC publication lag
+        value: "240"
+      - key: RISK_PROVIDER
+        value: winterpath_ml.inference:load_provider
+      - key: RISK_SCORE_SOURCE      # postgis = wp.risk_cell_score written by the daily scoring job
+        value: postgis
+      # --- sizing (draft values; verify against Free-plan memory and Supabase pooler limits) ---
+      - key: ROUTING_WORKERS
+        value: "1"
+      - key: DATABASE_POOL_SIZE
+        value: "2"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "0"
+      - key: API_RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: API_LOG_LEVEL
+        value: info
 
-# Ingestion cron jobs are intentionally NOT declared. Each scheduled job needs its own
-# approval (architecture §10). Template for later, once approved:
-#
-#  - type: cron
-#    name: winterpath-ingest-311
-#    runtime: docker
-#    dockerfilePath: ./infra/docker/ingestion.Dockerfile   # to be written with Data agent
-#    schedule: "15 6 * * *"
-#    envVars:
-#      - key: DATABASE_URL   # login user in role wp_writer
-#        sync: false
+# Scheduled jobs (weather ingest, daily scoring) run as GitHub Actions cron
+# (.github/workflows/scheduled.yml), not Render cron — v1.7 decision. No cron services here.

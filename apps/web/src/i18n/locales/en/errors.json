@@ -11,10 +11,14 @@
     "NOT_FOUND": "Not found.",
     "UNAUTHORIZED": "You're not authorised to do this.",
     "RATE_LIMITED": "Too many requests. Please wait a moment.",
-    "UPSTREAM_UNAVAILABLE": "A data source is unavailable right now.",
+    "UPSTREAM_UNAVAILABLE": "An external data provider (such as Environment Canada weather) is unavailable right now. Nothing is shown in its place: no old or invented values.",
     "INTERNAL": "The server had a problem.",
     "NETWORK": "We couldn't reach the server.",
-    "UNKNOWN": "Unexpected response from the server."
+    "UNKNOWN": "Unexpected response from the server.",
+    "WRITES_DISABLED": "Sending is turned off in this public demo.",
+    "TIMEOUT": "The server took too long to answer.",
+    "WAKE_TIMEOUT": "The server didn't wake up in time. It's on a free plan that sleeps when idle; try again in a moment.",
+    "INCOMPLETE": "The server's answer was incomplete, so nothing is shown rather than a partial result."
   },
   "boundary": {
     "title": "This part of the page failed to load",
