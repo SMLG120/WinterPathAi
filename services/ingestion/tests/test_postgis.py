@@ -1,7 +1,8 @@
 """Migration + loader tests against the shared PostGIS container (integration-rules §4).
 
-Runs in a throwaway database `wp_data_test` (created and dropped here) so `wp_data` is never
-touched. Skipped — not faked — when the server is unreachable.
+Runs in a throwaway database `wp_data_test_<pid>` (created and dropped here) so `wp_data` is
+never touched and parallel runs from other worktrees cannot drop each other's database.
+Skipped — not faked — when the server is unreachable.
 """
 
 import os
@@ -15,7 +16,7 @@ from winterpath_ingestion.config import get_settings  # noqa: F401  (loads .env.
 
 pytestmark = pytest.mark.postgis
 ROOT = Path(__file__).resolve().parents[3]
-TEST_DB = "wp_data_test"
+TEST_DB = f"wp_data_test_{os.getpid()}"
 
 
 def _base_url():

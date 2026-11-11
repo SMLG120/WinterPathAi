@@ -543,3 +543,17 @@ unknown blocking status. New tests:
 
 Note: `ruff format --check db` flags `db/migrations/env.py`. That formatting predates this change,
 and I left it untouched.
+
+## Merge integration/winterpath + re-run (2026-11-10)
+`git merge --no-edit integration/winterpath` → `Already up to date.` (integration is at `fa8b4ea`,
+which is already an ancestor of agent/data).
+The first re-run went `4 failed, 38 passed`, with `FATAL: database "wp_data_test" does not exist`.
+`test_postgis.py` also exists in four other worktrees through merges, and they all used the fixed
+name `wp_data_test`, so a run in one worktree dropped another's database. Fix: the test database is
+now `wp_data_test_<pid>`.
+```text
+$ ruff check . → All checks passed!   $ ruff format --check . → 26 files already formatted
+$ uv run pytest -q
+..........................................                               [100%]
+42 passed in 46.87s
+```
