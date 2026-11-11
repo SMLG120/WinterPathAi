@@ -7,7 +7,7 @@ import type { ApiError, Route, RouteCompareRequest, RouteCompareResponse } from 
 import { isInPilot } from '@/lib/geo';
 import { DEMO_SOURCE_ID } from './fixtures';
 import { lineLength, nearestLineM, type Pos } from './geo-mock';
-import { pilotMiniSegments } from './pilotMini';
+import { PILOT_MINI, pilotMiniSegments, pilotMiniStepFreeCount } from './pilotMini';
 
 /** Same snap threshold as the routing API (contract v1.3 OFF_NETWORK). */
 export const MAX_SNAP_M = 75;
@@ -23,7 +23,8 @@ const T = {
     step: (s: string) => `Walk along ${s}`,
     arrive: 'Arrive at destination',
     turn: 'Turn at the corner',
-    noRoute: 'Demo mode cannot compute step-free routes (that needs the real routing API). In the pilot_mini OSM fixture only 2 of 200 edges are verified step-free.',
+    noRoute: (n: number, total: number) =>
+      `Demo mode cannot compute step-free routes (that needs the real routing API). In the pilot_mini OSM fixture only ${n} of ${total} edges are verified step-free.`,
     outside: 'Origin or destination is outside the pilot coverage area.',
     offNetwork: (w: string) => `The ${w} is more than ${MAX_SNAP_M} m from the routable network (pilot_mini fixture).`,
   },
@@ -35,7 +36,8 @@ const T = {
     step: (s: string) => `Marchez le long de ${s}`,
     arrive: 'Arrivée à destination',
     turn: 'Tournez au coin',
-    noRoute: 'Le mode démo ne peut pas calculer de trajets sans marche (il faut l’API d’itinéraires réelle). Dans le jeu OSM pilot_mini, seuls 2 tronçons sur 200 sont vérifiés sans marche.',
+    noRoute: (n: number, total: number) =>
+      `Le mode démo ne peut pas calculer de trajets sans marche (il faut l’API d’itinéraires réelle). Dans le jeu OSM pilot_mini, seuls ${n} tronçons sur ${total} sont vérifiés sans marche.`,
     outside: 'Le départ ou l’arrivée est hors de la zone pilote.',
     offNetwork: (w: string) => `Le point ${w === 'origin' ? 'de départ' : 'd’arrivée'} est à plus de ${MAX_SNAP_M} m du réseau (jeu pilot_mini).`,
   },
@@ -64,10 +66,11 @@ function buildRoute(
     hazards_on_route: [],
     explanation: [
       // Canonical routing codes + evidence mapping (openapi v1.5, CR-ROUTING-9). The demo
-      // closure is invented, so it stays `simulated` rather than `confirmed`.
+      // closure is invented, so it uses SIMULATED_DATA (→ simulated); a closure code would map
+      // to unknown/confirmed and hide that it is made up.
       { code: 'SIMULATED_DATA', text: t.sim, evidence_state: 'simulated' },
       variant === 'winter_aware'
-        ? { code: 'AVOIDS_POSSIBLE_CLOSURE', text: t.closure, evidence_state: 'simulated' }
+        ? { code: 'SIMULATED_DATA', text: t.closure, evidence_state: 'simulated' }
         : { code: 'SHORTEST_DISTANCE', text: t.shortest, evidence_state: 'unknown' },
       { code: 'RISK_LAYER_UNAVAILABLE', text: t.unknown, evidence_state: 'unknown' },
     ],
@@ -108,7 +111,7 @@ export function mockCompare(req: RouteCompareRequest, now = new Date()): MockRes
     }
   }
   if (req.profile === 'step_free') {
-    return { status: 404, body: { code: 'NO_ROUTE', message: t.noRoute, request_id: 'mock' } };
+    return { status: 404, body: { code: 'NO_ROUTE', message: t.noRoute(pilotMiniStepFreeCount(), PILOT_MINI.edgeCount), request_id: 'mock' } };
   }
   const o: Pos = [req.origin.lon, req.origin.lat];
   const d: Pos = [req.destination.lon, req.destination.lat];

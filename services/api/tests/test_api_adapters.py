@@ -92,7 +92,7 @@ def _db_skip_reason() -> str | None:
     try:
         from sqlalchemy import create_engine, text
 
-        with create_engine(url, connect_args={"connect_timeout": 2}).connect() as c:
+        with create_engine(url, connect_args={"connect_timeout": 10}).connect() as c:
             ok = c.execute(text("SELECT to_regclass('wp.community_report') IS NOT NULL")).scalar()
         return None if ok else "wp.community_report absent (Data agent migrations not applied)"
     except Exception as exc:

@@ -41,7 +41,7 @@ def test_health_and_coverage_report_real_graph(real) -> None:
     c = real.get("/api/v1/coverage")
     validate_response(c, "/coverage", "get")
     g = c.json()["graph"]
-    assert (g["node_count"], g["edge_count"]) == (88, 200)
+    assert (g["node_count"], g["edge_count"]) == (META["node_count"], META["edge_count"])
     assert g["osm_snapshot"] == META["osm_snapshot"]
     assert g["largest_component_share"] == 1.0
     assert not any("SIMULATED" in x["description"] for x in c.json()["known_gaps"])

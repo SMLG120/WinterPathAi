@@ -60,7 +60,8 @@
       "recall_at_k": "Recall@k",
       "n_test": "Test samples"
     },
-    "limitations": "Limitations"
+    "limitations": "Limitations",
+    "limitationsEnglishOnly": "Provided by the API in English only."
   },
   "refresh": {
     "title": "Last refresh"

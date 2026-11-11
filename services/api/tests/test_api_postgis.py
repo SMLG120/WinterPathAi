@@ -11,7 +11,16 @@ import os
 import sys
 
 import pytest
-from api_testlib import ADMIN_TOKEN, PILOT_MINI, REPO, validate_response
+from api_testlib import (
+    ADMIN_TOKEN,
+    PILOT_MINI,
+    REPO,
+    pilot_bbox_param,
+    pilot_center,
+    pilot_meta,
+    pilot_route_points,
+    validate_response,
+)
 
 sys.path.append(str(REPO / "services" / "routing" / "tests"))
 from routing_testlib import (
@@ -29,7 +38,7 @@ def _skip_reason() -> str | None:
     try:
         from sqlalchemy import create_engine, text
 
-        with create_engine(url, connect_args={"connect_timeout": 2}).connect() as c:
+        with create_engine(url, connect_args={"connect_timeout": 10}).connect() as c:
             if not c.execute(text("SELECT to_regclass('wp.edge') IS NOT NULL")).scalar():
                 return "wp schema absent (Data agent migrations not applied)"
             if c.execute(text("SELECT count(*) FROM wp.edge")).scalar():
@@ -85,17 +94,14 @@ def test_health_coverage_sources(pg) -> None:
 
 
 def test_routes_and_map_from_postgis(pg) -> None:
-    body = {
-        "origin": {"lon": -73.5765, "lat": 45.5045},
-        "destination": {"lon": -73.5745, "lat": 45.5040},
-    }
-    r = pg.post("/api/v1/routes/compare", json=body)
+    o, d = pilot_route_points()
+    r = pg.post("/api/v1/routes/compare", json={"origin": o, "destination": d})
     validate_response(r, "/routes/compare", "post")
-    assert r.status_code == 200
-    bbox = "-73.578035,45.503034,-73.573657,45.505518"
+    assert r.status_code == 200, r.text
+    bbox = pilot_bbox_param()
     seg = pg.get(f"/api/v1/map/segments?bbox={bbox}&limit=1000")
     validate_response(seg, "/map/segments", "get")
-    assert len(seg.json()["features"]) == 200
+    assert len(seg.json()["features"]) == pilot_meta()["edge_count"]
     hz = pg.get(f"/api/v1/hazards?bbox={bbox}")  # closures / 311 tables queried (empty here)
     validate_response(hz, "/hazards", "get")
 
@@ -106,7 +112,7 @@ def test_report_lifecycle_and_pilot_request_in_postgis(pg) -> None:
         "/api/v1/reports",
         json={
             "category": "ice",
-            "location": {"lon": -73.5760, "lat": 45.5043},
+            "location": dict(zip(("lon", "lat"), pilot_center(), strict=True)),
             "location_consent": True,
             "description": "integration test",
         },
@@ -122,7 +128,7 @@ def test_report_lifecycle_and_pilot_request_in_postgis(pg) -> None:
         f"/api/v1/admin/reports/{rid}/moderation", headers=admin, json={"decision": "approve"}
     )
     validate_response(m, "/admin/reports/{reportId}/moderation", "post")
-    hz = pg.get("/api/v1/hazards?bbox=-73.578035,45.503034,-73.573657,45.505518")
+    hz = pg.get(f"/api/v1/hazards?bbox={pilot_bbox_param()}")
     assert f"community:{rid}" in [f["id"] for f in hz.json()["features"]]
     assert (
         pg.delete(f"/api/v1/reports/{rid}", headers={"X-Deletion-Token": "x" * 40}).status_code
@@ -257,8 +263,8 @@ def _midpoint(db, edge_id):
 
 
 ROUTE = {
-    "origin": {"lon": -73.5765, "lat": 45.5045},
-    "destination": {"lon": -73.5745, "lat": 45.5040},
+    "origin": pilot_route_points()[0] if (PILOT_MINI / "nodes.geojson").exists() else None,
+    "destination": pilot_route_points()[1] if (PILOT_MINI / "nodes.geojson").exists() else None,
     "departure_time": AT_ISO,
 }
 
@@ -269,7 +275,7 @@ def test_closure_active_at_three_valued_in_repository(db, closures) -> None:
     from winterpath_api.repositories.hazards import PostgisHazardRepository
     from winterpath_api.repositories.reports import InMemoryReportRepository
 
-    closures(list(CLOSURE_CASES), (-73.5760, 45.5043))
+    closures(list(CLOSURE_CASES), pilot_center())
     at = datetime.fromisoformat(AT_ISO.replace("Z", "+00:00"))
     got = {
         h.hazard_id: h
@@ -411,3 +417,25 @@ def test_311_sums_natures_then_applies_floor() -> None:
         assert h.title_fr == "Requêtes 311 : trottoir glissant"
     finally:
         eng.dispose()
+
+
+def test_311_nature_detection_matches_real_table(db) -> None:
+    """The repository uses the v1.5 nature filter exactly when wp.report_311_cell has `nature`
+    (migration 0006); the query runs on the real table either way."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import text
+
+    from winterpath_api.repositories.hazards import PostgisHazardRepository
+    from winterpath_api.repositories.reports import InMemoryReportRepository
+
+    with db.connect() as c:
+        has = c.execute(
+            text(
+                "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'wp'"
+                " AND table_name = 'report_311_cell' AND column_name = 'nature'"
+            )
+        ).scalar()
+    repo = PostgisHazardRepository(db, InMemoryReportRepository())
+    repo.list(datetime(2026, 12, 15, 18, tzinfo=UTC))
+    assert repo._has_nature is bool(has)

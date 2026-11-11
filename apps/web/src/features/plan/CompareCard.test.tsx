@@ -4,9 +4,9 @@ import { CompareCard } from './CompareCard';
 import { RouteError } from './RouteError';
 import { mockCompare } from '@/mocks/routes';
 import { ApiRequestError } from '@/api/client';
+import { PTS } from '@/test/pilotPoints';
 
-const A = { lon: -73.5772, lat: 45.5048 };
-const B = { lon: -73.5745, lat: 45.504 };
+const { A, B } = PTS; // derived from the checked-out pilot_mini fixture
 
 function data() {
   const r = mockCompare({ origin: A, destination: B, locale: 'en' }, new Date());

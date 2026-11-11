@@ -41,7 +41,14 @@ months outside Nov–Apr, days without a score table, and edges touching any suc
 The heuristic layer always returns `probability = null`. `ModelRiskProvider` refuses to load a model
 the registry marks disabled.
 
-**Do not use `data_311.read_report_cells_sql`.** It predates contract v1.5.0 (`nature` in the PK) and doesn't filter natures. It is left unchanged only because `data_311.py` is pinned by `models/gate-logreg-2026.md`. A nature-summing reader will be added in a separate module once Data's v1.5 migration reaches integration. The CSV aggregation remains the label of record.
+**Do not use `data_311.read_report_cells_sql`.** It predates contract v1.5.0 (`nature` in the PK) and doesn't filter natures. It is left unchanged only because `data_311.py` is pinned by `models/gate-logreg-2026.md`. Use `winterpath_ml.report_cells_db.read_report_cells(conn)` instead (optional extra: `uv sync --extra db`). It sums `nature IN ('requete','plainte')` over the four label categories (`sidewalk_slippery`, `roadway_slippery`, `snow_clearing`, `snow_dumping`), excluding the v1.6 alley categories (CR-ML-2), and returns the same `(h3, day, category, n)` frame. Verified against Data f6eb3b2's v1.6 load: 0 cell-days differ from the CSV label of record (see the agent report).
+
+```bash
+uv run --extra db python -m winterpath_ml.report_cells_db --compare --database-url "$URL"
+```
+
+## Artifact location
+All artifact reads go through `inference.artifact_path()`, which resolves registry entries under `MODEL_ARTIFACT_DIR` (default `models/artifacts`). When artifacts are missing, `load_provider()` logs `risk_registry_missing` / `risk_artifacts_missing` and returns `NullRiskProvider`; a missing scores directory logs `risk_scores_missing`.
 
 ## Wiring into services/api (edge-id protocol)
 

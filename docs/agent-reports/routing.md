@@ -1,7 +1,7 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 6 adopts contract **v1.5.0**: 311 natures, CR-ROUTING-4 and CR-ROUTING-9 accepted. Cycle 5 added v1.4.0 closure activity and `terminal_at`; cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
-- **Branch / SHA:** `agent/routing` — the latest merge of `integration/winterpath` is `d04da54`, as `ac80a71`; the 0005 boundary test follows it. Cycle-6 code is `864aa80`. `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
+- **Status:** READY FOR REVIEW. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -24,6 +24,145 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
+### 0h. Cycle 9b — re-merge of `integration/winterpath` (no change) + full rerun — current
+`integration/winterpath` is still `a292b63` (already merged at `5af6145`), so the merge was a no-op. `wp_routing` unchanged at head.
+```text
+$ git merge --no-edit integration/winterpath
+Already up to date.
+$ alembic -c db/alembic.ini current
+0006_report_311_nature (head)
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=6.0 ms p95=12.4 ms max=61.8 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=30.1 ms p95=75.5 ms max=135.8 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.0 ms p95=1.8 ms max=2.9 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=5.5 ms p95=20.2 ms max=38.3 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=5.1 ms p95=7.1 ms max=10.8 ms
+======================= 303 passed, 1 warning in 19.16s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+```
+
+### 0g. Cycle 9 — merge of `agent/data` `f6eb3b2`, DB re-migrated, full rerun
+**Order** (0006 was edited in place, so the applied version had to be undone with its own downgrade):
+1. **Downgrade with the applied 0006.** My scratchpad export of `agent/data`'s `db/` (identical to `4254dd7`'s 0006: `diff` empty) against **my own** DB:
+   ```text
+   target db: /wp_routing port 55432
+   $ alembic -c <scratch>/data-db/db/alembic.ini current    → 0006_report_311_nature (head)
+   $ … downgrade 0005_closure_active_excl_end; … current     → 0005_closure_active_excl_end
+   ```
+2. **Merge the exact commit:** `git merge --no-edit f6eb3b2` → `f776a3a` (26 files, no conflicts). The worktree's 0006 equals `f6eb3b2`'s (`diff` empty).
+3. **Upgrade with the merged files:**
+   ```text
+   $ uv run --project services/ingestion --with alembic alembic -c db/alembic.ini upgrade head; … current
+   0006_report_311_nature (head)
+   report_311_cell_category_check: CHECK ((category = ANY (ARRAY['sidewalk_slippery', 'roadway_slippery', 'snow_clearing', 'snow_dumping', 'snow_clearing_alley', 'snow_dumping_alley'])))
+   report_311_cell_pkey:           PRIMARY KEY (h3, day, category, nature)
+   ```
+
+**Fixture now in tree:** pilot_mini has 92 nodes, 200 edges and bbox `[-73.578801, 45.503026, -73.576318, 45.505218]`, the same as `ee5f1fc`/`4254dd7`. The fixture-derived tests from cycle 7 handle it.
+
+```text
+$ uptime → load averages: 9.24 6.98 7.56
+$ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider -s   # filtered
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=0.9 ms p95=1.5 ms max=1.7 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=3.9 ms p95=6.5 ms max=11.3 ms
+======================= 303 passed, 1 warning in 15.04s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+**Ownership gate: `exit=1`, expected.** `scripts/check-ownership.sh routing` compares this branch with `integration/winterpath` (`a292b63`) and lists the 26 Data-owned files the `f6eb3b2` merge brought in: `data/fixtures/pilot_mini/*`, `data/qa/*`, `db/migrations/versions/0006_report_311_nature.py`, `docs/agent-reports/data.md` and `services/ingestion/*`. I verified that:
+- every non-owned file changed since the merge base (26) appears in `git diff --name-only a292b63 f6eb3b2`;
+- `git diff f6eb3b2 HEAD -- <those 26 files>` is **empty** (byte-identical to Data's commit);
+- the only commits touching them are Data's (`f6eb3b2`, `ee5f1fc`, `4254dd7`).
+
+No routing commit edits a non-owned path. The gate will pass again once integration contains `f6eb3b2`.
+
+Not run: `services/ingestion` tests (Data-owned; their PostGIS tests target Data's DB setup, not `wp_routing`).
+
+### 0f. Cycle 8 — contract v1.6.0 (a292b63)
+- **Merge:** `git merge --no-edit integration/winterpath` → `5af6145`, no conflicts; docs only. Just before it, a merge attempt returned `Already up to date.` (integration was still `eb92007`).
+- **CR-ML-2:** `CATEGORY_311_TITLES` gains `snow_clearing_alley` ("311 reports: snow clearing (alley)" / "Requêtes 311 : déneigement (ruelle)") and `snow_dumping_alley` ("311 reports: snow dumping (alley)" / "Requêtes 311 : dépôt de neige (ruelle)"). A new test checks that all six canonical categories have titles.
+- **`CONTRACT_VERSION` = `1.6.0`.**
+- **CR-DATA-7 (foot overrides access): no routing change.** Routing excludes on the Data-resolved `edge.foot_access ∈ {no, private}` only. A way with `access=private` + `foot=yes` arrives as `foot_access=yes` and is routable.
+- **Fixture:** `pilot_mini` is byte-identical at `4254dd7`, `ee5f1fc` and the current `agent/data` head `69bd9e6` (`git diff --stat` is empty). The cycle-7 preview (302 passed on the merged data fixture) therefore already covers `ee5f1fc`'s fixture, and the tests read counts and coordinates from the fixture.
+- **Flaky skip:** one rerun before this cycle showed `301 passed, 1 skipped`. I couldn't reproduce it (3 more runs: 302 passed, 0 skipped), and that run's skip reason wasn't captured, so the cause is unconfirmed. The likely cause is a PostGIS probe timing out under load: probe failures skip rather than fail, and only the weather module's probe would skip exactly one test. Probe `connect_timeout` was raised from 2 s to 10 s in all four test modules.
+```text
+$ uptime → load averages: 14.79 10.34 10.22
+$ alembic … current → 0006_report_311_nature (head)
+$ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider   # run twice
+======================= 303 passed, 1 warning in 22.96s ========================
+======================= 303 passed, 1 warning in 35.86s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+Pending: when Data's commit with the alley categories folded into 0006 lands, I'll re-migrate `wp_routing` (0006 changes in place, so `downgrade 0005` then `upgrade head` with the new files) and rerun.
+
+### 0e. Cycle 7 — DB at migration 0006, API-NULL-1, data+routing preview
+**Merge:** `git merge --no-edit integration/winterpath` **fast-forwarded** to `eb92007`, because integration already contained routing `f63027a`.
+- `eb92007` completes the explanation evidence mapping. It now lists `PASSES/AVOIDS_POSSIBLE_CLOSURE` → `unknown`, `REDUCED_MOBILITY_SPEED` → `model_estimate` and `RISK_UNKNOWN_SHARE` → `unknown`, which is exactly the catalog, so no code change was needed and my cycle-6 questions are resolved.
+- ML's new `EdgeIdRiskProvider` / `api_provider` is an alternative entry point. The API's `CoordinateRiskAdapter` over `load_provider` keeps working (tests pass with the artifacts).
+
+**DB at 0006:** migration 0006 is only on `agent/data` (`4254dd7`), not in integration, and I did not merge `agent/data` into this branch. I exported its `db/` with `git archive agent/data db` into the scratchpad (its 0005 is identical to integration's) and ran its alembic against **my own** `wp_routing` only:
+```text
+target db: /wp_routing port 55432
+$ alembic -c <scratch>/data-db/db/alembic.ini current   → 0005_closure_active_excl_end
+$ … upgrade head; … current                             → 0006_report_311_nature (head)
+```
+With `nature` now present on the real table, `PostgisHazardRepository` takes the v1.5 path (`test_311_nature_detection_matches_real_table`, which follows the actual column, so it skips nothing).
+
+**API-NULL-1 (Platform finding):** every optional request field in the contract is non-nullable. An explicit `null` is now 422 `VALIDATION_ERROR` (`schemas.NotNull`, a before-validator), and omitting the field still uses the default. Fields:
+- `/reports` `description`, `locale`;
+- `/pilot-requests` `contact_name`, `message`, `locale`;
+- `/routes/compare` `departure_time`;
+- moderation `note`.
+
+`profile`, `locale` and `avoid_unverified_reports` on `/routes/compare` already rejected null through their non-null defaults; the tests cover them too. **Platform can remove both API-NULL-1 markers** once this is merged: the strict xfail will start failing as XPASS, as designed. 10 new tests.
+
+**Data + routing preview** (because the coordinator will merge both): a throwaway detached worktree in the scratchpad, `agent/routing` @ `92150c1` + `git merge agent/data` (clean, `0efc09d`), same 0006 DB, ML artifacts copied in.
+- First run: **`4 failed, 298 passed`**. The regenerated pilot_mini has 92 nodes (was 88) and a bbox of about 190 m (was about 340 m). My tests hard-coded the old count and route endpoints: the destination −73.5745 is now `OFF_NETWORK` (`nearest_network_m: 156.9`). Code was fine; the tests were brittle.
+- Fix `517186d`: the tests read `metadata.json` and `nodes.geojson` (count, bbox, centre, farthest node pair).
+- The worktree was removed afterwards.
+```text
+$ uptime → load averages: 6.30 12.31 13.37
+== agent/routing @ 517186d (current pilot_mini, 88 nodes)
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.1 ms p95=1.7 ms max=2.4 ms (rejected >75 m from network: 48)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=4.6 ms p95=6.2 ms max=9.9 ms
+======================= 302 passed, 1 warning in 18.98s ========================
+== preview: agent/routing + agent/data 4254dd7 (Geofabrik pilot_mini, 92 nodes)
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.3 ms p95=2.2 ms max=3.6 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=4.6 ms p95=7.2 ms max=13.1 ms
+======================= 302 passed, 1 warning in 19.15s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after both runs
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+(The "rejected" count is random points in the fixture bbox more than 75 m from the network. The new, tighter bbox gives 4 instead of 48. These are expected `OFF_NETWORK` rejections, not failures.)
+
 ### 0d. Merge of `integration/winterpath` `2d37f32` (`.env.example` weather names) — current
 `git merge --no-edit integration/winterpath` → `e98e9de` (`.env.example | 4 ++++`), no conflicts. `wp_routing` is at `0005_closure_active_excl_end (head)`. `uptime`: `load averages: 17.56 19.65 24.68`.
 ```text

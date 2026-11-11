@@ -5,6 +5,65 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (c) — API-NULL-1 fixed upstream; all 7 markers removed
+Coordinator instruction: merge routing's exact commit b036aab, remove all 7 API-NULL-1 markers in one commit, and run the harness against the stub and against a real API started from this tree.
+
+1. `git merge --no-edit b036aab` → merge commit 74bc91e, no conflicts, no rebase or force. Platform-owned paths are untouched by the merge (`git diff --stat e0d1dc6 HEAD -- infra .github tests/integration docker-compose.yml Makefile docs/agent-reports/platform.md` → empty). The merge also brings in contract **v1.6.0**. The fix is visible in `services/api/src/winterpath_api/schemas.py`, e.g. `locale: Annotated[Locale | None, NotNull] = None`.
+2. Removed: the 5 strict xfails (`test_smoke.py::test_explicit_null_rejected_for_non_nullable_optional`; the test itself stays as a regression check) and the 2 non-strict xfails (`test_contract.py::test_negative` for `POST /pilot-requests` and `POST /reports`), including `API_NULL_1_OPS`, `API_NULL_1` and `NULLABLE_GAP`.
+3. The `/health` contract-version mismatch noted earlier is resolved: the API now reports `contract 1.6.0`.
+
+Literal outputs:
+```text
+$ grep -rn -E "xfail|API.NULL|NULLABLE_GAP|applymarker" tests/integration/*.py
+test_contract.py:7:  expected failures (API-NULL-1 fixed in routing b036aab; markers removed).
+(docstring changelog line only — no markers)
+
+$ cd tests/integration && uv run ruff check . && uv run ruff format --check .
+All checks passed!
+13 files already formatted
+
+$ (stub) uv run pytest -q -rxX
+59 passed, 5 skipped in 17.85s
+[stub exit 0]
+
+$ (real API from this tree, port 8105; same launch env as the 2026-11-11 run above)
+$ curl -sS http://127.0.0.1:8105/api/v1/health
+{"status":"ok","version":"0.1.0 (contract 1.6.0)","checks":{"graph":{"status":"ok"},"database":{"status":"disabled","detail":"In-memory stores (no DATABASE)."},"risk":{"status":"disabled","detail":"No risk layer; risk reported as unknown."},"weather":{"status":"disabled","detail":"No ECCC adapter configured."}}}
+=== real API, CONTRACT_MAX_EXAMPLES=40
+59 passed, 5 skipped in 14.50s
+[exit 0]
+=== real API, CONTRACT_MAX_EXAMPLES=150
+59 passed, 5 skipped in 30.48s
+[exit 0]
+log lines: 4528 | precise coordinate hits: 0
+API stopped; 8105 free
+```
+No XFAIL or XPASS in either real-API run (`-rfExX` printed none). The ML risk layer is still disabled locally because `models/artifacts/` has no artifacts in this worktree; the coordinator's trial merge covered that configuration. The CI admin-token idea is deferred, as the coordinator asked.
+
+## Update 2026-11-11 (b) — CI fix: CORS origin for the real-API contract step
+The coordinator reported the first GitHub run (private repo, run 43031068137, main = a292b63): 11/12 jobs passed. `contract + integration (schemathesis)` failed only in the step `tests against real API`. Literal lines from `gh run view 43031068137 --log-failed`:
+```text
+FAILED test_cors.py::test_preflight_allowed_origin - assert 405 in (200, 204)
+FAILED test_cors.py::test_simple_request_headers - AssertionError: assert None == 'http://localhost:5175'
+2 failed, 46 passed, 9 skipped, 5 xfailed, 2 xpassed in 7.34s
+```
+Cause: that step started uvicorn without `API_CORS_ORIGINS`. The API then installs no CORS middleware, so the preflight gets 405 and plain requests carry no ACAO header. The harness expects `http://localhost:5175`.
+
+Fix (`.github/workflows/ci.yml`, step env only): `API_CORS_ORIGINS: http://localhost:5175` and `CORS_ALLOWED_ORIGIN: http://localhost:5175`, so the server allow-list and the harness expectation are the same explicit origin (no wildcard). Nothing was pushed; the coordinator merges and pushes.
+```text
+$ actionlint --version && actionlint
+1.7.12
+[actionlint exit 0]
+
+$ (local reproduction of the CI step on port 8105; API started with only API_CORS_ORIGINS=http://localhost:5175)
+$ API_BASE_URL=http://127.0.0.1:8105/api/v1 API_LOG_FILE=<scratch>/api.log CORS_ALLOWED_ORIGIN=http://localhost:5175 uv run pytest -q test_cors.py
+3 passed in 0.06s
+[exit 0]
+```
+Not verified: the fix has not run on GitHub yet. That needs the coordinator's next push.
+
+Follow-up, not changed: the CI real-API step sets no `API_ADMIN_TOKEN` / `API_ADMIN_TOKEN_HASH`, so `test_admin_invalid_input_rejected_when_authorized` (4 cases) skips there. That accounts for 9 skipped = 5 + 4 in the log above. Positive admin contract cases only see 401. Covering authorized admin paths in CI would need a per-run throwaway token generated in the step (hash to the API, plaintext to pytest, masked with `::add-mask::`). I can add this if the coordinator wants it.
+
 ## Update 2026-11-11 — merged integration/winterpath; harness run against the real API
 Coordinator instruction: merge `integration/winterpath` (d04da54) at the next checkpoint, no rebase/force, and continue.
 
@@ -100,7 +159,7 @@ Remaining blockers after this checkpoint:
 | Blocker | Next step / who |
 |---|---|
 | CI has never executed on GitHub | Coordinator/user, when a remote exists |
-| API-NULL-1 (null accepted for non-nullable optional fields) | Routing fixes `schemas.py`; Platform then removes both API-NULL-1 markers |
+| ~~API-NULL-1~~ | **Resolved**: fixed in routing b036aab; all 7 markers removed (update (c)) |
 | ML risk layer not exercised by the platform harness locally (no artifacts in this worktree) | Coordinator's run covered it; Platform can re-run with artifacts if provided |
 
 ## Update 2026-11-10 — contract v1.1.0 adopted (superseded by the 2026-11-11 update where they differ)

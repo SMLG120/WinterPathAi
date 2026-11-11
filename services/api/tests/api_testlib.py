@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,35 @@ LON0, LAT0, DLON, DLAT = -73.5780, 45.5030, 0.0010, 0.0007
 
 def grid(r: int, c: int) -> dict[str, float]:
     return {"lon": LON0 + c * DLON, "lat": LAT0 + r * DLAT}
+
+
+# REAL pilot_mini helpers: derived from the fixture's own metadata/nodes so tests follow
+# regenerations by the Data agent instead of hard-coding one snapshot's numbers or coordinates.
+@cache
+def pilot_meta() -> dict[str, Any]:
+    return json.loads((PILOT_MINI / "metadata.json").read_text())
+
+
+def pilot_bbox_param() -> str:
+    w, s, e, n = pilot_meta()["bbox"]
+    return f"{w:.6f},{s:.6f},{e:.6f},{n:.6f}"
+
+
+def pilot_center() -> tuple[float, float]:
+    w, s, e, n = pilot_meta()["bbox"]
+    return round((w + e) / 2, 6), round((s + n) / 2, 6)
+
+
+@cache
+def pilot_route_points() -> tuple[dict[str, float], dict[str, float]]:
+    """The two fixture nodes farthest apart (deterministic; both on the network)."""
+    feats = json.loads((PILOT_MINI / "nodes.geojson").read_text())["features"]
+    pts = sorted({tuple(f["geometry"]["coordinates"][:2]) for f in feats})
+    a, b = max(
+        ((p, q) for i, p in enumerate(pts) for q in pts[i + 1 :]),
+        key=lambda pq: (pq[0][0] - pq[1][0]) ** 2 + ((pq[0][1] - pq[1][1]) * 1.4) ** 2,
+    )
+    return {"lon": a[0], "lat": a[1]}, {"lon": b[0], "lat": b[1]}
 
 
 @cache
