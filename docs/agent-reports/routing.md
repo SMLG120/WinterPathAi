@@ -1,7 +1,7 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 6 adopts contract **v1.5.0**: 311 natures, CR-ROUTING-4 and CR-ROUTING-9 accepted. Cycle 5 added v1.4.0 closure activity and `terminal_at`; cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
-- **Branch / SHA:** `agent/routing` — the latest merge of `integration/winterpath` is `d04da54`, as `ac80a71`; the 0005 boundary test follows it. Cycle-6 code is `864aa80`. `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
+- **Status:** READY FOR REVIEW, **including for a combined merge with `agent/data` @ `4254dd7`** (migration 0006 and the regenerated Geofabrik pilot_mini): 302 passed on both. Cycle 7 fixes API-NULL-1 and makes the tests fixture-independent. Cycle 6 adopted contract **v1.5.0**: 311 natures, CR-ROUTING-4 and CR-ROUTING-9 accepted. Cycle 5 added v1.4.0 closure activity and `terminal_at`; cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
+- **Branch / SHA:** `agent/routing` @ `517186d` (code). It fast-forwarded to `integration/winterpath` `eb92007` (the contract v1.5.0 evidence-mapping clarification), then `92150c1` (API-NULL-1) and `517186d` (fixture-derived tests). This report is committed on top. `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -24,6 +24,54 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
+### 0e. Cycle 7 — DB at migration 0006, API-NULL-1, data+routing preview — current
+**Merge:** `git merge --no-edit integration/winterpath` **fast-forwarded** to `eb92007`, because integration already contained routing `f63027a`.
+- `eb92007` completes the explanation evidence mapping. It now lists `PASSES/AVOIDS_POSSIBLE_CLOSURE` → `unknown`, `REDUCED_MOBILITY_SPEED` → `model_estimate` and `RISK_UNKNOWN_SHARE` → `unknown`, which is exactly the catalog, so no code change was needed and my cycle-6 questions are resolved.
+- ML's new `EdgeIdRiskProvider` / `api_provider` is an alternative entry point. The API's `CoordinateRiskAdapter` over `load_provider` keeps working (tests pass with the artifacts).
+
+**DB at 0006:** migration 0006 is only on `agent/data` (`4254dd7`), not in integration, and I did not merge `agent/data` into this branch. I exported its `db/` with `git archive agent/data db` into the scratchpad (its 0005 is identical to integration's) and ran its alembic against **my own** `wp_routing` only:
+```text
+target db: /wp_routing port 55432
+$ alembic -c <scratch>/data-db/db/alembic.ini current   → 0005_closure_active_excl_end
+$ … upgrade head; … current                             → 0006_report_311_nature (head)
+```
+With `nature` now present on the real table, `PostgisHazardRepository` takes the v1.5 path (`test_311_nature_detection_matches_real_table`, which follows the actual column, so it skips nothing).
+
+**API-NULL-1 (Platform finding):** every optional request field in the contract is non-nullable. An explicit `null` is now 422 `VALIDATION_ERROR` (`schemas.NotNull`, a before-validator), and omitting the field still uses the default. Fields:
+- `/reports` `description`, `locale`;
+- `/pilot-requests` `contact_name`, `message`, `locale`;
+- `/routes/compare` `departure_time`;
+- moderation `note`.
+
+`profile`, `locale` and `avoid_unverified_reports` on `/routes/compare` already rejected null through their non-null defaults; the tests cover them too. **Platform can remove both API-NULL-1 markers** once this is merged: the strict xfail will start failing as XPASS, as designed. 10 new tests.
+
+**Data + routing preview** (because the coordinator will merge both): a throwaway detached worktree in the scratchpad, `agent/routing` @ `92150c1` + `git merge agent/data` (clean, `0efc09d`), same 0006 DB, ML artifacts copied in.
+- First run: **`4 failed, 298 passed`**. The regenerated pilot_mini has 92 nodes (was 88) and a bbox of about 190 m (was about 340 m). My tests hard-coded the old count and route endpoints: the destination −73.5745 is now `OFF_NETWORK` (`nearest_network_m: 156.9`). Code was fine; the tests were brittle.
+- Fix `517186d`: the tests read `metadata.json` and `nodes.geojson` (count, bbox, centre, farthest node pair).
+- The worktree was removed afterwards.
+```text
+$ uptime → load averages: 6.30 12.31 13.37
+== agent/routing @ 517186d (current pilot_mini, 88 nodes)
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.1 ms p95=1.7 ms max=2.4 ms (rejected >75 m from network: 48)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=4.6 ms p95=6.2 ms max=9.9 ms
+======================= 302 passed, 1 warning in 18.98s ========================
+== preview: agent/routing + agent/data 4254dd7 (Geofabrik pilot_mini, 92 nodes)
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.3 ms p95=2.2 ms max=3.6 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=4.6 ms p95=7.2 ms max=13.1 ms
+======================= 302 passed, 1 warning in 19.15s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after both runs
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+(The "rejected" count is random points in the fixture bbox more than 75 m from the network. The new, tighter bbox gives 4 instead of 48. These are expected `OFF_NETWORK` rejections, not failures.)
+
 ### 0d. Merge of `integration/winterpath` `2d37f32` (`.env.example` weather names) — current
 `git merge --no-edit integration/winterpath` → `e98e9de` (`.env.example | 4 ++++`), no conflicts. `wp_routing` is at `0005_closure_active_excl_end (head)`. `uptime`: `load averages: 17.56 19.65 24.68`.
 ```text
