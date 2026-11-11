@@ -74,6 +74,17 @@ Third re-merge request, same day: `integration/winterpath` still `a292b63` (`Alr
 $ ruff (routing / api): All checks passed! 20 / 30 files already formatted
 ```
 
+Fourth re-merge request, same day: `integration/winterpath` still `a292b63` (`Already up to date.`); `wp_routing` at `0006_report_311_nature (head)`; load average ≈11.
+```text
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=6.5 ms p95=19.2 ms max=86.6 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=40.2 ms p95=97.3 ms max=217.2 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=2.0 ms p95=6.9 ms max=12.0 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=3.7 ms p95=5.3 ms max=32.6 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=8.0 ms p95=235.9 ms max=1197.2 ms
+======================= 303 passed, 1 warning in 29.64s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+```
+
 ### 0g. Cycle 9 — merge of `agent/data` `f6eb3b2`, DB re-migrated, full rerun
 **Order** (0006 was edited in place, so the applied version had to be undone with its own downgrade):
 1. **Downgrade with the applied 0006.** My scratchpad export of `agent/data`'s `db/` (identical to `4254dd7`'s 0006: `diff` empty) against **my own** DB:
