@@ -17,6 +17,11 @@ data/cache/
 *.pmtiles
 models/artifacts/**
 !models/artifacts/.gitkeep
+# v1.7: the two small artifacts the scheduled scoring job needs (sha256-verified against models/registry.json before use)
+!models/artifacts/v2-8d19aa86/
+models/artifacts/v2-8d19aa86/*
+!models/artifacts/v2-8d19aa86/winter311-heuristic-v1.joblib
+!models/artifacts/v2-8d19aa86/coverage_cells.parquet
 
 # python
 __pycache__/
