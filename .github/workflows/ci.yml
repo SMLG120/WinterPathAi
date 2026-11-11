@@ -1,5 +1,5 @@
-# WinterPath CI — lint, unit, contract, security scans. No deploy jobs (deploys are
-# approval-gated and manual; see infra/RUNBOOK.md). Third-party actions are pinned to
+# WinterPath CI — lint, unit, contract, security scans, deploy-readiness (build + smoke only).
+# No deploy jobs (deploys are approval-gated and manual; see infra/RUNBOOK.md). Third-party actions are pinned to
 # commit SHAs (tag in trailing comment). Jobs for packages that do not exist yet on a
 # branch skip with an explicit message instead of failing.
 name: ci
@@ -33,6 +33,7 @@ jobs:
       contract: ${{ steps.filter.outputs.contract }}
       compose: ${{ steps.filter.outputs.compose }}
       workflows: ${{ steps.filter.outputs.workflows }}
+      deploy: ${{ steps.filter.outputs.deploy }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -63,6 +64,12 @@ jobs:
               - '.github/workflows/ci.yml'
             workflows:
               - '.github/workflows/**'
+            deploy:
+              - 'services/**'
+              - 'data/fixtures/pilot_mini/**'
+              - 'infra/docker/**'
+              - 'infra/render.yaml'
+              - '.github/workflows/ci.yml'
 
   python:
     name: python (${{ matrix.package }})
@@ -311,6 +318,51 @@ jobs:
           grep " ${tarball}\$" "gitleaks_${GITLEAKS_VERSION}_checksums.txt" | sha256sum -c -
           tar -xzf "$tarball" gitleaks
       - run: ./gitleaks git --redact --verbose --exit-code 1 .
+
+  deploy-readiness:
+    # Builds the production API image exactly as Render would (runtime: docker) and boots it the
+    # way Render does (PORT injected, non-root) on the committed fixture graph. Builds only:
+    # nothing is pushed to a registry and nothing is deployed.
+    name: deploy readiness (api image + container smoke)
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      IMAGE: winterpath-api:ci-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: docker build (infra/docker/api.Dockerfile)
+        run: DOCKER_BUILDKIT=1 docker build -f infra/docker/api.Dockerfile -t "$IMAGE" .
+      - name: image runs as non-root
+        run: |
+          uid="$(docker run --rm --entrypoint id "$IMAGE" -u)"
+          echo "uid=$uid"
+          [ "$uid" != "0" ] || { echo "::error::API image runs as root"; exit 1; }
+      - name: container smoke test (/api/v1/health on fixture graph, PORT like Render)
+        run: |
+          docker run -d --name wp-api-smoke -p 127.0.0.1:18080:10000 \
+            -e PORT=10000 -e ROUTING_GRAPH_SOURCE=fixture -e API_STORE_BACKEND=memory \
+            -e WEATHER_SOURCE=none -e RISK_PROVIDER=none "$IMAGE"
+          if ! infra/scripts/wait-for-http.sh http://127.0.0.1:18080/api/v1/health 90; then
+            docker logs wp-api-smoke; exit 1
+          fi
+          curl -fsS http://127.0.0.1:18080/api/v1/health | tee "$RUNNER_TEMP/health.json"; echo
+          python3 - "$RUNNER_TEMP/health.json" <<'PY'
+          import json, sys
+          h = json.load(open(sys.argv[1]))
+          assert h["status"] in ("ok", "degraded"), h
+          assert h["checks"]["graph"]["status"] == "ok", h["checks"]["graph"]
+          print("health OK; graph check ok")
+          PY
+          code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/v1/coverage)"
+          [ "$code" = 200 ] || { echo "::error::/coverage returned $code"; docker logs wp-api-smoke; exit 1; }
+      - name: container logs (always)
+        if: always()
+        run: docker logs wp-api-smoke 2>&1 | tail -50 || true
+      - name: cleanup
+        if: always()
+        run: docker rm -f wp-api-smoke >/dev/null 2>&1 || true
 
   workflow-lint:
     name: actionlint

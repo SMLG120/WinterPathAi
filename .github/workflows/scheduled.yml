@@ -1,0 +1,143 @@
+# WinterPath scheduled jobs (contract v1.7: GitHub Actions cron instead of Render cron).
+# DRAFT — inert until the repository secret WP_ETL_DATABASE_URL is added: every job checks for
+# it first and exits successfully with a ::notice when it is missing, so nothing touches any
+# database before the user opts in.
+#
+# WP_ETL_DATABASE_URL: Supabase SESSION pooler URL for a login user in role wp_writer (never
+# the owner/service role). It is passed only to the steps that connect, never to third-party
+# actions, and GitHub masks it in logs.
+#
+# Schedules are UTC (GitHub cron has no time zones). Scheduled runs only fire on the default
+# branch and may be delayed by GitHub under load.
+name: scheduled
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # weather ingest every 3 h (minute 17 avoids top-of-hour congestion)
+    - cron: "40 10 * * *"    # daily scoring 10:40 UTC = 05:40 EST / 06:40 EDT (after D-1 closes in Montréal)
+  workflow_dispatch:
+    inputs:
+      job:
+        description: which job to run
+        type: choice
+        options: [weather, scoring, both]
+        default: both
+
+permissions: {}
+
+env:
+  UV_VERSION: "0.10.7"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  weather-ingest:
+    name: weather ingest (ECCC -> wp.weather_obs/daily)
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '17 */3 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.job != 'scoring')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    concurrency:
+      group: scheduled-weather-ingest
+      cancel-in-progress: false   # never kill a load mid-transaction; queue the next run
+    defaults:
+      run:
+        working-directory: services/ingestion
+    steps:
+      - name: gate on WP_ETL_DATABASE_URL
+        id: gate
+        working-directory: .
+        env:
+          WP_ETL_DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
+        run: |
+          if [ -z "$WP_ETL_DATABASE_URL" ]; then
+            echo "::notice title=SKIP weather ingest::repository secret WP_ETL_DATABASE_URL is not set — nothing ran"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.gate.outputs.configured == 'true'
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: steps.gate.outputs.configured == 'true'
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: install (locked)
+        if: steps.gate.outputs.configured == 'true'
+        run: uv sync --locked --no-dev
+      - name: fetch ECCC observations (no database access)
+        if: steps.gate.outputs.configured == 'true'
+        run: uv run --locked wp-ingest eccc --refresh
+      - name: load into PostGIS (staging + swap; other sources skip with "no processed output")
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
+        run: uv run --locked wp-ingest load
+
+  daily-scoring:
+    name: daily risk scoring (-> wp.risk_cell_score)
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '40 10 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.job != 'weather')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    concurrency:
+      group: scheduled-daily-scoring
+      cancel-in-progress: false
+    env:
+      # Entry point of ML's v1.7 DB-backed scorer. ML agent to confirm the module and flags before
+      # the secret is added; the job refuses to run until services/ml references wp.risk_cell_score.
+      SCORING_MODULE: winterpath_ml.score
+    defaults:
+      run:
+        working-directory: services/ml
+    steps:
+      - name: gate on WP_ETL_DATABASE_URL
+        id: gate
+        working-directory: .
+        env:
+          WP_ETL_DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
+        run: |
+          if [ -z "$WP_ETL_DATABASE_URL" ]; then
+            echo "::notice title=SKIP daily scoring::repository secret WP_ETL_DATABASE_URL is not set — nothing ran"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.gate.outputs.configured == 'true'
+        with:
+          persist-credentials: false
+      - name: gate on ML DB scorer (contract v1.7)
+        id: scorer
+        if: steps.gate.outputs.configured == 'true'
+        run: |
+          if grep -rqs "risk_cell_score" src/; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=SKIP daily scoring::services/ml does not write wp.risk_cell_score on this commit — nothing ran"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: steps.scorer.outputs.present == 'true'
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: install (locked, db extra)
+        if: steps.scorer.outputs.present == 'true'
+        run: uv sync --locked --no-dev --extra db
+      - name: score today (America/Montreal local day)
+        if: steps.scorer.outputs.present == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
+        run: |
+          day="$(TZ=America/Montreal date +%F)"
+          echo "scoring day=$day module=$SCORING_MODULE"
+          uv run --locked python -m "$SCORING_MODULE" --start "$day"

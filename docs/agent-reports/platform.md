@@ -5,6 +5,58 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (f) — v1.7 free-tier deployment drafts (nothing applied)
+Context: merged `integration/winterpath` 07a1f29 (contract **v1.7.0**) once, after integration moved past 3aa6438; it touched no platform-owned paths. The user's request arrived truncated: it began mid-item at "free, runtime docker, …". Items (2)–(5) are done below; **item (1) was not received and is not done.**
+
+**(2) `infra/render.yaml` (draft, not applied).** `runtime: docker`, `plan: free`, `region: virginia` (v1.7 decision), `autoDeploy: false`, `healthCheckPath: /api/v1/health`. 19 env vars, no duplicates. `sync: false` is used for every secret (`DATABASE_URL`, `API_ADMIN_TOKEN_HASH`, `GEOCODER_API_KEY`) and for not-yet-known deployment values (`API_CORS_ORIGINS`, `WEATHER_STATION_IDS`, `GEOCODER_PROVIDER`, `HTTP_USER_AGENT`). The v1.7 names are set: `API_PUBLIC_WRITES=false` (read-only demo), `RISK_SCORE_SOURCE=postgis`, `DATABASE_POOL_SIZE=2`, `DATABASE_MAX_OVERFLOW=0`. Graph, store and weather are all from PostGIS. `PORT` is deliberately not declared, because Render injects it. Sizing values are drafts marked "verify". The `VITE_*` names are documented as Vercel settings. Render cron was removed in favour of GitHub Actions (v1.7 decision).
+
+**(3) `.github/workflows/scheduled.yml` (new, inert until the secret exists).**
+- `weather-ingest`: every 3 h (`17 */3 * * *`), running `wp-ingest eccc --refresh` then `wp-ingest load` (the other sources skip with "no processed output").
+- `daily-scoring`: `40 10 * * *` UTC = 05:40 EST / 06:40 EDT.
+- Both have `workflow_dispatch` (input `job: weather|scoring|both`), per-job `concurrency` (no cancel mid-load), `timeout-minutes` (15 / 30), top-level `permissions: {}` and job-level `contents: read`, and `persist-credentials: false`.
+- The secret `WP_ETL_DATABASE_URL` is checked first. If it is missing, the job emits `::notice … nothing ran` and succeeds. When present, it is passed as `DATABASE_URL` only to the step that connects, never to third-party actions.
+- Installs use `uv sync --locked`; `uv lock --check` is clean for `services/ingestion` and `services/ml`.
+- **Open dependency (ML):** no ML code writes `wp.risk_cell_score` yet. `winterpath_ml.score` writes Parquet files and needs local artifacts. The scoring job therefore has a second gate: it no-ops with a notice until `services/ml/src` references `wp.risk_cell_score`. `SCORING_MODULE` is a placeholder for ML to confirm before the secret is added.
+
+**(4) CI `deploy-readiness` job (in `ci.yml`, new `deploy` path filter).** It runs `docker build -f infra/docker/api.Dockerfile`, asserts a non-root uid, and boots the container like Render (`PORT=10000`, fixture graph, memory store). It then asserts `/api/v1/health` status ok|degraded with `checks.graph.status == ok`, and `/coverage` 200. It always prints logs and cleans up. It pushes no image and deploys nothing.
+
+**API image fixes found by that smoke test (`infra/docker/api.Dockerfile`, owned):**
+1. The old build installed `./services/api`, whose `[tool.uv.sources]` mark routing/ml as **editable**. They were linked to `/src`, which is absent in the runtime stage, so the real image failed at import with `ModuleNotFoundError: No module named 'winterpath_routing'`. My original v1.0 probe build used a throwaway stand-in app, so it never caught this. The build now runs `uv sync --frozen --no-dev --no-editable` from `services/api/uv.lock`: pinned, hash-checked, with real copies in the venv.
+2. The image binds `0.0.0.0:${PORT:-8000}` (v1.7). Compose and local runs still use 8000.
+3. The image ships `data/fixtures/pilot_mini` (with `ATTRIBUTION.md`) and sets `ROUTING_FIXTURE_DIR`, because the API's default fixture path is relative to the source tree.
+4. New `infra/docker/api.Dockerfile.dockerignore` (allow-list): only `services/` and the fixture go into the build context. Before this, `.env.local`, `.git`, venvs and `node_modules` were sent to the Docker daemon, although never copied into the image.
+
+**(5)** Drafts only. Nothing was pushed, deployed or provisioned; no Render, Supabase or registry resources were created, and no secret was set.
+
+Literal outputs:
+```text
+$ docker build -f infra/docker/api.Dockerfile -t wp-api:deploycheck .     (before the fix)
+$ docker run ... python -c "import winterpath_api.main as m; m.app"
+ModuleNotFoundError: No module named 'winterpath_routing'
+
+$ (after the fix) docker build ...  -> [build exit 0]
+uid=10001(app) gid=10001(app) groups=10001(app)
+winterpath_api / winterpath_ml / winterpath_routing (+ dist-info), no _editable_impl_* ; no /src
+$ docker run -d -p 127.0.0.1:18110:10000 -e PORT=10000 -e ROUTING_GRAPH_SOURCE=fixture -e API_STORE_BACKEND=memory -e WEATHER_SOURCE=none -e RISK_PROVIDER=none wp-api:deploycheck
+ready: http://127.0.0.1:18110/api/v1/health
+{"status":"ok","version":"0.1.0 (contract 1.6.0)","checks":{"graph":{"status":"ok"},"database":{"status":"disabled","detail":"In-memory stores (no DATABASE)."},"risk":{"status":"disabled","detail":"No risk layer; risk reported as unknown."},"weather":{"status":"disabled","detail":"No ECCC adapter configured."}}}
+coverage 200
+{"nodes": 92, "edges": 200, "simulated": false, "event": "graph_loaded", ...}
+container removed; local image removed
+
+$ actionlint                     -> [actionlint exit 0]   (ci.yml incl. deploy-readiness, scheduled.yml)
+$ (PyYAML) render.yaml / scheduled.yml / ci.yml -> YAML OK
+render: docker free virginia /api/v1/health autoDeploy= False
+env keys: 19 dupes: 0
+$ (gate dry run, secret empty)
+::notice title=SKIP weather ingest::repository secret WP_ETL_DATABASE_URL is not set — nothing ran
+gate output: configured=false
+$ grep -rqs risk_cell_score services/ml/src  -> absent -> daily-scoring would SKIP with notice
+$ make lint-infra -> compose config OK [exit 0];  make config -> compose config OK
+$ scripts/check-ownership.sh platform -> ownership OK for agent/platform
+```
+Not verified: neither workflow change has run on GitHub. The scheduled jobs have not run against a database; that is by design, since no secret exists. The API on this tree still reports contract 1.6.0, so `API_PUBLIC_WRITES`, `RISK_SCORE_SOURCE` and `DATABASE_POOL_SIZE`/`DATABASE_MAX_OVERFLOW` have no effect until Routing's v1.7 work lands. The deployed risk layer may also need `models/registry.json`, which the image does not ship; ML/Routing to confirm.
+
 ## Update 2026-11-11 (e) — CI: Playwright job runs in the official image (no apt)
 The coordinator reported that CI run 43053137078 on main 6a712e9 passed 11/12 jobs; the contract job is green, which confirms the CORS fix from update (b). The `playwright` job failed twice in `npx playwright install --with-deps chromium`, with apt exit 100. Literal lines from `gh run view 43053137078 --log-failed`:
 ```text

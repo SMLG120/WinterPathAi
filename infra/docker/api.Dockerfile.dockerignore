@@ -1,0 +1,12 @@
+# BuildKit reads <Dockerfile>.dockerignore for this Dockerfile only (build context = repo root).
+# Allow-list: send only what api.Dockerfile COPYs. Keeps .env.local, .git, raw data, local venvs
+# and node_modules out of the build context entirely.
+*
+!services/
+!data/fixtures/pilot_mini/
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/node_modules
+**/tests/
