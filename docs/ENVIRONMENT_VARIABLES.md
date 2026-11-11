@@ -14,7 +14,7 @@ Names are defined in `.env.example` (names only; never commit values). Real valu
 | `ROUTING_GRAPH_SOURCE` | `fixture` | `postgis` | no |
 | `ROUTING_FIXTURE_DIR` | optional | unset | no |
 | `ROUTING_WORKERS` | `4` | `1` (0.1 CPU) | no |
-| `API_STORE_BACKEND` | `memory` | `memory` (read-only demo: nothing is stored) | no |
+| `API_STORE_BACKEND` | `memory` | **`postgis`**: routing must read confirmed closures and 311 aggregates from `wp.closure` / `wp.report_311_cell`. With `memory`, production loads no hazards at all. This requires the API build in which writes-off keeps the community and pilot stores in memory, because `wp_reader` has no SELECT on `community_report` / `pilot_request` (PII). Before that build, `postgis` makes `/hazards` and `/routes/compare` return 503. (2026-11-11: production is temporarily on `memory` pending that fix.) | no |
 | `API_PUBLIC_WRITES` | `true` | **`false`** (POST /reports, /pilot-requests → 503 `WRITES_DISABLED`) | no |
 | `API_CORS_ORIGINS` | `http://localhost:5174` | exact production `https://<project>.pages.dev` (+ the specific preview alias if used); never `*` | no |
 | `API_ADMIN_TOKEN_HASH` | test hash | SHA-256 of a token kept in a password manager | **yes** |
