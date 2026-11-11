@@ -5,6 +5,7 @@ description = "WinterPath AI HTTP API (FastAPI) — implements docs/contracts/op
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "winterpath-routing[postgis]",
+  "winterpath-ml",
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
   "pydantic>=2.8",
@@ -27,6 +28,7 @@ dev = [
 
 [tool.uv.sources]
 winterpath-routing = { path = "../routing", editable = true }
+winterpath-ml = { path = "../ml", editable = true }
 
 [build-system]
 requires = ["hatchling"]

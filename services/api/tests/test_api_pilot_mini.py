@@ -60,7 +60,7 @@ def test_compare_on_real_graph_schema_valid(real, profile, locale) -> None:
         validate_response(r, "/routes/compare", "post")
         statuses.append(r.status_code)
         if r.status_code != 200:
-            assert profile == "step_free" and r.json()["code"] in ("NO_ROUTE", "OUTSIDE_COVERAGE")
+            assert profile == "step_free" and r.json()["code"] in ("NO_ROUTE", "OFF_NETWORK")
             continue
         body = r.json()
         assert not any(w.startswith(("SIMULATED", "SIMULÉ")) for w in body["warnings"])

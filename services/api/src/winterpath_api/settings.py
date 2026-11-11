@@ -37,6 +37,12 @@ class Settings:
     risk_provider: str = "none"
     #: size of the pre-warmed route-computation thread pool
     routing_workers: int = 4
+    #: none | postgis (reads wp.weather_obs / wp.weather_daily)
+    weather_source: str = "none"
+    #: observations older than this are not served as "current" (→ 503)
+    weather_max_age_minutes: int = 180
+    #: station priority order; empty = most recent across stations
+    weather_station_ids: list[str] = field(default_factory=list)
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -54,4 +60,7 @@ class Settings:
             store_backend=(e.get("API_STORE_BACKEND") or "memory").lower(),
             risk_provider=e.get("RISK_PROVIDER") or "none",
             routing_workers=int(e.get("ROUTING_WORKERS") or 4),
+            weather_source=(e.get("WEATHER_SOURCE") or "none").lower(),
+            weather_max_age_minutes=int(e.get("WEATHER_MAX_AGE_MINUTES") or 180),
+            weather_station_ids=_csv(e.get("WEATHER_STATION_IDS")),
         )

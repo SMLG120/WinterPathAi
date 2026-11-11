@@ -123,10 +123,32 @@ def build_state(
         )
     if risk is None:
         try:
-            risk = load_risk_provider(settings.risk_provider)
+            edge_coords = None
+            if engine is not None:
+                edges = engine.graph.edges
+
+                def edge_coords(eid: str):
+                    e = edges.get(eid)
+                    return e.coords if e is not None else None
+
+            risk = load_risk_provider(settings.risk_provider, edge_coords)
         except (ImportError, AttributeError) as exc:
             log.warning("risk_provider_unavailable", error_type=type(exc).__name__)
             risk = NullRiskProvider()
+
+    if weather is None and settings.weather_source == "postgis" and settings.database_url:
+        from datetime import timedelta
+
+        from sqlalchemy import create_engine
+
+        from .weather import ObservationWeatherAdapter, PostgisWeatherStore
+
+        weather_engine = db_engine or create_engine(settings.database_url, pool_pre_ping=True)
+        weather = ObservationWeatherAdapter(
+            PostgisWeatherStore(weather_engine),
+            max_age=timedelta(minutes=settings.weather_max_age_minutes),
+            station_ids=settings.weather_station_ids,
+        )
 
     compute = ComputePool(settings.routing_workers)
     compute.warm()

@@ -197,7 +197,7 @@ class PostgisGraphProvider:
     """
     SOURCE_SQL = "SELECT source_id, last_success_at FROM wp.source"
     #: data-model v1.2 columns; selected only if the applied migrations created them
-    OPTIONAL_EDGE_COLS = ("crossing_type", "crossing_kerb")
+    OPTIONAL_EDGE_COLS = ("crossing_type", "crossing_kerb", "name")  # v1.2 / v1.3, when migrated
     COLUMNS_SQL = (
         "SELECT column_name FROM information_schema.columns "
         "WHERE table_schema = 'wp' AND table_name = 'edge'"

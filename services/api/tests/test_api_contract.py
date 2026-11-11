@@ -183,8 +183,9 @@ def test_compare_routes_error_cases(client) -> None:
     # inside the pilot bbox but > 75 m from any routable edge
     far = {"lon": -73.570, "lat": 45.510}
     r = client.post(url, json={"origin": grid(0, 0), "destination": far})
-    check(r, 422, "OUTSIDE_COVERAGE")
+    check(r, 422, "OFF_NETWORK")
     assert r.json()["details"]["which"] == "destination"
+    assert r.json()["details"]["max_snap_distance_m"] == 75
     check(
         client.post(url, content=b"{not json", headers={"content-type": "application/json"}),
         400,

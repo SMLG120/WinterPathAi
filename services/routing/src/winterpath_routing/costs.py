@@ -37,6 +37,10 @@ class CostConfig:
 
     #: Confirmed disruption that does not block passage (e.g. construction impact), per edge.
     confirmed_disruption_penalty_s: float = 45.0
+    #: Confirmed passage-blocking permit whose activity at departure is unknown
+    #: (``wp.closure_active_at`` = NULL), per edge. Larger than a passable disruption because the
+    #: sidewalk may be blocked; not an exclusion because activity is not established.
+    possible_closure_penalty_s: float = 120.0
     #: Unverified reports (311 aggregate / approved community) when avoid_unverified_reports, per
     #: edge.
     unverified_report_penalty_s: float = 20.0
@@ -64,6 +68,7 @@ class CostConfig:
             self.reduced_mobility_speed_mps,
             self.unknown_penalty_s_per_100m,
             self.confirmed_disruption_penalty_s,
+            self.possible_closure_penalty_s,
             self.unverified_report_penalty_s,
             self.unlit_penalty_factor,
             self.reduced_mobility_not_step_free_penalty_s,
@@ -103,10 +108,13 @@ def edge_cost(
     n_unverified_reports: int,
     avoid_unverified_reports: bool,
     config: CostConfig,
+    n_possible_closures: int = 0,
 ) -> EdgeCost:
     base = edge.length_m / config.speed_for(profile)
 
     disruption = config.confirmed_disruption_penalty_s * (1 if n_confirmed_disruptions else 0)
+    if n_possible_closures:
+        disruption += config.possible_closure_penalty_s
     if avoid_unverified_reports and n_unverified_reports:
         disruption += config.unverified_report_penalty_s
 

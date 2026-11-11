@@ -1,7 +1,10 @@
 """Hazards for the map and for routing.
 
 * closures/impacts (``wp.closure``) → evidence ``confirmed``; ``blocks_passage`` only as the source
-  states it.
+  states it. Activity at the requested time comes from ``wp.closure_active_at(c, t)``
+  (data-model v1.4, three-valued): ``false`` rows are dropped, ``true`` → ``Hazard.active=True``,
+  ``NULL`` → ``Hazard.active=None`` (unknown — flagged and penalised by routing, never clear).
+  Databases without the function (pre-migration 0004) fall back to the validity window only.
 * 311 aggregates (``wp.report_311_cell``) → evidence ``unverified_report``; cells with n < 3 per
   day are suppressed (k-anonymity floor, data-model.md).
 * approved community reports → evidence ``unverified_report``.
@@ -76,49 +79,72 @@ class InMemoryHazardRepository:
         return {}
 
 
+CLOSURE_COLS = (
+    "c.closure_id, ST_AsGeoJSON(c.geom) AS g, c.sidewalk_blockedtype, c.blocks_passage,"
+    " c.valid_from, c.valid_to, c.status, c.source_id"
+)
+CLOSURE_SQL_V14 = (
+    f"SELECT {CLOSURE_COLS}, wp.closure_active_at(c, :at) AS active FROM wp.closure c"  # noqa: S608
+    " WHERE wp.closure_active_at(c, :at) IS DISTINCT FROM false"
+)
+CLOSURE_SQL_LEGACY = (
+    f"SELECT {CLOSURE_COLS}, TRUE AS active FROM wp.closure c"  # noqa: S608
+    " WHERE (c.valid_from IS NULL OR c.valid_from <= :at)"
+    " AND (c.valid_to IS NULL OR c.valid_to >= :at)"
+)
+HAS_ACTIVE_FN = (
+    "SELECT to_regprocedure('wp.closure_active_at(wp.closure, timestamp with time zone)')"
+    " IS NOT NULL"
+)
+
+
+def closure_hazard(m) -> Hazard:
+    import json
+
+    blocks, active = m["blocks_passage"], m["active"]
+    note = f"sidewalk_blockedtype={m['sidewalk_blockedtype']}"
+    title_en, title_fr = "Permitted work zone", "Zone de travaux autorisée"
+    if active is None:
+        note += "; activity at the requested time unknown (permit schedule not established)"
+        title_en += " — schedule at this time unknown"
+        title_fr += " — horaire à ce moment inconnu"
+    return Hazard(
+        hazard_id=m["closure_id"],
+        kind=HazardKind.SIDEWALK_CLOSURE if blocks is True else HazardKind.CONSTRUCTION_IMPACT,
+        geometry=json.loads(m["g"]),
+        evidence=Evidence(
+            EvidenceState.CONFIRMED,
+            (m["source_id"],),
+            observed_at=m["valid_from"],
+            note=note,
+        ),
+        blocks_passage=blocks,
+        valid_from=m["valid_from"],
+        valid_to=m["valid_to"],
+        title_en=title_en,
+        title_fr=title_fr,
+        active=None if active is None else bool(active),
+    )
+
+
 class PostgisHazardRepository:
     def __init__(self, engine, reports: ReportRepository) -> None:
         self.engine = engine
         self.reports = reports
+        self._has_active_fn: bool | None = None
 
     def list(self, at: datetime) -> list[Hazard]:
-        import json
 
         import h3
         from sqlalchemy import text
 
         out: list[Hazard] = []
         with self.engine.connect() as conn:
-            for m in conn.execute(
-                text(
-                    "SELECT closure_id, ST_AsGeoJSON(geom) AS g, sidewalk_blockedtype,"
-                    " blocks_passage, valid_from, valid_to, status, source_id FROM wp.closure"
-                    " WHERE (valid_from IS NULL OR valid_from <= :at)"
-                    " AND (valid_to IS NULL OR valid_to >= :at)"
-                ),
-                {"at": at},
-            ).mappings():
-                blocks = m["blocks_passage"]
-                out.append(
-                    Hazard(
-                        hazard_id=m["closure_id"],
-                        kind=HazardKind.SIDEWALK_CLOSURE
-                        if blocks is True
-                        else HazardKind.CONSTRUCTION_IMPACT,
-                        geometry=json.loads(m["g"]),
-                        evidence=Evidence(
-                            EvidenceState.CONFIRMED,
-                            (m["source_id"],),
-                            observed_at=m["valid_from"],
-                            note=f"sidewalk_blockedtype={m['sidewalk_blockedtype']}",
-                        ),
-                        blocks_passage=blocks,
-                        valid_from=m["valid_from"],
-                        valid_to=m["valid_to"],
-                        title_en="Permitted work zone",
-                        title_fr="Zone de travaux autorisée",
-                    )
-                )
+            if self._has_active_fn is None:
+                self._has_active_fn = bool(conn.execute(text(HAS_ACTIVE_FN)).scalar())
+            sql = CLOSURE_SQL_V14 if self._has_active_fn else CLOSURE_SQL_LEGACY
+            for m in conn.execute(text(sql), {"at": at}).mappings():
+                out.append(closure_hazard(m))
             rows = conn.execute(
                 text(
                     "SELECT h3, category, SUM(n) AS n, MIN(day) AS d0, MAX(day) AS d1"
