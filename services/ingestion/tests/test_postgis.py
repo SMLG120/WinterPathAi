@@ -75,7 +75,8 @@ EXPECTED_0001 = sorted(
         "pilot_request",
     ]
 )
-EXPECTED = sorted([*EXPECTED_0001, "weather_daily"])  # head = 0002 (contract v1.2.0)
+EXPECTED_0002 = sorted([*EXPECTED_0001, "weather_daily"])  # contract v1.2.0 … v1.6.0
+EXPECTED = sorted([*EXPECTED_0002, "risk_cell_score"])  # head = 0007 (contract v1.7.0)
 V12_EDGE_COLS = {"crossing_type", "crossing_kerb", "highway", "osm_snapshot"}
 V12_CLOSURE_COLS = {"attrs", "backsidewalk_blocks_passage"}
 # v1.3.0 (migration 0003)
@@ -158,6 +159,12 @@ def test_migration_up_down_up(test_url):
     assert has_v13(test_url) == {True}
     assert has_v14(test_url) and active_at_end_exclusive(test_url)
     assert report_311_pk(test_url) == V15_PK
+    # one step down: 0007 removed, 0006 intact
+    alembic(test_url, "downgrade", "0006_report_311_nature")
+    assert wp_tables(test_url) == EXPECTED_0002
+    assert report_311_pk(test_url) == V15_PK
+    alembic(test_url, "upgrade", "head")
+    assert wp_tables(test_url) == EXPECTED
     # one step down: 0006 removed (nature collapsed), 0005 intact
     alembic(test_url, "downgrade", "0005_closure_active_excl_end")
     assert report_311_pk(test_url) == ["h3", "day", "category"]
@@ -181,7 +188,7 @@ def test_migration_up_down_up(test_url):
     assert not has_v14(test_url)
     assert has_v13(test_url) == {False}
     assert V12_EDGE_COLS <= columns(test_url, "edge")
-    assert wp_tables(test_url) == EXPECTED
+    assert wp_tables(test_url) == EXPECTED_0002
     alembic(test_url, "upgrade", "head")
     assert has_v13(test_url) == {True} and has_v14(test_url)
     # one step down: back to exactly the v1 schema
@@ -389,3 +396,225 @@ def test_loader_atomic_and_idempotent(test_url, tmp_path):
         assert c.execute("SELECT count(*) FROM wp.edge").fetchone()[0] == 200
         st = dict(c.execute("SELECT input_checksum, status FROM wp.ingest_run").fetchall())
         assert st["fixture-1"] == "succeeded" and st["fixture-2"] == "failed"
+
+
+def test_weather_since_bounds_and_prunes(test_url, tmp_path):
+    """`load --weather-since`: rows before local midnight (America/Montreal) are skipped and
+    pruned; the cutoff is part of the checksum, so bounded and full loads never no-op each other.
+    Synthetic station `TEST` in the throwaway DB only."""
+    import json
+    from datetime import date
+
+    from winterpath_ingestion import db_load
+    from winterpath_ingestion.config import Settings
+
+    alembic(test_url, "upgrade", "head")
+    d = tmp_path / "processed" / "weather_obs"
+    d.mkdir(parents=True)
+    hdr = "station_id,observed_at,temperature_c,precip_mm,snow_depth_cm,wind_kmh,source_collection"
+    times = [
+        "2025-12-31T04:59:00+00:00",  # 2025-12-30 23:59 local → before
+        "2026-01-01T04:59:00+00:00",  # 2025-12-31 23:59 local → before
+        "2026-01-01T05:00:00+00:00",  # 2026-01-01 00:00 local → kept (inclusive)
+        "2026-06-01T00:00:00+00:00",
+    ]
+    (d / "weather_obs.csv").write_text(
+        hdr + "\n" + "".join(f"TEST,{t},-5.0,,,,climate-hourly\n" for t in times)
+    )
+    (d / "manifest.json").write_text(
+        json.dumps(
+            {"input_checksum": "w-1", "ingest_run_id": "00000000-0000-0000-0000-0000000000a1"}
+        )
+    )
+    s = Settings(data_dir=tmp_path, user_agent="test")
+
+    def n_rows():
+        with psycopg.connect(test_url) as c:
+            return c.execute(
+                "SELECT count(*) FROM wp.weather_obs WHERE station_id='TEST'"
+            ).fetchone()[0]
+
+    assert db_load.load(s, ["eccc"], url=test_url)[0]["counts"]["weather_obs"] == 4
+    assert n_rows() == 4
+
+    r = db_load.load(s, ["eccc"], url=test_url, weather_since=date(2026, 1, 1))[0]
+    assert r["noop"] is False
+    assert r["counts"] == {
+        "weather_obs": 2,
+        "_weather_obs_skipped_before_since": 2,
+        "_weather_obs_pruned_before_since": 2,
+    }
+    assert n_rows() == 2
+    with psycopg.connect(test_url) as c:
+        rc = c.execute(
+            "SELECT record_count FROM wp.ingest_run WHERE input_checksum=%s",
+            ("w-1|weather_since=2026-01-01",),
+        ).fetchone()[0]
+    assert rc == 2
+    assert db_load.load(s, ["eccc"], url=test_url, weather_since=date(2026, 1, 1))[0]["noop"]
+    assert db_load.load(s, ["eccc"], url=test_url)[0]["noop"] is False  # full reload restores
+    assert n_rows() == 4
+
+
+RCS = "INSERT INTO wp.risk_cell_score (h3, day, model_id, layer, p{extra}) VALUES "
+
+
+def test_risk_cell_score_schema_constraints_grants_roundtrip(test_url):
+    """0007 (contract v1.7.0): exact columns, PK, (day, model_id) index, layer/p CHECKs, grants,
+    partition replace in one transaction, and a downgrade/upgrade roundtrip. Synthetic h3 values
+    in the throwaway DB only."""
+    alembic(test_url, "upgrade", "head")
+    with psycopg.connect(test_url) as c:
+        cols = c.execute(
+            "SELECT column_name, data_type, is_nullable FROM information_schema.columns "
+            "WHERE table_schema='wp' AND table_name='risk_cell_score' ORDER BY ordinal_position"
+        ).fetchall()
+        assert cols == [
+            ("h3", "text", "NO"),
+            ("day", "date", "NO"),
+            ("model_id", "text", "NO"),
+            ("layer", "text", "NO"),
+            ("p", "double precision", "NO"),
+            ("scored_at", "timestamp with time zone", "NO"),
+            ("data_through", "timestamp with time zone", "YES"),
+            ("ingest_run_id", "uuid", "YES"),
+        ]
+        pk = [
+            r[0]
+            for r in c.execute(
+                "SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid=i.indrelid "
+                "AND a.attnum = ANY(i.indkey) WHERE i.indrelid='wp.risk_cell_score'::regclass "
+                "AND i.indisprimary ORDER BY array_position(i.indkey, a.attnum)"
+            )
+        ]
+        assert pk == ["h3", "day", "model_id"]
+        idx = c.execute(
+            "SELECT indexdef FROM pg_indexes WHERE schemaname='wp' "
+            "AND indexname='risk_cell_score_day_model_idx'"
+        ).fetchone()[0]
+        assert "(day, model_id)" in idx
+        grants = set(
+            c.execute(
+                "SELECT grantee, privilege_type FROM information_schema.role_table_grants "
+                "WHERE table_schema='wp' AND table_name='risk_cell_score' "
+                "AND grantee IN ('wp_reader','wp_writer')"
+            ).fetchall()
+        )
+        assert ("wp_reader", "SELECT") in grants
+        assert not {("wp_reader", x) for x in ("INSERT", "UPDATE", "DELETE")} & grants
+        assert {("wp_writer", x) for x in ("SELECT", "INSERT", "DELETE")} <= grants
+
+    ok = "('89283082803ffff', '2026-11-11', 'winter311-heuristic-v1', 'heuristic', 0.25)"
+    bad = [
+        "('h', '2026-11-11', 'm', 'other', 0.5)",  # layer
+        "('h', '2026-11-11', 'm', 'model', 1.0000001)",  # p > 1
+        "('h', '2026-11-11', 'm', 'model', -0.1)",  # p < 0
+        "('h', '2026-11-11', 'm', 'model', 'NaN')",  # NaN
+        "('h', '2026-11-11', 'm', 'model', NULL)",  # no score ⇒ no row, never NULL
+    ]
+    with psycopg.connect(test_url, autocommit=True) as c:
+        c.execute(RCS.format(extra="") + ok)
+        c.execute(
+            RCS.format(extra="") + "('h', '2026-11-11', 'm', 'model', 0), "
+            "('h2', '2026-11-11', 'm', 'model', 1)"
+        )  # bounds inclusive
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            c.execute(RCS.format(extra="") + ok)
+        for b in bad:
+            with pytest.raises((psycopg.errors.CheckViolation, psycopg.errors.NotNullViolation)):
+                c.execute(RCS.format(extra="") + b)
+        with pytest.raises(psycopg.errors.ForeignKeyViolation):
+            c.execute(
+                RCS.format(extra=", ingest_run_id")
+                + "('h3x', '2026-11-11', 'm', 'model', 0.5, gen_random_uuid())"
+            )
+        assert c.execute("SELECT scored_at IS NOT NULL FROM wp.risk_cell_score LIMIT 1").fetchone()[
+            0
+        ]
+        # writer pattern: replace a (day, model_id) partition in one txn; failure keeps the old day
+        with pytest.raises(psycopg.errors.CheckViolation):
+            with c.transaction():
+                c.execute("DELETE FROM wp.risk_cell_score WHERE day='2026-11-11' AND model_id='m'")
+                c.execute(RCS.format(extra="") + "('h', '2026-11-11', 'm', 'model', 2)")
+        assert (
+            c.execute(
+                "SELECT count(*) FROM wp.risk_cell_score WHERE day='2026-11-11' AND model_id='m'"
+            ).fetchone()[0]
+            == 2
+        )
+        # as the roles themselves (SET ROLE drops superuser rights)
+        with c.transaction():
+            c.execute("SET LOCAL ROLE wp_writer")
+            c.execute("DELETE FROM wp.risk_cell_score WHERE day='2026-11-11' AND model_id='m'")
+            c.execute(RCS.format(extra="") + "('h', '2026-11-11', 'm', 'model', 0.5)")
+        with c.transaction():
+            c.execute("SET LOCAL ROLE wp_reader")
+            assert c.execute("SELECT count(*) FROM wp.risk_cell_score").fetchone()[0] == 2
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                c.execute("DELETE FROM wp.risk_cell_score")
+
+    alembic(test_url, "downgrade", "0006_report_311_nature")
+    assert "risk_cell_score" not in wp_tables(test_url)
+    alembic(test_url, "upgrade", "head")
+    with psycopg.connect(test_url) as c:
+        assert c.execute("SELECT count(*) FROM wp.risk_cell_score").fetchone()[0] == 0
+
+
+def test_load_source_cli_loads_only_that_source(test_url, tmp_path, monkeypatch):
+    """`wp-ingest load --source eccc-geomet` loads only eccc-geomet (others untouched, even with
+    processed output present), through the same transaction/checksum path; a rerun is a no-op."""
+    import json
+    import shutil
+
+    from winterpath_ingestion import cli
+
+    alembic(test_url, "upgrade", "head")
+    proc = tmp_path / "processed"
+    o = proc / "osm_pilot"
+    o.mkdir(parents=True)
+    for f in ("edges.geojson", "nodes.geojson"):
+        shutil.copy(ROOT / "data" / "fixtures" / "pilot_mini" / f, o / f)
+    (o / "manifest.json").write_text(
+        json.dumps(
+            {"input_checksum": "src-osm", "ingest_run_id": "00000000-0000-0000-0000-0000000000b1"}
+        )
+    )
+    w = proc / "weather_obs"
+    w.mkdir()
+    (w / "weather_obs.csv").write_text(
+        "station_id,observed_at,temperature_c,precip_mm,snow_depth_cm,wind_kmh,source_collection\n"
+        "SRCTEST,2026-11-01T12:00:00+00:00,-1.0,,,,climate-hourly\n"
+    )
+    (w / "manifest.json").write_text(
+        json.dumps(
+            {"input_checksum": "src-w", "ingest_run_id": "00000000-0000-0000-0000-0000000000b2"}
+        )
+    )
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("DATABASE_URL", test_url)
+
+    def runs():
+        with psycopg.connect(test_url) as c:
+            return c.execute(
+                "SELECT input_checksum, status FROM wp.ingest_run "
+                "WHERE input_checksum IN ('src-osm','src-w') ORDER BY 1"
+            ).fetchall()
+
+    assert cli.main(["load", "--source", "eccc-geomet"]) == 0
+    assert runs() == [("src-w", "succeeded")]
+    with psycopg.connect(test_url) as c:
+        assert (
+            c.execute("SELECT count(*) FROM wp.weather_obs WHERE station_id='SRCTEST'").fetchone()[
+                0
+            ]
+            == 1
+        )
+    assert cli.main(["load", "--source", "eccc-geomet"]) == 0  # same checksum → no-op
+    with psycopg.connect(test_url) as c:
+        assert (
+            c.execute("SELECT count(*) FROM wp.ingest_run WHERE input_checksum='src-w'").fetchone()[
+                0
+            ]
+            == 1
+        )
+    assert runs() == [("src-w", "succeeded")]  # osm still not loaded
