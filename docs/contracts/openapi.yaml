@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: WinterPath AI API
-  version: 1.6.0
-  summary: Montréal pedestrian winter-routing API (contract v1.3.0; v1.0.0 frozen 2026-11-10; v1.1.0 declared 4xx per CR-PLAT-1; v1.3.0 adds 503 on data-backed endpoints and OFF_NETWORK per CR-ROUTING-2/3; v1.5.0 documents deletion-token semantics (CR-ROUTING-4) and the explanation-code evidence mapping (CR-ROUTING-9); v1.6.0 adds 311 alley categories (CR-ML-2) and the foot-over-access rule (CR-DATA-7), no schema shape change).
+  version: 1.7.0
+  summary: Montréal pedestrian winter-routing API (contract v1.3.0; v1.0.0 frozen 2026-11-10; v1.1.0 declared 4xx per CR-PLAT-1; v1.3.0 adds 503 on data-backed endpoints and OFF_NETWORK per CR-ROUTING-2/3; v1.5.0 documents deletion-token semantics (CR-ROUTING-4) and the explanation-code evidence mapping (CR-ROUTING-9); v1.6.0 adds 311 alley categories (CR-ML-2) and the foot-over-access rule (CR-DATA-7), no schema shape change; v1.7.0 adds WRITES_DISABLED (503) on public write endpoints for the read-only demo deployment).
   description: |
     All geometries are GeoJSON in EPSG:4326 with [longitude, latitude] ordering.
     Every risk/condition datum carries an `evidence` object; `unknown` is never zero risk.
@@ -166,7 +166,7 @@ paths:
     post:
       tags: [reports]
       operationId: createReport
-      description: Community report. Stored as `pending`; never shown as guidance until approved. Expires automatically.
+      description: v1.7 — returns 503 WRITES_DISABLED when the deployment disables public writes (API_PUBLIC_WRITES=false). Community report. Stored as `pending`; never shown as guidance until approved. Expires automatically.
       requestBody:
         required: true
         content:
@@ -181,6 +181,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "422": { $ref: "#/components/responses/Unprocessable" }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /reports/{reportId}:
     delete:
       tags: [reports]
@@ -256,7 +257,7 @@ paths:
     post:
       tags: [system]
       operationId: createPilotRequest
-      description: Business/pilot enquiry form. Minimal personal data; retention 12 months.
+      description: Business/pilot enquiry form. Minimal personal data; retention 12 months. v1.7 — returns 503 WRITES_DISABLED when API_PUBLIC_WRITES=false.
       requestBody:
         required: true
         content:
@@ -267,6 +268,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "422": { $ref: "#/components/responses/Unprocessable" }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
 
 components:
   securitySchemes:
@@ -323,7 +325,7 @@ components:
       properties:
         code:
           type: string
-          enum: [VALIDATION_ERROR, OUTSIDE_COVERAGE, OFF_NETWORK, BBOX_TOO_LARGE, NO_ROUTE, NOT_FOUND, UNAUTHORIZED, RATE_LIMITED, UPSTREAM_UNAVAILABLE, INTERNAL]
+          enum: [VALIDATION_ERROR, OUTSIDE_COVERAGE, OFF_NETWORK, BBOX_TOO_LARGE, NO_ROUTE, NOT_FOUND, UNAUTHORIZED, RATE_LIMITED, UPSTREAM_UNAVAILABLE, WRITES_DISABLED, INTERNAL]
         message: { type: string }
         details: { type: object, additionalProperties: true }
         request_id: { type: string }
