@@ -111,7 +111,13 @@ def build_state(
     store_db = db_engine if settings.store_backend == "postgis" else None
 
     if reports is None:
-        reports = PostgisReportRepository(store_db) if store_db else InMemoryReportRepository()
+        reports = (
+            # Read-only demo (API_PUBLIC_WRITES=false, wp_api read-only): reads never try to
+            # persist expiry; statuses are still computed correctly in SQL.
+            PostgisReportRepository(store_db, persist_expiry=settings.public_writes)
+            if store_db
+            else InMemoryReportRepository()
+        )
     if hazards is None:
         hazards = (
             PostgisHazardRepository(store_db, reports)

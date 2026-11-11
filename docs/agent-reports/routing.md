@@ -1,6 +1,6 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 14: `/routes/compare` under 0.1 CPU p95 4692→602 ms (memory store), byte-identical results, golden regression test; 324 passed. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Status:** READY FOR REVIEW. Cycle 15: report reads work under a read-only DB role (effective status in SQL, expiry write skipped/tolerated), 325 passed. Cycle 14: `/routes/compare` under 0.1 CPU p95 4692→602 ms (memory store), byte-identical results, golden regression test; 324 passed. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
 - **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
@@ -24,7 +24,40 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0o. Cycle 14 — `/routes/compare` performance under a 0.1 CPU cap, identical results — current
+### 0p. Cycle 15 — report reads under a read-only DB role — current
+**Context:**
+- Coordinator decision: production uses `API_STORE_BACKEND=postgis`, `API_PUBLIC_WRITES=false`, and role `wp_api` with `default_transaction_read_only=on`.
+- `PostgisReportRepository.get`/`list` ran the expiry `UPDATE` (`_expire_sql`) before reading. Under that role it fails with SQLSTATE 25006, so `DELETE /reports/{id}` (whose token check reads the report via `get`) and the admin list would return 500.
+
+**Fix (`repositories/reports.py`, `state.py`):**
+- **Reads are correct without the write:** `READ_COLS` computes the status as of `:now` (`CASE WHEN status IN ('pending','approved') AND expires_at <= :now THEN 'expired' ELSE status END`). The `list(status=…)` filter uses the same expression, so an unexpired-but-stored-pending row is never listed as pending after `expires_at`.
+- **Expiry persistence is best effort for reads:**
+  - `persist_expiry=False` (wired from `API_PUBLIC_WRITES`) skips it entirely.
+  - Otherwise it runs inside a SAVEPOINT. A read-only or SELECT-only session (SQLSTATE 25006 / 42501) is rolled back to the savepoint and logged as `report_expiry_not_persisted` (no ids, no coordinates), and the read continues.
+  - Any other DB error still propagates.
+- **Writes on:** unchanged. The `UPDATE` (with `terminal_at = expires_at`) still runs before the read, and statuses equal the stored ones. `purge`, `delete_own`, `moderate` and `create` are writes and are unchanged.
+
+**Test (`tests/test_api_postgis.py::test_report_reads_under_read_only_session`, real DB):**
+- The session is `-c default_transaction_read_only=on`, verified with `SHOW` → `on`, and `_expire_sql` there raises SQLSTATE `25006`.
+- For `persist_expiry` True (savepoint path) and False (skip path):
+  - `get` returns `expired` for a pending report past `expires_at` and `pending` for a fresh one;
+  - `list("pending")` / `list("expired")` partition them correctly;
+  - the stored row is still `('pending', None)` (nothing written);
+  - `DELETE /reports/{id}` with a wrong token returns **404** (contract-validated), not 500.
+- With a writable engine, the read persists `('expired', expires_at)` as before.
+- **Mutation check:** with `reports.py` from `HEAD` (before the fix), the test fails with `psycopg.errors.ReadOnlySqlTransaction: cannot execute UPDATE in a read-only transaction`.
+- Test rows are removed by the module fixture: 0 left afterwards, and `wp.edge` has 0 rows.
+
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+======================= 325 passed, 1 warning in 21.34s ========================
+$ ruff (routing / api): All checks passed! 21 / 33 files already formatted
+$ (cd services/api && uv lock --check)  → exit=0
+```
+
+**CR-ROUTING-11 (contract, `DELETE /reports/{reportId}`):** with a *valid* token under a read-only role, the deletion itself is a write and still fails (500). No tokens are issued while `API_PUBLIC_WRITES=false`, so this needs a token from before the switch. Proposal: when public writes are disabled, answer 503 `WRITES_DISABLED` before any lookup, as for the POSTs. The DELETE operation doesn't declare 503 today, so this needs your approval first.
+
+### 0o. Cycle 14 — `/routes/compare` performance under a 0.1 CPU cap, identical results
 **Method:**
 - **Image:** Platform's `infra/docker/api.Dockerfile` from `8623a30` (the trial's), built from `git archive HEAD` for *before* and from the working tree for *after*.
 - **Container:** `docker run --cpus=0.1 --memory=512m`, `ROUTING_GRAPH_SOURCE=postgis` on `wp_data` read only (`default_transaction_read_only=on`; graph 6,807 nodes / 16,296 edges inside the pilot bbox), `RISK_PROVIDER=none`, `ROUTING_WORKERS=1`, `API_PUBLIC_WRITES=false`.

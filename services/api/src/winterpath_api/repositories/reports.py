@@ -13,6 +13,10 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Protocol
 
+import structlog
+
+log = structlog.get_logger("winterpath_api.reports_repo")
+
 REPORT_TTL = timedelta(hours=72)
 HARD_DELETE_AFTER = timedelta(days=30)
 TERMINAL = frozenset({"rejected", "expired", "deleted"})
@@ -177,9 +181,22 @@ class PostgisReportRepository:
         "report_id, category, ST_X(geom) AS lon, ST_Y(geom) AS lat, description, status, "
         "created_at, expires_at, deletion_token_hash, client_hash, moderated_at, moderation_note"
     )
+    #: Status as of ``:now``: a pending/approved report past ``expires_at`` IS expired, whether or
+    #: not the expiry UPDATE has been persisted (it cannot be under a read-only role).
+    EFFECTIVE_STATUS = (
+        "CASE WHEN status IN ('pending','approved') AND expires_at <= :now "
+        "THEN 'expired' ELSE status END"
+    )
+    READ_COLS = COLS.replace(" status,", f" {EFFECTIVE_STATUS} AS status,")
+    #: SQLSTATEs that mean "this session may not write": read_only_sql_transaction,
+    #: insufficient_privilege (e.g. a SELECT-only role).
+    READ_ONLY_SQLSTATES = frozenset({"25006", "42501"})
 
-    def __init__(self, engine) -> None:
+    def __init__(self, engine, *, persist_expiry: bool = True) -> None:
+        """``persist_expiry=False`` (API_PUBLIC_WRITES=false): reads never attempt the expiry
+        UPDATE. Reads report the same statuses either way (``READ_COLS``)."""
         self.engine = engine
+        self.persist_expiry = persist_expiry
         self._has_terminal: bool | None = None
 
     def _terminal(self, conn) -> bool:
@@ -212,6 +229,22 @@ class PostgisReportRepository:
             moderated_at=m["moderated_at"],
             moderation_note=m["moderation_note"],
         )
+
+    def _persist_expiry_for_read(self, conn, now) -> None:
+        """Best-effort expiry write before a read. Skipped when writes are disabled; under a
+        read-only or SELECT-only session it is rolled back to a savepoint and the read goes on
+        (statuses are computed by ``READ_COLS`` regardless). Other errors still propagate."""
+        if not self.persist_expiry:
+            return
+        from sqlalchemy.exc import DBAPIError
+
+        try:
+            with conn.begin_nested():
+                self._expire_sql(conn, now)
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) not in self.READ_ONLY_SQLSTATES:
+                raise
+            log.info("report_expiry_not_persisted", reason="read_only_session")
 
     def _expire_sql(self, conn, now) -> None:
         from sqlalchemy import text
@@ -259,11 +292,11 @@ class PostgisReportRepository:
         from sqlalchemy import text
 
         with self.engine.begin() as conn:
-            self._expire_sql(conn, now)
+            self._persist_expiry_for_read(conn, now)
             m = (
                 conn.execute(
-                    text(f"SELECT {self.COLS} FROM wp.community_report WHERE report_id = :id"),  # noqa: S608
-                    {"id": report_id},
+                    text(f"SELECT {self.READ_COLS} FROM wp.community_report WHERE report_id = :id"),  # noqa: S608
+                    {"id": report_id, "now": now},
                 )
                 .mappings()
                 .first()
@@ -289,19 +322,19 @@ class PostgisReportRepository:
 
         # Build the filter explicitly: "(:status IS NULL OR …)" is untyped for Postgres.
         where = ["TRUE"]
-        params: dict = {"limit": limit}
+        params: dict = {"limit": limit, "now": now}
         if status is not None:
-            where.append("status = :status")
+            where.append(f"{self.EFFECTIVE_STATUS} = :status")
             params["status"] = status
         if after is not None:
             where.append("(created_at, report_id) > (:a_ts, :a_id)")
             params.update(a_ts=after[0], a_id=after[1])
         sql = (
-            f"SELECT {self.COLS} FROM wp.community_report WHERE {' AND '.join(where)} "  # noqa: S608
+            f"SELECT {self.READ_COLS} FROM wp.community_report WHERE {' AND '.join(where)} "  # noqa: S608
             "ORDER BY created_at, report_id LIMIT :limit"
         )
         with self.engine.begin() as conn:
-            self._expire_sql(conn, now)
+            self._persist_expiry_for_read(conn, now)
             rows = conn.execute(text(sql), params).mappings().all()
         return [self._row(m) for m in rows]
 

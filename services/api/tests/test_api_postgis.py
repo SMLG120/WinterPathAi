@@ -439,3 +439,72 @@ def test_311_nature_detection_matches_real_table(db) -> None:
     repo = PostgisHazardRepository(db, InMemoryReportRepository())
     repo.list(datetime(2026, 12, 15, 18, tzinfo=UTC))
     assert repo._has_nature is bool(has)
+
+
+# ------------------------------------------------------------------------- read-only role (v1.7)
+def test_report_reads_under_read_only_session(db, make_client) -> None:
+    """Production runs wp_api with default_transaction_read_only=on. Reads (get/list, and so
+    DELETE /reports/{id}'s token check) must return correct statuses without the expiry UPDATE,
+    which a read-only session cannot run; with writes allowed, expiry is still persisted."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import DBAPIError
+
+    from winterpath_api.repositories.reports import PostgisReportRepository
+
+    rw = PostgisReportRepository(db)
+    now = datetime(2026, 12, 15, 15, 0, tzinfo=UTC)
+    kw = dict(
+        category="ice",
+        lon=-73.5760,
+        lat=45.5043,
+        description="read-only test",
+        deletion_token_hash="1" * 64,
+        client_hash="test",
+    )
+    old = rw.create(**kw, now=now - timedelta(days=5))  # pending, expired 2 days ago
+    fresh = rw.create(**kw, now=now)  # pending, not expired
+    CREATED_REPORT_IDS.extend(str(r.id) for r in (old, fresh))
+
+    def stored(rid):
+        with db.connect() as c:
+            return c.execute(
+                text("SELECT status, terminal_at FROM wp.community_report WHERE report_id=:i"),
+                {"i": rid},
+            ).first()
+
+    ro = create_engine(
+        os.environ["DATABASE_URL"],
+        connect_args={"options": "-c default_transaction_read_only=on"},
+    )
+    try:
+        with ro.begin() as c:
+            assert c.execute(text("SHOW default_transaction_read_only")).scalar() == "on"
+        # The session really is read-only: the expiry UPDATE itself fails there.
+        with pytest.raises(DBAPIError) as ei, ro.begin() as c:
+            rw._expire_sql(c, now)
+        assert ei.value.orig.sqlstate == "25006"
+
+        for persist in (True, False):  # tolerated (savepoint) and skipped (writes disabled)
+            repo = PostgisReportRepository(ro, persist_expiry=persist)
+            assert repo.get(old.id, now).status == "expired"
+            assert repo.get(fresh.id, now).status == "pending"
+            pending = {r.id for r in repo.list("pending", 1000, None, now)}
+            expired = {r.id for r in repo.list("expired", 1000, None, now)}
+            assert fresh.id in pending and old.id not in pending
+            assert old.id in expired and fresh.id not in expired
+            assert tuple(stored(old.id)) == ("pending", None)  # nothing was written
+
+            # API: DELETE's token check reads the report → 404 for a wrong token, not 500.
+            c = make_client(reports=repo)
+            r = c.delete(f"/api/v1/reports/{old.id}", headers={"X-Deletion-Token": "x" * 43})
+            assert r.status_code == 404, r.text
+            validate_response(r, "/reports/{reportId}", "delete")
+    finally:
+        ro.dispose()
+
+    # Writes allowed: unchanged behaviour — the read persists expiry with terminal_at.
+    assert rw.get(old.id, now).status == "expired"
+    assert tuple(stored(old.id)) == ("expired", old.expires_at)
+    assert tuple(stored(fresh.id)) == ("pending", None)
