@@ -542,3 +542,50 @@ def test_report_expiry_and_purge() -> None:
     assert repo.purge(t0 + timedelta(days=20)) == 0
     assert repo.purge(t0 + timedelta(days=34)) == 1
     assert repo.get(r.id, t0 + timedelta(days=34)) is None
+
+
+# ----------------------------------------------------------------------------- API-NULL-1
+# Every optional request field in the contract is non-nullable: omitting it is fine, an explicit
+# null must be 422 VALIDATION_ERROR (platform finding API-NULL-1).
+REPORT_BASE = {"category": "ice", "location": grid(1, 1), "location_consent": True}
+PILOT_BASE = {
+    "organization": "Test Org (fixture)",
+    "contact_email": "test@example.org",
+    "segment": "campus",
+    "consent": True,
+}
+ROUTE_BASE = {"origin": grid(0, 0), "destination": grid(1, 2)}
+
+
+@pytest.mark.parametrize(
+    ("path", "base", "field"),
+    [
+        ("/reports", REPORT_BASE, "description"),
+        ("/reports", REPORT_BASE, "locale"),
+        ("/pilot-requests", PILOT_BASE, "contact_name"),
+        ("/pilot-requests", PILOT_BASE, "message"),
+        ("/pilot-requests", PILOT_BASE, "locale"),
+        ("/routes/compare", ROUTE_BASE, "departure_time"),
+        ("/routes/compare", ROUTE_BASE, "profile"),
+        ("/routes/compare", ROUTE_BASE, "locale"),
+        ("/routes/compare", ROUTE_BASE, "avoid_unverified_reports"),
+    ],
+)
+def test_explicit_null_rejected_for_optional_fields(client, path, base, field) -> None:
+    r = client.post(f"/api/v1{path}", json={**base, field: None})
+    assert r.status_code == 422, r.text
+    validate_response(r, path, "post")
+    body = r.json()
+    assert body["code"] == "VALIDATION_ERROR"
+    assert [field] == body["details"]["errors"][0]["loc"][-1:]
+    ok = client.post(f"/api/v1{path}", json=base)  # omitting the field is still accepted
+    assert ok.status_code in (200, 201), ok.text
+
+
+def test_explicit_null_note_rejected_on_moderation(client, admin) -> None:
+    rid = client.post("/api/v1/reports", json=REPORT_BASE).json()["id"]
+    url = f"/api/v1/admin/reports/{rid}/moderation"
+    r = client.post(url, headers=admin, json={"decision": "approve", "note": None})
+    assert r.status_code == 422, r.text
+    validate_response(r, "/admin/reports/{reportId}/moderation", "post")
+    assert client.post(url, headers=admin, json={"decision": "approve"}).status_code == 200

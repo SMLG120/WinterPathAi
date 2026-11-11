@@ -411,3 +411,25 @@ def test_311_sums_natures_then_applies_floor() -> None:
         assert h.title_fr == "Requêtes 311 : trottoir glissant"
     finally:
         eng.dispose()
+
+
+def test_311_nature_detection_matches_real_table(db) -> None:
+    """The repository uses the v1.5 nature filter exactly when wp.report_311_cell has `nature`
+    (migration 0006); the query runs on the real table either way."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import text
+
+    from winterpath_api.repositories.hazards import PostgisHazardRepository
+    from winterpath_api.repositories.reports import InMemoryReportRepository
+
+    with db.connect() as c:
+        has = c.execute(
+            text(
+                "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'wp'"
+                " AND table_name = 'report_311_cell' AND column_name = 'nature'"
+            )
+        ).scalar()
+    repo = PostgisHazardRepository(db, InMemoryReportRepository())
+    repo.list(datetime(2026, 12, 15, 18, tzinfo=UTC))
+    assert repo._has_nature is bool(has)
