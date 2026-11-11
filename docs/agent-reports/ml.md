@@ -521,6 +521,63 @@ Negative control (same hook around `joblib.load` of the heuristic artifact): `ca
 
 **Not done (Platform/coordinator):** the GitHub Actions workflow file itself (`.github/` is not ML-owned). That includes where the two git-ignored artifacts come from, where written score tables go so the API can read them, and the cron time. Network access from GitHub runners to donnees.montreal.ca has not been tested.
 
+## Contract v1.7: `wp.risk_cell_score` writer + PostGIS provider, 2026-11-11
+
+**Merges:** integration 5238c45 (cc9d330), then Data's migration 0007 at the exact commit 360fdd4 (4ba9c7d). Both were `git merge --no-edit` and clean. 360fdd4 is not in integration yet, so `scripts/check-ownership.sh ml` flags Data's 7 files. `git diff --name-only 360fdd4 HEAD`, restricted to non-ML paths, is empty: those files are byte-identical to Data's commit.
+
+**Artifacts committed** (integration's `.gitignore` allows exactly these two). Their sha256 values match `models/registry.json`:
+```text
+4c9163461c21042c44a5ce80b57759e08c4bbc066fc3f35f223cb6b58de86546  models/artifacts/v2-8d19aa86/winter311-heuristic-v1.joblib
+f7519df54d64d5d8734add8b4c3aa0631093007ffdd29de62432b729f8dc12cd  models/artifacts/v2-8d19aa86/coverage_cells.parquet
+```
+
+**Writer** (`score --write-db`, `score_db.write_scores`). One transaction does all of the following:
+1. Inserts the `wp.ingest_run` row as `running`.
+2. Per scored day, DELETEs the (`day`, `model_id`) partition and COPYs the new rows (`ingest_run_id` set, `data_through` = start of D local).
+3. Deletes all rows with `day < today(America/Montreal) − 30 days`.
+4. Marks the run `succeeded` with `record_count` and a provenance `log`.
+
+On any error the transaction rolls back, so the previous partition stays intact. A `failed` ingest_run row is recorded separately, and the job exits **5**. Staleness (exit 4) is then checked against `max(day)` in the table for the model_id.
+- `source_id` is `mtl-311` (FK to `wp.source`; scores derive from 311 history plus ECCC), overridable with `WP_ML_SCORE_SOURCE_ID`.
+- `input_checksum` is namespaced `winterpath_ml.score:<sha256>`. Data's loader skips a source when (source_id, input_checksum) has already succeeded (`db_load._already_loaded`), and the namespace means an ML run can never make it skip a 311 load.
+- `wp.source.last_success_at` is not touched.
+
+**Provider** (`RISK_SCORE_SOURCE=postgis`): `inference.load_provider(engine=<SQLAlchemy engine>)` / `api_provider(engine=...)`.
+- It reads `SELECT h3, p, data_through, scored_at FROM wp.risk_cell_score WHERE day=:day AND model_id=:model_id` for the requested **local** day, cached for 5 min per day.
+- No row, a cell outside coverage, or a database error all mean `unknown` (never `low`).
+- Heuristic probability stays `null`.
+- No engine, or an unknown source value, gives `NullRiskProvider`.
+- `file` (the default) is unchanged.
+
+**API-side change needed (services/api, not ML-owned):** `adapters.load_risk_provider` calls `factory()` with no arguments. With `RISK_SCORE_SOURCE=postgis` it must call `factory(engine=db_engine)`, using the engine `state.py` already creates. Until then a deployed API gets `NullRiskProvider` (all unknown) and logs `risk_score_engine_missing`.
+
+**Tested against a real DB at 0007.** `wp_ml` (ML's own DB) was migrated with Data's Alembic and seeded with Data's `db_load.upsert_sources`; `wp_data` was not touched:
+```text
+$ uv run alembic -c ../../db/alembic.ini -x url=<wp_ml> current
+0007_risk_cell_score (head)
+$ WP_ML_TEST_DB_URL=<wp_ml> uv run --extra db pytest -q tests/test_risk_cell_score_db.py
+9 passed in 1.31s
+```
+The live tests use a unique SYNTHETIC model_id and clean up after themselves (`count(*)` afterwards is 0 in both tables). They check:
+- partition replacement and ingest_run rows;
+- 30-day retention;
+- a run violating 0007's `p` CHECK (`CheckViolation`) that rolls back, leaves the old partition intact and records `failed`;
+- the provider through a real SQLAlchemy engine: local-day boundary at 04:59/05:00 UTC, another model_id's row ignored, a day with no rows → unknown.
+
+Real end-to-end, two identical runs (`score --start 2026-11-11 --end 2026-11-12 --write-db`):
+```text
+NOTICE: 2026-11-12 not scored yet: 311 data ends 2026-11-10 < 2026-11-11. Will be scored on a later run.
+run 1: "rows_written": 2930, "rows_replaced": {"2026-11-11": 0},    5.60 real   854392832 max RSS
+run 2: "rows_written": 2930, "rows_replaced": {"2026-11-11": 2930}, 5.99 real   780419072 max RSS
+table: 2026-11-11|winter311-heuristic-v1|heuristic|2930|0.00120|0.06016|2026-11-11 05:00:00+00|1 run id
+ingest_run: succeeded|2930|mtl-311|winterpath_ml.score:3e917eb742… (×2)
+provider (RISK_SCORE_SOURCE=postgis): HeuristicRiskProvider Counter({'low': 2560, 'moderate': 369, 'elevated': 1})
+  low None model_estimate 2026-11-11T05:00:00+00:00 2026-11-11T18:16:48+00:00
+  2026-11-12 (no rows): Counter({'unknown': 2930}); outside coverage: unknown
+```
+
+**Checks:** without DB env `63 passed, 5 skipped`. With `WP_ML_TEST_DB_URL=<wp_ml>`: `67 passed, 1 skipped` (the skip is the `wp_data` reader test, which has its own env var). `uvx ruff check .` → `All checks passed!` `gate_logreg_2026 --check` → `pins OK; coverage list OK`. `sqlalchemy>=2.0` was added to the optional `db` extra (locks 2.1.8, same as services/api).
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|

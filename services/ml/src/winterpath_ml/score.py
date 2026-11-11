@@ -7,9 +7,9 @@ Headless contract (GitHub Actions or any cron):
 Inputs read
 - `models/registry.json` (committed).
 - Scorer `<MODEL_ARTIFACT_DIR>/<run_id>/<layer artifact>.joblib` and coverage
-  `<MODEL_ARTIFACT_DIR>/<run_id>/coverage_cells.parquet`. Both are git-ignored, so the runner must
-  provide them. Each is checked against the sha256 in the registry before it is opened. A mismatch
-  stops the run before anything is deserialised.
+  `<MODEL_ARTIFACT_DIR>/<run_id>/coverage_cells.parquet`. For v2-8d19aa86 both are committed
+  (contract v1.7; `.gitignore` allows exactly these two). Each is checked against the sha256 in
+  the registry before it is opened. A mismatch stops the run before anything is deserialised.
 - 311 aggregates. With `--fetch-311`, the job downloads the Ville de Montréal « Requêtes 3-1-1 »
   CSV (`config.URL_311_2022_PRESENT`, ~850 MB) into `<WP_ML_CACHE_DIR>/score/` and aggregates it
   there. Without it, the job reads the existing `<WP_ML_CACHE_DIR>/interim/*.parquet`. The pinned

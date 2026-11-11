@@ -1,11 +1,14 @@
-"""wp.risk_cell_score writer + PostGIS provider (contract v1.7) against TEMP tables.
+"""wp.risk_cell_score writer + PostGIS provider (contract v1.7) against a real DB at migration 0007.
 
-Live tests are opt-in: WP_ML_TEST_DB_URL (e.g. the ML agent's own wp_ml). They create only
-session-local TEMP tables with the v1.7 columns, so nothing persists. SYNTHETIC scores.
+Live tests are opt-in: WP_ML_TEST_DB_URL must point at a database migrated to
+0007_risk_cell_score with the canonical wp.source rows (the ML agent uses its own wp_ml).
+Each test writes under a unique SYNTHETIC model_id and deletes its rows and ingest_run rows
+afterwards. Writer and reader use separate connections with real commits, as in production.
 DB-free tests at the bottom always run.
 """
 
 import os
+import uuid
 from datetime import UTC, date, datetime
 
 import pandas as pd
@@ -18,34 +21,25 @@ live = pytest.mark.skipif(not URL, reason="WP_ML_TEST_DB_URL not set")
 
 MODEL_ID = "winter311-heuristic-v1"
 CELLS = ["892baa441b3ffff", "892baa441a7ffff", "892baa4418fffff"]
-REG = {
-    "run_id": "v2-8d19aa86",
-    "active_layer": "heuristic",
-    "season_months": [11, 12, 1, 2, 3, 4],
-    "levels": {"thresholds": {"moderate": 0.03, "elevated": 0.06, "high": 0.12}},
-    "layers": {
-        "heuristic": {"id": MODEL_ID, "enabled": True},
-        "model": {"id": "winter311-hgb-v1", "enabled": False},
-    },
-}
-T_SCORE, T_RUN = "pg_temp.risk_cell_score", "pg_temp.ingest_run"
-DDL = """
-CREATE TEMP TABLE ingest_run (
-  ingest_run_id uuid PRIMARY KEY, source_id text NOT NULL,
-  started_at timestamptz NOT NULL DEFAULT now(), finished_at timestamptz,
-  status text NOT NULL CHECK (status IN ('running','succeeded','failed')),
-  input_checksum text, record_count int, log jsonb);
-CREATE TEMP TABLE risk_cell_score (
-  h3 text NOT NULL, day date NOT NULL, model_id text NOT NULL,
-  layer text NOT NULL CHECK (layer IN ('heuristic','model')),
-  p double precision NOT NULL, scored_at timestamptz NOT NULL,
-  data_through timestamptz NOT NULL, ingest_run_id uuid NOT NULL,
-  PRIMARY KEY (h3, day, model_id));
-CREATE INDEX ON risk_cell_score (day, model_id);
-"""
 
 
-def _plan(days: dict[str, list[float]]) -> dict:
+def _reg(model_id=MODEL_ID):
+    return {
+        "run_id": "v2-8d19aa86",
+        "active_layer": "heuristic",
+        "season_months": [11, 12, 1, 2, 3, 4],
+        "levels": {"thresholds": {"moderate": 0.03, "elevated": 0.06, "high": 0.12}},
+        "layers": {
+            "heuristic": {"id": model_id, "enabled": True},
+            "model": {"id": "winter311-hgb-v1", "enabled": False},
+        },
+    }
+
+
+REG = _reg()
+
+
+def _plan(days: dict[str, list[float]], model_id=MODEL_ID) -> dict:
     tables = {}
     for d, ps in days.items():
         tables[d] = pd.DataFrame(
@@ -58,7 +52,7 @@ def _plan(days: dict[str, list[float]]) -> dict:
             }
         )
     return {
-        "registry": REG,
+        "registry": _reg(model_id),
         "layer": "heuristic",
         "tables": tables,
         "not_ready": {},
@@ -68,114 +62,158 @@ def _plan(days: dict[str, list[float]]) -> dict:
 
 
 @pytest.fixture
-def engine():
-    from sqlalchemy import create_engine
-    from sqlalchemy.pool import StaticPool
-
-    eng = create_engine(
-        URL.replace("postgresql://", "postgresql+psycopg://", 1)
-        if URL.startswith("postgresql://")
-        else URL,
-        poolclass=StaticPool,  # one session, so TEMP tables are visible to writer and reader
-    )
-    raw = eng.raw_connection().driver_connection
-    raw.autocommit = True
-    raw.execute(DDL)
-    yield eng, raw
-    eng.dispose()
-
-
-def _write(raw, plan, today=date(2026, 12, 2)):
-    return score_db.write_scores(
-        raw, plan, today=today, table=T_SCORE, ingest_table=T_RUN
-    )
+def db():
+    """(psycopg autocommit connection, unique SYNTHETIC model_id); cleans up after itself."""
+    conn = score_db.connect(URL)
+    conn.autocommit = True
+    mid = f"SYNTHETIC-test-{uuid.uuid4().hex[:8]}"
+    yield conn, mid
+    runs = [
+        r[0]
+        for r in conn.execute(
+            "SELECT ingest_run_id FROM wp.ingest_run WHERE log->>'model_id' = %s",
+            (mid,),
+        )
+    ]
+    conn.execute("DELETE FROM wp.risk_cell_score WHERE model_id = %s", (mid,))
+    conn.execute("DELETE FROM wp.ingest_run WHERE ingest_run_id = ANY(%s)", (runs,))
+    conn.close()
 
 
-def _rows(raw, sql):
-    return raw.execute(sql).fetchall()
+def _rows(conn, sql, *args):
+    return conn.execute(sql, args).fetchall()
 
 
 @live
-def test_write_replaces_partition_and_records_run(engine):
-    _, raw = engine
-    s1 = _write(raw, _plan({"2026-12-02": [0.01, 0.05, 0.2]}))
-    s2 = _write(raw, _plan({"2026-12-02": [0.02, 0.04]}))  # re-run: fewer cells
+def test_write_replaces_partition_and_records_run(db):
+    conn, mid = db
+    s1 = score_db.write_scores(
+        conn, _plan({"2026-12-02": [0.01, 0.05, 0.2]}, mid), today=date(2026, 12, 2)
+    )
+    s2 = score_db.write_scores(
+        conn, _plan({"2026-12-02": [0.02, 0.04]}, mid), today=date(2026, 12, 2)
+    )
     assert s1["rows_written"] == 3 and s2["rows_replaced"] == {"2026-12-02": 3}
-    rows = _rows(raw, f"SELECT h3, p FROM {T_SCORE} ORDER BY h3")
-    assert rows == [(CELLS[1], 0.04), (CELLS[0], 0.02)] or sorted(rows) == sorted(
-        [(CELLS[0], 0.02), (CELLS[1], 0.04)]
+    rows = _rows(
+        conn,
+        "SELECT h3, p, layer, ingest_run_id::text FROM wp.risk_cell_score WHERE model_id=%s ORDER BY p",
+        mid,
     )
+    assert [(h, p, lay) for h, p, lay, _ in rows] == [
+        (CELLS[0], 0.02, "heuristic"),
+        (CELLS[1], 0.04, "heuristic"),
+    ]
+    assert {r[3] for r in rows} == {s2["ingest_run_id"]}
     runs = _rows(
-        raw, f"SELECT status, record_count, source_id, input_checksum FROM {T_RUN}"
+        conn,
+        "SELECT status, record_count, source_id, input_checksum, finished_at IS NOT NULL"
+        " FROM wp.ingest_run WHERE log->>'model_id'=%s ORDER BY record_count",
+        mid,
     )
-    assert [r[:3] for r in runs] == [("succeeded", 3, "mtl-311")] * 1 + [
-        ("succeeded", 2, "mtl-311")
-    ] or sorted(r[:3] for r in runs) == [
+    assert [r[:3] for r in runs] == [
         ("succeeded", 2, "mtl-311"),
         ("succeeded", 3, "mtl-311"),
     ]
-    assert all(r[3].startswith("winterpath_ml.score:") for r in runs)
+    assert all(r[3].startswith("winterpath_ml.score:") and r[4] for r in runs)
 
 
 @live
-def test_retention_deletes_rows_older_than_30_days(engine):
-    _, raw = engine
-    _write(raw, _plan({"2026-11-01": [0.01], "2026-11-02": [0.01]}))
-    s = _write(raw, _plan({"2026-12-02": [0.01]}), today=date(2026, 12, 2))
+def test_retention_deletes_rows_older_than_30_days(db):
+    conn, mid = db
+    score_db.write_scores(
+        conn,
+        _plan({"2026-11-01": [0.01], "2026-11-02": [0.01]}, mid),
+        today=date(2026, 11, 2),
+    )
+    s = score_db.write_scores(
+        conn, _plan({"2026-12-02": [0.01]}, mid), today=date(2026, 12, 2)
+    )
     days = [
-        r[0] for r in _rows(raw, f"SELECT DISTINCT day FROM {T_SCORE} ORDER BY day")
+        r[0]
+        for r in _rows(
+            conn,
+            "SELECT DISTINCT day FROM wp.risk_cell_score WHERE model_id=%s ORDER BY day",
+            mid,
+        )
     ]
-    assert s["retention_cutoff"] == "2026-11-02" and s["rows_expired"] == 1
+    assert s["retention_cutoff"] == "2026-11-02" and s["rows_expired"] >= 1
     assert days == [date(2026, 11, 2), date(2026, 12, 2)]
 
 
 @live
-def test_failed_run_rolls_back_and_records_failure(engine, monkeypatch):
-    _, raw = engine
-    _write(raw, _plan({"2026-12-02": [0.01, 0.05, 0.2]}))
-    bad = _plan({"2026-12-02": [0.03]})
-    bad["tables"]["2026-12-02"]["data_through"] = "not-a-timestamp"
-    with pytest.raises(ValueError):
-        _write(raw, bad)
-    assert len(_rows(raw, f"SELECT 1 FROM {T_SCORE} WHERE day='2026-12-02'")) == 3
-    st = sorted(r[0] for r in _rows(raw, f"SELECT status FROM {T_RUN}"))
-    assert st == ["failed", "succeeded"]
+def test_failed_run_rolls_back_and_records_failure(db):
+    conn, mid = db
+    score_db.write_scores(
+        conn, _plan({"2026-12-02": [0.01, 0.05, 0.2]}, mid), today=date(2026, 12, 2)
+    )
+    import psycopg
+
+    bad = _plan({"2026-12-02": [0.03, 1.5]}, mid)  # p > 1 violates 0007's CHECK
+    with pytest.raises(psycopg.errors.CheckViolation):
+        score_db.write_scores(conn, bad, today=date(2026, 12, 2))
+    ps = sorted(
+        r[0]
+        for r in _rows(conn, "SELECT p FROM wp.risk_cell_score WHERE model_id=%s", mid)
+    )
+    assert ps == [0.01, 0.05, 0.2]  # previous partition intact
+    st = _rows(
+        conn,
+        "SELECT status, log->>'error' FROM wp.ingest_run WHERE log->>'model_id'=%s ORDER BY status",
+        mid,
+    )
+    assert [r[0] for r in st] == ["failed", "succeeded"] and "CheckViolation" in st[0][
+        1
+    ]
 
 
 @live
-def test_postgis_provider_reads_requested_local_day(engine):
-    eng, raw = engine
-    _write(raw, _plan({"2026-12-02": [0.01, 0.07]}))
-    raw.execute(
-        f"INSERT INTO {T_SCORE} VALUES ('{CELLS[2]}', '2026-12-02', 'other-model', 'heuristic',"
-        " 0.9, now(), now(), gen_random_uuid())"
-    )
-    db = inference.PostgisScores(eng, MODEL_ID, table=T_SCORE)
-    prov = inference.HeuristicRiskProvider(
-        REG,
-        "heuristic",
-        inference._read_scores(inference.Path("/x"), quiet=True),
-        None,
-        db,
-    )
-    # 2026-12-02 local (EST): 04:59 UTC on 12-03 is still 12-02 locally
-    at = datetime(2026, 12, 3, 4, 59, tzinfo=UTC)
-    assert prov.cell_risk(CELLS[0], at).level == "low"
-    e = prov.cell_risk(CELLS[1], at)
-    assert e.level == "elevated" and e.probability is None  # heuristic never exposes p
-    assert e.evidence.state == "model_estimate"
-    assert (
-        prov.cell_risk(CELLS[2], at).level == "unknown"
-    )  # only another model has a row
-    assert (
-        prov.cell_risk(CELLS[0], datetime(2026, 12, 3, 5, tzinfo=UTC)).level
-        == "unknown"
-    )
-    assert newest(raw) == date(2026, 12, 2)
+def test_postgis_provider_reads_requested_local_day(db):
+    from sqlalchemy import create_engine
 
-
-def newest(raw):
-    return score_db.newest_day(raw, MODEL_ID, table=T_SCORE)
+    conn, mid = db
+    score_db.write_scores(
+        conn, _plan({"2026-12-02": [0.01, 0.07]}, mid), today=date(2026, 12, 2)
+    )
+    other = mid + "-other"
+    conn.execute(
+        "INSERT INTO wp.risk_cell_score (h3, day, model_id, layer, p) VALUES (%s, '2026-12-02', %s, 'heuristic', 0.9)",
+        (CELLS[2], other),
+    )
+    try:
+        eng = create_engine(
+            URL.replace("postgresql://", "postgresql+psycopg://", 1)
+            if URL.startswith("postgresql://")
+            else URL
+        )
+        p = inference.load_provider(engine=eng, score_source="postgis")
+        prov = inference.HeuristicRiskProvider(
+            _reg(mid), "heuristic", p.scores, None, inference.PostgisScores(eng, mid)
+        )
+        at = datetime(
+            2026, 12, 3, 4, 59, tzinfo=UTC
+        )  # still 2026-12-02 in Montréal (EST)
+        assert prov.cell_risk(CELLS[0], at).level == "low"
+        e = prov.cell_risk(CELLS[1], at)
+        assert (
+            e.level == "elevated" and e.probability is None
+        )  # heuristic never exposes p
+        assert (
+            e.evidence.state == "model_estimate"
+            and e.evidence.observed_at.startswith("2026-12-02")
+        )
+        assert (
+            prov.cell_risk(CELLS[2], at).level == "unknown"
+        )  # only another model_id has a row
+        nxt = prov.cell_risk(
+            CELLS[0], datetime(2026, 12, 3, 5, tzinfo=UTC)
+        )  # local 12-03: no rows
+        assert nxt.level == "unknown"
+        edge = prov.edge_risk([[-73.5772, 45.5048], [-73.5772, 45.5049]], at)
+        assert edge.level in ("low", "unknown")
+        assert score_db.newest_day(conn, mid) == date(2026, 12, 2)
+        eng.dispose()
+    finally:
+        conn.execute("DELETE FROM wp.risk_cell_score WHERE model_id = %s", (other,))
 
 
 # ---------------------------------------------------------------- DB-free
