@@ -2,19 +2,10 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HeroPoster } from './HeroPoster';
 import { cn } from '@/lib/utils';
-import { canUseWebGL } from '@/lib/webgl';
+import { may3D } from '@/lib/webgl';
 import { afterLoadAndIdle } from '@/lib/afterLoad';
 
 const Scene3D = lazy(() => import('./Scene3D'));
-
-function prefersReducedMotion(): boolean {
-  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-}
-
-function saveData(): boolean {
-  const c = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-  return !!c?.saveData;
-}
 
 /**
  * Poster first (LCP-safe). The 3D chunk loads lazily after idle, only with
@@ -26,7 +17,7 @@ export function HeroVisual({ className }: { className?: string }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (prefersReducedMotion() || saveData() || !canUseWebGL()) return;
+    if (!may3D()) return;
     // Keep the 3D chunk (~220 KB gz, heavy parse) out of the LCP window: poster first.
     return afterLoadAndIdle(() => setLoad3d(true), 2000);
   }, []);
