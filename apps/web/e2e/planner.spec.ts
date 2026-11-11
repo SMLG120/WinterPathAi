@@ -45,7 +45,7 @@ test('language switch preserves route and re-localises results', async ({ page }
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CA');
   await expect(page.getByTestId('compare-card')).toContainText('Explication de démonstration simulée');
   // Points are kept in memory across the switch.
-  await expect(page.getByTestId('point-origin-value')).toContainText('45.50480');
+  await expect(page.getByTestId('point-origin-value')).toContainText(Number(IN_A.lat).toFixed(5));
 });
 
 test('outside coverage shows helpful 422 copy', async ({ page }) => {
@@ -109,4 +109,26 @@ test('map attribution stays visible (desktop bottom-right, mobile top-left above
   const panel = (await page.getByTestId('planner-panel').boundingBox())!;
   const overlaps = box.x < panel.x + panel.width && box.x + box.width > panel.x && box.y < panel.y + panel.height && box.y + box.height > panel.y;
   expect(overlaps).toBe(false);
+});
+
+test('map fills its pane (regression: maplibre CSS collapsed the container to 0 px)', async ({ page }) => {
+  await page.goto('/en/plan');
+  const map = page.getByTestId('planner-map');
+  await expect(map.locator('canvas.maplibregl-canvas')).toBeVisible();
+  const box = (await map.boundingBox())!;
+  const pane = (await map.locator('xpath=..').boundingBox())!;
+  expect(box.height).toBeGreaterThan(200);
+  expect(Math.abs(box.height - pane.height)).toBeLessThan(2);
+  expect(Math.abs(box.width - pane.width)).toBeLessThan(2);
+  const canvas = (await map.locator('canvas.maplibregl-canvas').boundingBox())!;
+  expect(Math.abs(canvas.height - box.height)).toBeLessThan(2);
+});
+
+test('map attribution is legible in dark mode (own background beats maplibre default)', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/en/plan');
+  const attrib = page.locator('.maplibregl-ctrl-attrib');
+  await expect(attrib).toBeVisible();
+  const bg = await attrib.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(bg).toBe('rgba(16, 27, 44, 0.9)');
 });

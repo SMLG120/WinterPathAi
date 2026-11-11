@@ -128,3 +128,12 @@ test('reduced motion → static poster, no 3D canvas', async ({ browser }) => {
   await expect(page.getByTestId('hero-visual').locator('canvas')).toHaveCount(0);
   await ctx.close();
 });
+
+test('API-provided English model limitations are marked lang="en" and flagged on the French page', async ({ page }) => {
+  await page.goto('/fr/winter');
+  await expect(page.getByText('Texte fourni par l’API en anglais seulement.')).toBeVisible();
+  const list = page.locator('ul[lang="en"]').filter({ hasText: 'evaluation gate' });
+  await expect(list).toBeVisible();
+  await page.goto('/en/winter');
+  await expect(page.getByText('Provided by the API in English only.')).toHaveCount(0);
+});

@@ -139,13 +139,15 @@
 }
 
 /* MapLibre: keep attribution legible in both themes. */
-.maplibregl-ctrl-attrib {
+/* Selectors out-specify maplibre-gl.css, which loads later with the map chunk and otherwise
+   kept its translucent white background under our light dark-mode text (unreadable). */
+.maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib {
   font-size: 11px;
 }
-.dark .maplibregl-ctrl-attrib {
-  background: rgb(16 27 44 / 0.85);
+.dark .maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background-color: rgb(16 27 44 / 0.9);
   color: var(--ice);
 }
-.dark .maplibregl-ctrl-attrib a {
+.dark .maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib a {
   color: var(--frost);
 }
