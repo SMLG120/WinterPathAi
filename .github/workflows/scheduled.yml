@@ -8,17 +8,28 @@
 # actions, and GitHub masks it in logs.
 #
 # Schedules are UTC (GitHub cron has no time zones). Scheduled runs only fire on the default
-# branch and may be delayed by GitHub under load.
+# branch, are best effort (delayed or dropped under GitHub load or incidents — e.g. the 21:17 UTC
+# weather slot on 2026-11-11 fell inside an Actions outage), and in a PUBLIC repository are
+# auto-disabled after 60 days without repository activity. Freshness is therefore monitored from
+# the data itself (infra/MONITORING.md), never by keep-alive pings.
+#
+# Overlap rules: each job has its own concurrency group with cancel-in-progress: false, so a job
+# never runs twice at once and never kills a load mid-transaction (at most one run in progress plus
+# one pending; a newer pending run replaces an older pending one). Exclusion ACROSS jobs and
+# workflows that write the same tables is the database's job: ETL advisory locks
+# (infra/ETL-LOCKS.md, proposal for Data/ML).
 name: scheduled
 
 on:
   schedule:
     - cron: "17 */3 * * *"   # weather ingest every 3 h (minute 17 avoids top-of-hour congestion)
-    # Daily scoring twice: 12:00 and 18:00 UTC (07:00/13:00 EST, 08:00/14:00 EDT). ML saw the 311
+    # Daily scoring twice: 12:07 and 18:07 UTC (07:07/13:07 EST, 08:07/14:07 EDT). ML saw the 311
     # file with no rows for the current day at 12:44 local, so the second run catches late inputs.
     # ML's scorer is idempotent: exit 0 if the day is already scored or inputs are incomplete.
-    - cron: "0 12 * * *"
-    - cron: "0 18 * * *"
+    # Minute 7, not 0: GitHub documents high load at the start of every hour, when scheduled runs
+    # may be delayed or dropped (v2 Wave 1 cron diagnosis, docs/agent-reports/platform.md).
+    - cron: "7 12 * * *"
+    - cron: "7 18 * * *"
   workflow_dispatch:
     inputs:
       job:
@@ -87,7 +98,7 @@ jobs:
   daily-scoring:
     name: daily risk scoring (-> wp.risk_cell_score)
     if: >-
-      (github.event_name == 'schedule' && (github.event.schedule == '0 12 * * *' || github.event.schedule == '0 18 * * *')) ||
+      (github.event_name == 'schedule' && (github.event.schedule == '7 12 * * *' || github.event.schedule == '7 18 * * *')) ||
       (github.event_name == 'workflow_dispatch' && inputs.job != 'weather')
     runs-on: ubuntu-latest
     timeout-minutes: 30
