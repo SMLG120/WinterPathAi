@@ -48,7 +48,7 @@ cost_s = base_walk_s                      (length_m / walk_speed_mps; default 1.
        + risk_penalty_s                   (only from model_estimate or heuristic layer; unknown → documented unknown_penalty, never 0-risk)
        + preference_penalty_s             (soft preferences, e.g. avoid unlit)
 ```
-Hard exclusions (edge removed, never penalised): `foot=no`, access private/no, confirmed sidewalk closure with no passage, crossings flagged prohibited, and for `step_free` profile any edge with steps or unverified kerb (`accessibility.step_free != true`).
+Hard exclusions (edge removed, never penalised): `foot=no|use_sidepath`, `access=private|no` unless explicit `foot=yes|designated|permissive` (v1.6), confirmed sidewalk closure with no passage, crossings flagged prohibited, and for `step_free` profile any edge with steps or unverified kerb (`accessibility.step_free != true`).
 Algorithms: Dijkstra baseline (shortest distance, shortest time), A* with haversine heuristic for winter-aware. All weights ≥ 0, unit = seconds.
 
 ## 6. Evidence states (used everywhere)
