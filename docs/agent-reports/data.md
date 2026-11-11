@@ -791,3 +791,20 @@ $ uv run pytest -q
 50 passed in 41.51s
 $ git status --short data/fixtures   → (empty)
 ```
+
+## Merge integration/winterpath + re-run (2026-11-11)
+
+`integration/winterpath` is still at `a292b63` (contract v1.6.0), which is already merged as `69bd9e6`.
+There was nothing new to merge, and HEAD stays at `f6eb3b2`. `pilot_mini` is untouched: `data/fixtures/`
+is identical to `ee5f1fc`.
+
+```
+$ git merge --no-edit integration/winterpath
+Already up to date.
+$ cd services/ingestion && uv run pytest -q
+..................................................                       [100%]
+50 passed in 25.34s
+$ uv run ruff check .                  → All checks passed!
+$ uv run ruff format --check src tests → 26 files already formatted
+$ git diff --stat ee5f1fc HEAD -- data/fixtures/   → (empty)
+```
