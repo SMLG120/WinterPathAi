@@ -23,6 +23,21 @@ def test_exclusions():
     assert exclusion_reason({"highway": "footway"}) is None
 
 
+def test_service_cycleway_only_with_explicit_foot_permission():
+    """Contract v1.5.0 path policy (user decision 2026-11-10)."""
+    for hw in ("service", "cycleway"):
+        assert exclusion_reason({"highway": hw})  # untagged → excluded, never assumed walkable
+        assert exclusion_reason({"highway": hw, "foot": "no"})
+        assert exclusion_reason({"highway": hw, "foot": "use_sidepath"})
+        assert exclusion_reason({"highway": hw, "foot": "unknown"})
+        for f in ("yes", "designated", "permissive"):
+            assert exclusion_reason({"highway": hw, "foot": f}) is None
+    assert exclusion_reason({"highway": "service", "foot": "yes", "area": "yes"})
+    assert exclusion_reason({"highway": "corridor", "foot": "yes"})  # indoor stays excluded
+    assert edge_kind({"highway": "cycleway", "foot": "designated"}) == "path"
+    assert edge_kind({"highway": "service", "foot": "yes"}) == "other"
+
+
 def test_foot_access():
     assert foot_access({}) == "unknown"
     assert foot_access({"foot": "designated"}) == "designated"
