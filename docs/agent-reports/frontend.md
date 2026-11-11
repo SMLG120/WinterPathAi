@@ -2,7 +2,7 @@
 
 - **Status:** READY FOR REVIEW
 - **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
-- **Date (UTC):** 2026-11-11 (update 6: condition explainer; merged integration 6a712e9)
+- **Date (UTC):** 2026-11-11 (update 7: explainer wording fixes from review; merged integration 3aa6438)
 - **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts. Contract **v1.4.0/v1.5.0** + routing/data/platform merged after 249570b — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
@@ -446,6 +446,26 @@ real-API, RISK_PROVIDER=winterpath_ml.inference:load_provider, MODEL_ARTIFACT_DI
                                  →  16 passed (53.3s)
 scripts/check-ownership.sh frontend → ownership OK for agent/frontend
 ```
+
+## Update 7 — explainer wording fixes (coordinator review); merge of integration `3aa6438`
+**Merge:** `git merge --no-edit integration/winterpath` (3aa6438), once, no conflicts. Outside agent reports it changed only `services/api/uv.lock`; no contract, fixture or `apps/web` change, so `gen:api` was not needed.
+
+**Wording fixes in `how.json` (EN + FR)**, checked against the openapi evidence descriptions (Evidence: "model_estimate = validated model or labeled heuristic"; ExplanationItem v1.5: step-free tags → unverified_report, "permit confirmed, activity unknown" → unknown):
+- `steps.use`: "tagged as step-free in OpenStreetMap (community-mapped)" (no longer "confirm"). The steps lens badge is now **Unverified report** (was Unknown), and the note says untagged segments are Unknown. `LENS_EVIDENCE.steps = 'unverified_report'`.
+- `weather.source`: ECCC weather **observations** only ("forecasts" removed).
+- `weather.use` / `weather.evidenceNote`: "a risk layer (a validated model or a labelled heuristic)", which covers the heuristic layer that is on today. FR uses "heuristique identifiée", as `plan.json` already does.
+- Optional point done: `closure.use` now says that a confirmed permit whose activity at the walking time is unknown is shown as Unknown.
+- Tests: `ConditionExplainer.test.tsx` asserts that the steps panel has an unverified badge, says "community-mapped" and never says "confirm", and that the weather panel says "labelled heuristic" and never mentions "forecast". `explainerModel.test.ts` has the updated mapping.
+
+Literal results:
+```
+npm run lint                  → exit 0 (eslint . --max-warnings 0)
+npx vitest run                →  Test Files  13 passed (13) /  Tests  112 passed (112)
+npm run build && npm run size → ✓ built in 6.34s / TOTAL initial JS: 145.5 KB gz (budget 250 KB, excludes map + 3D chunks)
+npx playwright test           →  104 passed (3.0m)
+real-API (RISK_PROVIDER=none) →  16 passed (58.5s)
+```
+The heuristic-layer real-API run was not repeated, because no API or ML code changed since update 6.
 
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
