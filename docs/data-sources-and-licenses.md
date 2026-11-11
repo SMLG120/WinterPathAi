@@ -4,7 +4,7 @@ Verification date: **2026-11-10**. Method: Données Québec CKAN API (`package_s
 
 | # | Source | Publisher | Licence (as stated) | Commercial | Access | Cadence / freshness (2026-11-10) | Use in WinterPath |
 |---|---|---|---|---|---|---|---|
-| 1 | OpenStreetMap data (via Overpass for the pilot; Geofabrik extract proposed for production) | OSMF / contributors | ODbL (legal code 1.0 linked from openstreetmap.org/copyright) | Yes, with attribution + share-alike on derivative DBs | Overpass public: <10k queries/day, <1 GB/day, identifying UA, no parallel scripts, back off 30 s on 429; **"Commercial use should use self-hosted or paid Overpass servers"**. Geofabrik: no stated quotas; any purpose with OSM acknowledgement (ODbL applies) | Continuous | Pedestrian graph backbone |
+| 1 | OpenStreetMap data — **Geofabrik `quebec-latest.osm.pbf`** (decided 2026-11-10; Overpass public no longer used by the pipeline) | OSMF / contributors | ODbL (legal code 1.0 linked from openstreetmap.org/copyright) | Yes, with attribution + share-alike on derivative DBs | Overpass public: <10k queries/day, <1 GB/day, identifying UA, no parallel scripts, back off 30 s on 429; **"Commercial use should use self-hosted or paid Overpass servers"**. Geofabrik: no stated quotas; any purpose with OSM acknowledgement (ODbL applies) | Continuous | Pedestrian graph backbone |
 | 2 | Trottoir et îlot (Voirie) — Données Québec `vmtl-voirie-trottoir-ilot`, donnees.montreal.ca `voirie-trottoir-ilot` | Ville de Montréal | CC BY 4.0 | Yes, attribution | Open; ZIP GeoJSON/SHP/CSV | Monthly; resources modified 2026-11-02; temporal 2009– | Sidewalk polygons → edge enrichment only |
 | 3 | Requêtes 311 — DQ `vmtl-requete-311`, MTL `requete-311` | Ville de Montréal | CC BY 4.0 | Yes, attribution | Open CSV (2022–present + archives 2014–2021) | Daily; modified 2026-11-10 | Aggregated winter-report features + ML labels |
 | 4 | Entraves et travaux en cours — DQ `vmtl-info-travaux`, MTL `info-travaux` | Ville de Montréal | CC BY 4.0 | Yes, attribution | Open CSV/JSON | Daily; modified 2026-11-10 | Closures — **only** rows where `sidewalk_blockedtype` indicates pedestrian impact |
@@ -36,7 +36,6 @@ Verification date: **2026-11-10**. Method: Données Québec CKAN API (`package_s
 7025251 MONTREAL INTL A (hourly since 2013; **hourly PRECIP_AMOUNT null throughout**; daily SNOW_ON_GROUND/TOTAL_PRECIPITATION populated) and 702S006 MONTREAL/PIERRE ELLIOTT TRUDEAU INTL (hourly precip present; hourly ends 2026-10-01 per metadata). ~13.6 km from McGill; no downtown hourly station found. SWOB `snw_dpth=-1` is a sentinel → NULL.
 
 ## Still unresolved
-- **Production OSM refresh path:** Overpass public discourages commercial use → Geofabrik `quebec` extract or self-hosted Overpass needed before launch (user decision).
 - 311 timestamp timezone unstated by publisher.
 - Canada.ca terms of service linked from GeoMet; OpenFreeMap `/tos/`; FOSSGIS Overpass terms page — not yet read.
 - Fonts and 3D asset licences (Frontend agent's asset manifest).
