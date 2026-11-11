@@ -46,6 +46,23 @@ All checks passed!
 30 files already formatted
 ```
 
+Second re-merge request, same day: `integration/winterpath` still `a292b63`.
+```text
+$ git merge --no-edit integration/winterpath
+Already up to date.
+$ alembic -c db/alembic.ini current
+0006_report_311_nature (head)
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=11.0 ms p95=26.3 ms max=86.3 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=76.0 ms p95=248.0 ms max=363.0 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=2.3 ms p95=4.5 ms max=8.7 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=6.1 ms p95=9.5 ms max=17.3 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=34.7 ms p95=198.6 ms max=2313.1 ms
+======================= 303 passed, 1 warning in 48.89s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+```
+Latencies are 2–7× the previous run with no code change; the host was shared with other agents' jobs at the time, so this reads as machine load, not a regression (API p95 assertion < 2 s still held; one 2.3 s outlier).
+
 ### 0g. Cycle 9 — merge of `agent/data` `f6eb3b2`, DB re-migrated, full rerun
 **Order** (0006 was edited in place, so the applied version had to be undone with its own downgrade):
 1. **Downgrade with the applied 0006.** My scratchpad export of `agent/data`'s `db/` (identical to `4254dd7`'s 0006: `diff` empty) against **my own** DB:
