@@ -164,3 +164,62 @@ def test_lifespan_shutdown_releases_resources(settings) -> None:
     assert Engine.disposed == 1
     with pytest.raises(RuntimeError):  # worker pool no longer accepts work
         state.compute._ex.submit(lambda: None)
+
+
+# ----------------------------------------------------------------------------- store wiring
+def _wiring(settings, **kw):
+    from dataclasses import replace
+
+    s = replace(
+        settings,
+        store_backend="postgis",
+        # lazily-connecting engine: build_state opens no connection for the stores
+        database_url="postgresql+psycopg://u:p@127.0.0.1:1/none",
+        **kw,
+    )
+    return build_state(s)
+
+
+def test_postgis_store_with_writes_off_keeps_pii_stores_in_memory(settings) -> None:
+    """wp_reader (the deployed read-only role) has no SELECT on wp.community_report or
+    wp.pilot_request (PII). With public writes off those stores stay in memory, while hazards
+    (closures, 311) and sources still come from PostGIS."""
+    from winterpath_api.repositories.hazards import PostgisHazardRepository
+    from winterpath_api.repositories.reports import InMemoryReportRepository
+    from winterpath_api.repositories.sources import (
+        InMemoryPilotRequestRepository,
+        PostgisSourceRepository,
+    )
+
+    st = _wiring(settings, public_writes=False)
+    try:
+        assert isinstance(st.reports, InMemoryReportRepository)
+        assert isinstance(st.pilot_requests, InMemoryPilotRequestRepository)
+        assert isinstance(st.hazards, PostgisHazardRepository)
+        assert st.hazards.reports is st.reports  # community hazards from the (empty) memory store
+        assert isinstance(st.sources, PostgisSourceRepository)
+        assert st.db_engine is not None
+    finally:
+        st.compute.shutdown()
+        st.db_engine.dispose()
+
+
+def test_postgis_store_with_writes_on_unchanged(settings) -> None:
+    from winterpath_api.repositories.hazards import PostgisHazardRepository
+    from winterpath_api.repositories.reports import PostgisReportRepository
+    from winterpath_api.repositories.sources import (
+        PostgisPilotRequestRepository,
+        PostgisSourceRepository,
+    )
+
+    st = _wiring(settings, public_writes=True)
+    try:
+        assert isinstance(st.reports, PostgisReportRepository)
+        assert st.reports.persist_expiry is True
+        assert isinstance(st.pilot_requests, PostgisPilotRequestRepository)
+        assert isinstance(st.hazards, PostgisHazardRepository)
+        assert st.hazards.reports is st.reports
+        assert isinstance(st.sources, PostgisSourceRepository)
+    finally:
+        st.compute.shutdown()
+        st.db_engine.dispose()

@@ -109,9 +109,14 @@ def build_state(
     # One pooled engine per process, shared by every PostGIS-backed component.
     db_engine = create_db_engine(settings) if needs_db(settings) else None
     store_db = db_engine if settings.store_backend == "postgis" else None
+    # Personal data (community reports, pilot requests) lives in tables the read-only API role
+    # (wp_reader) deliberately cannot SELECT (PII; migration 0001). With public writes disabled
+    # the API neither stores nor reads them: those two stores stay in memory (empty), while
+    # hazards (closures, 311 aggregates) and sources are still read from PostGIS.
+    pii_db = store_db if settings.public_writes else None
 
     if reports is None:
-        reports = PostgisReportRepository(store_db) if store_db else InMemoryReportRepository()
+        reports = PostgisReportRepository(pii_db) if pii_db else InMemoryReportRepository()
     if hazards is None:
         hazards = (
             PostgisHazardRepository(store_db, reports)
@@ -122,9 +127,7 @@ def build_state(
         sources = PostgisSourceRepository(store_db) if store_db else StaticSourceRepository()
     if pilot_requests is None:
         pilot_requests = (
-            PostgisPilotRequestRepository(store_db)
-            if store_db
-            else InMemoryPilotRequestRepository()
+            PostgisPilotRequestRepository(pii_db) if pii_db else InMemoryPilotRequestRepository()
         )
     if risk is None:
         try:
