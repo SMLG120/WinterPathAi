@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Info } from 'lucide-react';
 import type { Route, RouteCompareResponse } from '@/api/types';
@@ -107,8 +107,9 @@ function RouteDetails({ route, selected, onSelect }: { route: Route; selected: b
 
 export const CompareCard = forwardRef<
   HTMLHeadingElement,
-  { data: RouteCompareResponse; selected: RouteVariant; onSelect: (v: RouteVariant) => void }
->(function CompareCard({ data, selected, onSelect }, headingRef) {
+  /** `notice`: e.g. which hazard sources these routes could not take into account. */
+  { data: RouteCompareResponse; selected: RouteVariant; onSelect: (v: RouteVariant) => void; notice?: ReactNode }
+>(function CompareCard({ data, selected, onSelect, notice }, headingRef) {
   const { t, i18n } = useTranslation('plan');
   const simulated = data.routes.some((r) => r.explanation.some((e) => e.evidence_state === 'simulated'));
   const rank = (r: Route) => (r.variant === 'winter_aware' ? 0 : 1);
@@ -146,6 +147,7 @@ export const CompareCard = forwardRef<
           </div>
         </Alert>
       )}
+      {notice}
       {ordered.map((r) => (
         <RouteDetails key={r.variant} route={r} selected={r.variant === selected} onSelect={() => onSelect(r.variant)} />
       ))}

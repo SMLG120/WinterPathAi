@@ -3,12 +3,15 @@ import type { HazardFeature } from '@/api/types';
 import { EvidenceBadge } from '@/components/evidence/EvidenceBadge';
 import { formatDateTime } from '@/lib/format';
 import { HAZARD_STYLE } from './mapStyle';
+import type { HazardCoverage } from './hazardCoverage';
 
 /** Text alternative to the hazard overlay. */
-export function HazardList({ hazards }: { hazards: HazardFeature[] }) {
+export function HazardList({ hazards, coverage }: { hazards: HazardFeature[]; coverage: HazardCoverage }) {
   const { t, i18n } = useTranslation('plan');
   const fr = i18n.language === 'fr';
-  if (hazards.length === 0) return <p className="text-sm text-muted-foreground">{t('overlays.none')}</p>;
+  // "None" only when every hazard source is loaded; otherwise HazardSourceNotice says what is missing.
+  if (hazards.length === 0)
+    return coverage.state === 'complete' ? <p className="text-sm text-muted-foreground">{t('overlays.none')}</p> : null;
   return (
     <ul className="space-y-2" data-testid="hazard-list">
       {hazards.map((h) => {

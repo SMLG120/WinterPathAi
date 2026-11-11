@@ -133,6 +133,19 @@
     "none": "Aucune fermeture ni aucun signalement dans cette vue.",
     "demoNote": "Les fermetures et signalements sont simulés. Les tracés de trottoirs sont de vraies données OpenStreetMap (jeu pilot_mini, quelques îlots autour de McGill) dont l'état est inconnu — aucune couche de risque n'est active."
   },
+  "hazardSources": {
+    "overlay": "Des fermetures et des requêtes 311 peuvent manquer sur cette carte : toutes les sources ne sont pas chargées dans ce déploiement. Une liste vide ne veut pas dire qu'il n'y en a aucune.",
+    "route": "Ces itinéraires n'ont pas pu tenir compte des fermetures ni des requêtes 311 : toutes les sources ne sont pas chargées dans ce déploiement. Un itinéraire peut traverser une fermeture non affichée. Vérifiez les conditions sur place.",
+    "item": "{{name}} : {{status}}",
+    "unchecked": "Nous n'avons pas pu vérifier quelles sources de fermetures et de signalements sont chargées.",
+    "status": {
+      "active": "chargée",
+      "stale": "pas à jour",
+      "disabled": "non chargée",
+      "requires_credentials": "identifiants requis",
+      "error": "échec du chargement"
+    }
+  },
   "legend": {
     "title": "Légende",
     "risk": {

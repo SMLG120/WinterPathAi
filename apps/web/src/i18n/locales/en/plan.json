@@ -131,6 +131,19 @@
     "none": "No closures or reports in this view.",
     "demoNote": "Closures & reports are simulated. Sidewalk lines are real OpenStreetMap data (pilot_mini fixture, a few blocks around McGill) with unknown conditions — no risk layer is active."
   },
+  "hazardSources": {
+    "overlay": "Closures and 311 reports may be missing from this map: not every source is loaded in this deployment. An empty list does not mean there are none.",
+    "route": "These routes could not take closures or 311 reports into account: not every source is loaded in this deployment. A route may cross a closure that isn't shown. Check conditions on site.",
+    "item": "{{name}}: {{status}}",
+    "unchecked": "We couldn't check which closure and report sources are loaded.",
+    "status": {
+      "active": "loaded",
+      "stale": "out of date",
+      "disabled": "not loaded",
+      "requires_credentials": "needs credentials",
+      "error": "failed to load"
+    }
+  },
   "legend": {
     "title": "Legend",
     "risk": {
