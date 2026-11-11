@@ -447,6 +447,52 @@ The gate procedure, features and hyper-parameters are unchanged. The change came
 
 Because the spatial holdout blocks are drawn from the coverage, they differ between v1 and v2 (v2 has 5 res-6 blocks and 158,013 test rows).
 
+## Headless daily scoring (`winterpath_ml.score`), 2026-11-11
+
+**Inputs** (nothing else is read or downloaded):
+| Input | Where it comes from | Size |
+|---|---|---|
+| `models/registry.json` | committed | — |
+| `winter311-heuristic-v1.joblib` | `$MODEL_ARTIFACT_DIR/v2-8d19aa86/`. Git-ignored, so the runner must supply it. sha256 is checked against the registry **before** `joblib.load`. | 2,953 B |
+| `coverage_cells.parquet` | same directory and sha check | 19,883 B |
+| 311 « Requêtes 3-1-1 (2022 à ce jour) » CSV | downloaded with `--fetch-311` from `config.URL_311_2022_PRESENT` into `$WP_ML_CACHE_DIR/score/` (never overwrites the pinned evaluation snapshot), then aggregated by the unchanged `data_311.build_interim` | 850,499,252 B on 2026-11-11 |
+| ECCC GeoMet `climate-daily`, stations 7025251 + 702S006, 2021-10-01..end | always fetched fresh into a temp dir. The old range-keyed cache could freeze an incomplete day: `eccc_…_2026-11-11.json`, fetched 2026-11-10 16:11, was byte-identical to the 11-10 file. | ~650 KB |
+
+**Failure policy:** every requested in-season day is prepared and validated before anything is written. Validation requires exactly one row per coverage cell and finite `p` in [0, 1]. Any incomplete input or invalid table means nothing is written and exit 1. A missing artifact, sha mismatch or disabled model means exit 2. Tables are written to `.<day>.parquet.tmp`, then `os.replace`d (the provider globs `*.parquet`). Out-of-season days are reported and skipped with exit 0. Pinned gate files are untouched (`pins OK`).
+
+**Measured locally** (macOS arm64, `/usr/bin/time -l`, empty cache, scratch artifact dir):
+```text
+$ score --start 2026-11-11 --fetch-311            (via uv; includes 850 MB download)
+exit 0; rows_per_day {"2026-11-11": 2930}; 311 sha256 7318fc5d…1ebf, last_day 2026-11-10
+       55.26 real        12.02 user         3.57 sys
+$ build_interim on the downloaded CSV               (venv python directly)
+       10.62 real   1121468416  maximum resident set size   1591576592  peak memory footprint
+$ score --start 2026-11-11                          (from aggregates, no 311 download)
+        4.98 real    946569216  maximum resident set size    868124040  peak memory footprint
+$ score --start 2026-11-11 --end 2026-11-12
+SCORE FAILED (inputs incomplete; nothing written): 2026-11-12: 311 data ends 2026-11-10 < 2026-11-11
+exit 1
+$ (one byte appended to the joblib)
+SCORE FAILED (artifact/registry; nothing written): artifact sha256 mismatch … != registry 4c916346…6546
+exit 2
+$ MODEL_ARTIFACT_DIR=<empty>
+SCORE FAILED (artifact/registry; nothing written): artifact missing: …
+exit 2
+```
+Peak about 1.1 GB RSS (1.6 GB footprint) during aggregation, and about 55 s wall time, most of it the download.
+
+**311 publication timing (observed once, not a guarantee):** at 12:44 on 2026-11-11 the file's max `DDS_DATE_CREATION` was 2026-11-10 21:57:12, with no rows for 11-11. So the job can score D once the file contains D-1. The readiness rule cannot prove D-1 is complete (an export before midnight would cut it short); this is unchanged from before and stated, not solved.
+
+**API path never deserialises pickle/joblib:** `grep -rnE "joblib|pickle|dill|shelve|read_pickle|allow_pickle|torch\.load|np\.load"` over `services/api`, `services/routing` and `services/data` gave no matches (exit 1). In `services/ml` the only `joblib.load` is in `score.py` (batch job; it is now imported lazily after the sha check). `evaluate.py` only dumps. `inference.py` reads JSON and parquet only (pyarrow 26.0.1, past the CVE-2023-47248 fix in 14.0.1). New test `test_no_unpickle_api_path.py` runs `load_provider()` plus `cell_risk`, `edge_risk` and `status` in a fresh interpreter. It has a `pickle.find_class` audit hook and denies `pickle.load(s)`:
+```text
+{"provider": "HeuristicRiskProvider", "joblib": false, "sklearn": false, "events": []}
+```
+Negative control (same hook around `joblib.load` of the heuristic artifact): `caught pickle.find_class ('winterpath_ml.models', 'Calibrated')`.
+
+**Checks:** `uv run pytest -q` → `53 passed, 1 skipped`. `uvx ruff check .` → `All checks passed!` `gate_logreg_2026 --check` → `pins OK; coverage list OK`. `scripts/check-ownership.sh ml` → `ownership OK for agent/ml`.
+
+**Not done (Platform/coordinator):** the GitHub Actions workflow file itself (`.github/` is not ML-owned). That includes where the two git-ignored artifacts come from, where written score tables go so the API can read them, and the cron time. Network access from GitHub runners to donnees.montreal.ca has not been tested.
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|
