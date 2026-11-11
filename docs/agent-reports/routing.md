@@ -24,7 +24,23 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0k. Cycle 12 — contract v1.7.0 (free-tier deployment): merge `07a1f29`, read-only mode, pooler settings, boot/SIGTERM — current
+### 0l. Cycle 12b — merge of `integration/winterpath` `137e623` (deployment docs) — current
+The merge commit is `1027e50`: docs only (`docs/{DATA_COMPLIANCE,ENVIRONMENT_VARIABLES,FREE_TIER_LIMITS,RECOVERY,SECURITY}.md`), no code or migrations. The API matches `docs/ENVIRONMENT_VARIABLES.md`:
+- `DATABASE_POOL_SIZE`/`DATABASE_MAX_OVERFLOW` default to 3 / 2.
+- `API_PUBLIC_WRITES=false` → 503 `WRITES_DISABLED`.
+- `API_LOG_LEVEL=info` is accepted case-insensitively (root level `INFO`).
+- The production combination `API_STORE_BACKEND=memory` + `WEATHER_SOURCE=postgis` uses the single shared pooled engine.
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.8 ms p95=5.8 ms max=9.2 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=6.7 ms p95=19.4 ms max=86.8 ms
+======================= 317 passed, 1 warning in 25.11s ========================
+$ ruff (routing / api): All checks passed! 20 / 32 files already formatted
+$ (cd services/api && uv lock --check)  → exit=0
+$ scripts/check-ownership.sh routing    → ownership OK for agent/routing
+```
+
+### 0k. Cycle 12 — contract v1.7.0 (free-tier deployment): merge `07a1f29`, read-only mode, pooler settings, boot/SIGTERM
 The coordinator's message reached me truncated: it starts mid-sentence at "…X_OVERFLOW (default 2)", so items (1)–(2) were missing. I implemented the API's share of contract v1.7.0 as written in `07a1f29` (`API_PUBLIC_WRITES`, pooler-friendly engine), plus items (3)–(5). **If (1)–(2) asked for anything else, please resend them.**
 
 **Merge:** `integration/winterpath` `07a1f29` → `ef665fc`, no conflicts (contracts and `.env.example` only).
