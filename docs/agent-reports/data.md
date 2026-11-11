@@ -557,3 +557,31 @@ $ uv run pytest -q
 ..........................................                               [100%]
 42 passed in 46.87s
 ```
+
+## Merge integration/winterpath (contract v1.4.0) + re-run (2026-11-10)
+`git merge --no-edit integration/winterpath` fast-forwarded `21ec5c6..dc1ed12`
+(`docs/contracts/data-model.md`, `integration-rules.md`: contract v1.4.0, CR-ROUTING-7).
+```text
+$ uv run pytest -q   (straight after the merge)
+42 passed in 53.58s
+```
+**Conformance fix — migration 0005.** v1.4.0 specifies `t < valid_to` (exclusive), but 0004
+shipped `t <= valid_to`, the inclusive deviation proposed above. Because 0004 is already merged
+and applied, I left it unchanged. `0005_closure_active_exclusive_end.py` does
+`CREATE OR REPLACE` with that one comparison changed. It loads 0004's function text and asserts
+that the replaced fragment occurs exactly once. Downgrade restores the 0004 body. The overnight
+window → NULL rule from 0004 still stands. It is consistent with "null = unknown" in v1.4.0.
+New test cases are `at_end` (t = valid_to → false) and `pre_end` (t = valid_to − 1 min → true).
+The migration test now also steps head→0004→head and checks which function body is installed.
+```text
+$ ruff check . 0005…py → All checks passed!   $ ruff format --check → 27 files already formatted
+$ uv run pytest -q
+..........................................                               [100%]
+42 passed in 50.05s
+$ alembic upgrade head (wp_data) → version_num 0005_closure_active_excl_end
+-- closure_active_at(c, now()) | blocks_passage | count (unchanged vs 0004 at this time)
+f|f|45   f|t|19   f||1   t|f|68   t|t|25   t||9
+```
+Note: `ruff format` on `db/migrations/versions/` would reflow 0001's `EDGE_KIND` constant, and
+`ruff check` flags E501 inside 0001's SQL. Both predate this change. I reverted the reflow so that
+0001 stays byte-identical.
