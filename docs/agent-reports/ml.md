@@ -1,7 +1,7 @@
 # Agent report — ml
 
 - **Status:** MERGED (fa8b4ea into `integration/winterpath`). Follow-up work since then: READY FOR REVIEW.
-- **Branch / SHA:** agent/ml @ dd191742b842369e5ef23e74d5a9c3b731b65360 (pre-registration). This report update is committed on top of it.
+- **Branch / SHA:** agent/ml @ dd191742b842369e5ef23e74d5a9c3b731b65360 (pre-registration). Gate runner and Addendum 1 are in the following commit; this report update is committed on top of them.
 - **Integration merges:** `integration/winterpath` merged three times with `git merge --no-edit`, all clean:
   - 56a9f96: contract v1.1.0 + platform.
   - 3aae499: contract v1.2.0 + data.
@@ -44,9 +44,36 @@ $ uv run python -c "...FEATURES / coverage / holdout_blocks..."   # facts cited 
 2930 5
 ```
 
+### Gate runner (follow-up, same day)
+- `services/ml/src/winterpath_ml/gate_logreg_2026.py` implements the pre-registered protocol. It **refuses** to run before 2027-05-08 or if any pinned file or the coverage list differs from its recorded sha256. There is no override flag.
+  - It downloads a fresh 311 snapshot into a separate path and rejects snapshots dated before 2027-05-08.
+  - It applies the void rules and the four gate criteria (`decide()`, a pure function), and writes `models/evaluation/logreg-2026-<sha8>.json`.
+  - It does **not** edit the registry; a PASS is promoted through a separate reviewed commit.
+- Frozen coverage list committed as `models/coverage-v2-8d19aa86-cells.txt` (2,930 ids, sha256 `3e80a04b…5e58`). `models/artifacts/` is git-ignored, so a clean 2027 checkout would otherwise lack it.
+  - The root `.gitignore` ignores `coverage/` directories, so it is a flat file, not `models/coverage/…`.
+- Addendum 1 in `models/gate-logreg-2026.md` records the above. It is a clarification only; no criterion, split, data rule or pinned file changed.
+- `test_pinned_files_unchanged` runs in CI, so an edit to a frozen file fails the build.
+
+```text
+$ uv run --with ruff ruff check . && uv run --with ruff ruff format --check .
+All checks passed!
+24 files already formatted
+$ uv run pytest -q
+...................................                                      [100%]
+35 passed in 4.37s
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+date guard: pre-registered earliest run date is 2027-05-08; today is 2026-11-10. Test winter not evaluable.
+$ uv run python -m winterpath_ml.gate_logreg_2026; echo "exit=$?"
+REFUSED: pre-registered earliest run date is 2027-05-08; today is 2026-11-10. Test winter not evaluable.
+pins OK; coverage list OK
+exit=2
+```
+
 ### Open items
 - CR-ML-1 is pending a user decision. No Data-owned files were touched.
-- Running the new gate needs a runner script, which is not written yet, to avoid accidentally scoring test data. It must use the pinned files unchanged and is due after 2027-05-08.
+- **2027-05-08 or later:** run `uv run python -m winterpath_ml.gate_logreg_2026` once. If the decision is PASS, open a reviewed commit that promotes `winter311-logreg-v1` in the registry, as the gate document describes.
+- Daily `winterpath_ml.score` scheduling is still unassigned (Platform/coordinator).
 
 ## Summary (original delivery)
 - **Gate decision: FAIL.** The model is disabled (`layers.model.enabled = false`). The active layer is `heuristic`: baseline (b), historical frequency × a fixed weather multiplier. It reports levels only, with `probability = null`.
