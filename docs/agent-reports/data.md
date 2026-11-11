@@ -808,3 +808,21 @@ $ uv run ruff check .                  → All checks passed!
 $ uv run ruff format --check src tests → 26 files already formatted
 $ git diff --stat ee5f1fc HEAD -- data/fixtures/   → (empty)
 ```
+
+## Merge integration/winterpath @ 6a712e9 (all five agents merged) + re-run (2026-11-11)
+
+The merge was clean: merge commit `044f747`, with no conflicts. Integration includes data `f6eb3b2` via `3625bd7`.
+The merge changed nothing under `data/`, `db/`, `services/ingestion/` or `docs/contracts/`.
+
+```
+$ git merge --no-edit integration/winterpath   → 044f747 Merge branch 'integration/winterpath' into agent/data
+$ cd services/ingestion && uv run pytest -q
+..................................................                       [100%]
+50 passed in 54.60s
+$ uv run ruff check .                  → All checks passed!
+$ uv run ruff format --check src tests → 26 files already formatted
+$ uvx pip-audit -r <uv export --frozen> → No known vulnerabilities found
+$ alembic current (wp_data)            → 0006_report_311_nature (head)
+$ git diff --stat ee5f1fc HEAD -- data/fixtures/   → (empty; pilot_mini unchanged)
+$ scripts/check-ownership.sh data      → ownership OK for agent/data
+```
