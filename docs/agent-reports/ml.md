@@ -578,6 +578,18 @@ provider (RISK_SCORE_SOURCE=postgis): HeuristicRiskProvider Counter({'low': 2560
 
 **Checks:** without DB env `63 passed, 5 skipped`. With `WP_ML_TEST_DB_URL=<wp_ml>`: `67 passed, 1 skipped` (the skip is the `wp_data` reader test, which has its own env var). `uvx ruff check .` → `All checks passed!` `gate_logreg_2026 --check` → `pins OK; coverage list OK`. `sqlalchemy>=2.0` was added to the optional `db` extra (locks 2.1.8, same as services/api).
 
+**Fix (coordinator):** under a plain `uv sync --locked` (no extras), two DB-free provider tests raised `ModuleNotFoundError: sqlalchemy`. Tests that need the optional `db` extra now skip with a reason:
+```text
+$ uv sync --locked && uv run --no-sync pytest -q -rs tests/test_risk_cell_score_db.py
+SKIPPED [1] tests/test_risk_cell_score_db.py:239: sqlalchemy, psycopg not installed: optional 'db' extra (uv sync --extra db)
+SKIPPED [1] tests/test_risk_cell_score_db.py:264: sqlalchemy, psycopg not installed: optional 'db' extra (uv sync --extra db)
+3 passed, 6 skipped in 0.04s
+$ uv run --no-sync pytest -q                                   (no extras)
+61 passed, 7 skipped in 4.59s
+$ uv sync --locked --all-extras && WP_ML_TEST_DB_URL=<wp_ml> uv run --no-sync pytest -q
+67 passed, 1 skipped in 10.20s
+```
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|

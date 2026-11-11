@@ -7,6 +7,7 @@ afterwards. Writer and reader use separate connections with real commits, as in 
 DB-free tests at the bottom always run.
 """
 
+import importlib.util
 import os
 import uuid
 from datetime import UTC, date, datetime
@@ -17,7 +18,18 @@ import pytest
 from winterpath_ml import inference, score_db
 
 URL = os.environ.get("WP_ML_TEST_DB_URL")
-live = pytest.mark.skipif(not URL, reason="WP_ML_TEST_DB_URL not set")
+_MISSING = [m for m in ("sqlalchemy", "psycopg") if importlib.util.find_spec(m) is None]
+needs_db_extra = pytest.mark.skipif(
+    bool(_MISSING),
+    reason=f"{', '.join(_MISSING)} not installed: optional 'db' extra (uv sync --extra db)",
+)
+
+
+def live(f):
+    return needs_db_extra(
+        pytest.mark.skipif(not URL, reason="WP_ML_TEST_DB_URL not set")(f)
+    )
+
 
 MODEL_ID = "winter311-heuristic-v1"
 CELLS = ["892baa441b3ffff", "892baa441a7ffff", "892baa4418fffff"]
@@ -224,6 +236,7 @@ class _BrokenEngine:
         raise OSError("connection refused")
 
 
+@needs_db_extra
 def test_postgis_db_error_is_unknown_never_low():
     db = inference.PostgisScores(_BrokenEngine(), MODEL_ID)
     prov = inference.HeuristicRiskProvider(
@@ -248,6 +261,7 @@ def test_invalid_score_source_is_null_provider():
     )
 
 
+@needs_db_extra
 def test_postgis_provider_built_from_engine(monkeypatch):
     p = inference.load_provider(engine=_BrokenEngine(), score_source="postgis")
     assert isinstance(p, inference.HeuristicRiskProvider) and p.db is not None
