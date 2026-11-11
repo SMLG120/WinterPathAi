@@ -97,8 +97,44 @@ All checks passed!
 25 files already formatted
 ```
 
+### Contract v1.5.0 (CR-ML-1 accepted) — merged
+- Merged `integration/winterpath` @ bbae7d3, clean.
+- **Category names aligned** to the canonical `wp.report_311_cell` names (`sidewalk_slippery`, `roadway_slippery`, `snow_clearing`, `snow_dumping`) in `config.WINTER_CATEGORIES`.
+  - `config.py` is not pinned by the logistic-regression gate; `data_311.py` is pinned and **unchanged**.
+- **v2 results unchanged:** I rebuilt the aggregates and panel with the renamed categories and compared them to the evaluated artifact. I did not re-run or re-commit the evaluation; the registry, card and gate are untouched.
+```text
+categories: ['roadway_slippery', 'sidewalk_slippery', 'snow_clearing', 'snow_dumping']
+interim identical after rename: True
+panel identical to evaluated v2 features.parquet: True (2385020, 28) (2385020, 28)
+$ uv run pytest -q
+37 passed in 2.92s
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+- **Nature-summing reader: not yet added.**
+  - The coordinator's instruction is to add it once Data's migration is on integration. As of bbae7d3 there is no migration adding `nature` (the last is `0004_closure_status.py`).
+  - `data_311.read_report_cells_sql` is now known-wrong: it doesn't filter or sum natures. It stays unchanged because `data_311.py` is gate-pinned; the README says not to use it. The new reader will live in a separate module.
+- **Predicted difference** between the future DB reader (`SUM(n) WHERE nature IN ('requete','plainte')`) and the CSV labels. Measured now from the same 311 file:
+```text
+extra rows in Data's mapping (Requete/Plainte): 24 geolocated & valid: 24
+Déneigement ruelle  Plainte     3
+                    Requete     1
+Dépôt neige-ruelle  Requete    20
+in v2 panel: 24 of 24
+would flip 0->1: 18 already positive: 6
+  valid 10 · train 4 · test_chrono 4
+```
+  - Cause: Data maps `Déneigement ruelle` → `snow_clearing` and `Dépôt neige-ruelle` → `snow_dumping`. ML's frozen label set (v2 and `gate-logreg-2026.md`) excludes them. The table cannot separate them, so the DB reader **cannot reproduce the CSV labels exactly**: 18 of 2,385,020 cell-days would differ.
+
+### CR-ML-2 (proposed) — keep alley categories separable in `wp.report_311_cell`
+- **Request:** give the two alley activities their own canonical categories (e.g. `snow_clearing_alley`, `snow_dumping_alley`), or add the raw `acti_nom` to the key.
+- **Effect:** consumers that want the current definitions can still `SUM` them together, and ML can exclude them, so the DB path reproduces the label of record exactly.
+- **Alternative:** the coordinator accepts the 18-cell-day difference, and the CSV aggregation stays the label of record for v2 and the 2026-27 gate.
+- ML continues other work and does not depend on the outcome.
+
 ### Open items
-- CR-ML-1 is pending a user decision. No Data-owned files were touched.
+- CR-ML-2 (above): coordinator decision.
+- After Data's v1.5 migration lands: add the nature-summing reader and compare it with the CSV labels. The difference must equal the 18 cell-days predicted above.
 - Routing/API: wire `api_provider` as described above.
 - **2027-05-08 or later:** run `uv run python -m winterpath_ml.gate_logreg_2026` once. If the decision is PASS, open a reviewed commit that promotes `winter311-logreg-v1` in the registry, as the gate document describes.
 - Daily `winterpath_ml.score` scheduling is still unassigned (Platform/coordinator).

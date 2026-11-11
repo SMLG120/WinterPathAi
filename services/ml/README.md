@@ -41,8 +41,7 @@ months outside Nov–Apr, days without a score table, and edges touching any suc
 The heuristic layer always returns `probability = null`. `ModelRiskProvider` refuses to load a model
 the registry marks disabled.
 
-To swap the CSV aggregation for the Data agent's table: `data_311.read_report_cells_sql(conn)`
-returns the same `(h3, day, category, n)` frame as `data_311.aggregate_report_cells`.
+**Do not use `data_311.read_report_cells_sql`.** It predates contract v1.5.0 (`nature` in the PK) and doesn't filter natures. It is left unchanged only because `data_311.py` is pinned by `models/gate-logreg-2026.md`. A nature-summing reader will be added in a separate module once Data's v1.5 migration reaches integration. The CSV aggregation remains the label of record.
 
 ## Wiring into services/api (edge-id protocol)
 

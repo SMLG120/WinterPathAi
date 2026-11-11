@@ -41,5 +41,5 @@ def test_winter_filter_and_aggregate_schema():
     assert list(agg.columns) == ["h3", "day", "category", "n"]  # == wp.report_311_cell
     # geocode-error row and missing-coordinate row are dropped; Information row is not a report
     assert agg["n"].sum() == 2
-    assert set(agg["category"]) == {"slippery_sidewalk", "snow_clearing"}
+    assert set(agg["category"]) == {"sidewalk_slippery", "snow_clearing"}
     assert "lon" not in agg.columns and "lat" not in agg.columns

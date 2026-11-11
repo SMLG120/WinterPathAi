@@ -27,7 +27,7 @@ def test_future_311_and_weather_do_not_change_features(
     rc = SYNTHETIC_reports.copy()
     rc.loc[rc["day"] >= T, "n"] *= 50  # wildly perturb day t and everything after
     extra = pd.DataFrame(
-        {"h3": SYNTHETIC_cells, "day": T, "category": "slippery_sidewalk", "n": 99}
+        {"h3": SYNTHETIC_cells, "day": T, "category": "sidewalk_slippery", "n": 99}
     )
     rc = pd.concat([rc, extra], ignore_index=True)
     ac = SYNTHETIC_all_requests.copy()
