@@ -243,67 +243,64 @@ $ uv run python -m winterpath_ml.gate_logreg_2026 --check
 pins OK; coverage list OK
 ```
 
-### Open items
-- **Waiting for Data's v1.6 SHA:** merge that exact commit, confirm `wp_data` has been reloaded with alley categories, then run `report_cells_db --compare`. Expected `db_vs_csv_label` = 0 / 0 / 0 and `v2_panel_label_flips` = 0.
-- Integration still lacks 0006. This branch now contains `agent/data` ee5f1fc, so merging `agent/ml` also brings that commit; the coordinator may prefer to merge Data first.
-- **`scripts/check-ownership.sh ml` currently reports violations, all caused by that authorised merge** (data/fixtures, data/qa, db/migrations/0006, services/ingestion, docs/agent-reports/data.md). Proof that ML edited none of them:
+### 2026-11-11 — v1.6 DB reader verified against Data f6eb3b2: 0 cell-days differ
+- Merged the exact commit `agent/data` f6eb3b2 into this branch (71e7c7a). The merge was clean; that commit's migration 0006 includes the alley categories.
+- **`wp_data` reload checked, read-only (no writes):**
 ```text
-$ git diff --name-only ee5f1fc HEAD | grep -v -E '^(services/ml/|models/|docs/agent-reports/ml.md)'
+alembic_version: 0006_report_311_nature
+report_311_cell_category_check: CHECK ((category = ANY (ARRAY['sidewalk_slippery', 'roadway_slippery', 'snow_clearing', 'snow_dumping', 'snow_clearing_alley', 'snow_dumping_alley'])))
+snow_clearing_alley|commentaire|3|3
+snow_clearing_alley|plainte|3|3
+snow_clearing_alley|requete|1|1
+snow_dumping_alley|requete|20|20
+latest mtl-311 ingest_run: 18c1ca93-6448-4451-9605-a5ddbe9e8cfa | succeeded | 2026-11-11 13:38:57 UTC | record_count 70428
+```
+  The alley rows in `requete`+`plainte` total 1 + 3 + 20 = 24, the same 24 reports the CSV audit found.
+- **Comparison** (`uv run --extra db python -m winterpath_ml.report_cells_db --compare --database-url <wp_data>`), literal output:
+```text
+db rows (h3, day, category) with nature in ('requete', 'plainte'), category in ('sidewalk_slippery', 'roadway_slippery', 'snow_clearing', 'snow_dumping'): 63091, sum n = 73264
+{
+  "common_window_end": "2026-11-07",
+  "db_total_n": 73264,
+  "csv_label_total_n": 73264,
+  "csv_alley_rows": 24,
+  "db_vs_csv_label": {
+    "cell_days_count_differs": 0,
+    "abs_count_diff": 0,
+    "label_differs_cell_days": 0
+  },
+  "db_vs_csv_label_plus_alley": {
+    "cell_days_count_differs": 24,
+    "abs_count_diff": 24,
+    "label_differs_cell_days": 18
+  },
+  "v2_panel_rows": 2385020,
+  "v2_panel_label_flips": 0,
+  "v2_panel_flips_0_to_1": 0,
+  "v2_panel_flips_1_to_0": 0
+}
+```
+- **Result: verified, 0 cell-days differ.** The DB reader reproduces the CSV label of record exactly over the common window (through 2026-11-07, the DB load's last day).
+  - 0 label flips across all 2,385,020 v2 panel rows.
+  - DB row count (63,091) equals ML's interim aggregate row count.
+  - The reverse diagnostic (`plus_alley`) is now 24 / 18, so the alley categories are correctly separated.
+- **Implication:** `report_cells_db.read_report_cells` can serve as the label source going forward. The v2 results, registry and logistic-regression gate are unchanged; the gate's label definition is identical by construction.
+```text
+$ WP_ML_TEST_REPORT_DB_URL=<wp_data> uv run --extra db pytest -q tests/test_report_cells_db.py
+3 passed
+$ uv run pytest -q
+43 passed, 1 skipped
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+- **Ownership check:** f6eb3b2 is not yet in integration, so `scripts/check-ownership.sh ml` still flags Data's files. Every non-ML file in this branch is byte-identical to f6eb3b2:
+```text
+$ git diff --name-only f6eb3b2 HEAD | grep -v -E '^(services/ml/|models/|docs/agent-reports/ml.md)'
 (no output)
 ```
-  Every non-ML file is byte-identical to `agent/data` ee5f1fc. The check passes again once integration contains ee5f1fc, which moves the merge-base.
-- After Data's v1.5 migration lands: add the nature-summing reader and compare it with the CSV labels. The difference must equal the 18 cell-days predicted above.
-- Routing/API: wire `api_provider` as described above.
-- **2027-05-08 or later:** run `uv run python -m winterpath_ml.gate_logreg_2026` once. If the decision is PASS, open a reviewed commit that promotes `winter311-logreg-v1` in the registry, as the gate document describes.
-- Daily `winterpath_ml.score` scheduling is still unassigned (Platform/coordinator).
 
-## Summary (original delivery)
-- **Gate decision: FAIL.** The model is disabled (`layers.model.enabled = false`). The active layer is `heuristic`: baseline (b), historical frequency × a fixed weather multiplier. It reports levels only, with `probability = null`.
-- HistGradientBoosting did **not** beat the strongest baseline, logistic regression (c), on either holdout. The PR-AUC difference vs that baseline was −0.0033 (most recent winter) and −0.0011 (held-out areas), with 95% CIs spanning 0.
-- The target is P(≥1 winter-related 311 report in an H3 res-9 cell during local day D). It measures **reporting behaviour, not sidewalk safety**.
-
-## Files changed
-```text
-$ git diff --stat $(git merge-base integration/winterpath HEAD) HEAD
- models/artifacts/.gitkeep                     |    0
- models/cards/winter311-hgb-v1.md              |  189 ++++
- models/evaluation/v1-8d19aa86.SUPERSEDED.json | 1148 +++++++++++++++++++++++++
- models/evaluation/v2-8d19aa86.json            |  914 ++++++++++++++++++++
- models/gate.md                                |   28 +
- models/label-audit.md                         |  158 ++++
- models/registry.json                          |  113 +++
- services/ml/.python-version                   |    1 +
- services/ml/README.md                         |   45 +
- services/ml/pyproject.toml                    |   24 +
- services/ml/src/winterpath_ml/__init__.py     |    2 +
- services/ml/src/winterpath_ml/audit.py        |  259 ++++++
- services/ml/src/winterpath_ml/config.py       |  113 +++
- services/ml/src/winterpath_ml/data_311.py     |  117 +++
- services/ml/src/winterpath_ml/evaluate.py     |  432 ++++++++++
- services/ml/src/winterpath_ml/features.py     |  222 +++++
- services/ml/src/winterpath_ml/inference.py    |  349 ++++++++
- services/ml/src/winterpath_ml/metrics.py      |   79 ++
- services/ml/src/winterpath_ml/models.py       |  166 ++++
- services/ml/src/winterpath_ml/py.typed        |    0
- services/ml/src/winterpath_ml/score.py        |   96 +++
- services/ml/src/winterpath_ml/splits.py       |   48 ++
- services/ml/src/winterpath_ml/weather.py      |  128 +++
- services/ml/tests/conftest.py                 |   63 ++
- services/ml/tests/test_card_consistency.py    |   43 +
- services/ml/tests/test_data_311.py            |   45 +
- services/ml/tests/test_features.py            |   71 ++
- services/ml/tests/test_inference.py           |  156 ++++
- services/ml/tests/test_leakage.py             |   82 ++
- services/ml/tests/test_metrics_models.py      |   34 +
- services/ml/tests/test_pilot_fixture.py       |   73 ++
- services/ml/tests/test_splits.py              |   36 +
- services/ml/uv.lock                           |  274 ++++++
- 33 files changed, 5508 insertions(+)
-$ scripts/check-ownership.sh ml
-ownership OK for agent/ml
-```
-
-## Commands run and literal results
+### Open items
+- None blocking. The logistic-regression gate runs on or after 2027-05-08. The daily `winterpath_ml.score` job is still unscheduled (Platform/coordinator).
 
 ### Evaluation (`cd services/ml && uv run python -m winterpath_ml.evaluate`), final run
 ```text
