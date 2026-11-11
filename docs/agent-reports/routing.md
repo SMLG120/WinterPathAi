@@ -24,7 +24,31 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0h. Cycle 9b — re-merge of `integration/winterpath` (no change) + full rerun — current
+### 0i. Cycle 10 — merge of `integration/winterpath` `6a712e9` (all five agents) + `services/api/uv.lock` refresh — current
+The merge commit is `83ee512` (no conflicts; 25 incoming commits). It changes nothing under `services/routing`, `services/api` or `db/`, and `db/` is identical to `f6eb3b2`, so `wp_routing` stays at `0006_report_311_nature (head)` with no re-migration. ML added a `db` extra to `services/ml`, which made `services/api/uv.lock` stale. `uv lock` adds only that metadata (`psycopg[binary]>=3.2` under `extra == 'db'`, `provides-extras = ["db"]`); no resolved package versions change.
+```text
+$ git merge --no-edit integration/winterpath      # 6a712e9
+$ (cd services/api && uv lock --check)            # before
+The lockfile at `uv.lock` needs to be updated, but `--check` was provided. To update the lockfile, run `uv lock`.
+$ (cd services/api && uv lock)
+Resolved 61 packages in 69ms
+$ (cd services/api && uv lock --check); echo exit=$?
+exit=0
+$ uv run --project services/api pytest services/routing services/api -rs     # load average ≈18
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=9.2 ms p95=32.9 ms max=179.6 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=99.4 ms p95=407.9 ms max=573.5 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=2.0 ms p95=5.5 ms max=13.0 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=11.7 ms p95=61.2 ms max=101.1 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=13.6 ms p95=62.3 ms max=101.6 ms
+======================= 303 passed, 1 warning in 51.62s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+$ scripts/check-ownership.sh routing; echo exit=$?
+ownership OK for agent/routing
+exit=0
+```
+The ownership gate passes again now that integration contains `f6eb3b2`. The latency figures were measured with the host under load and are not a code regression.
+
+### 0h. Cycle 9b — re-merge of `integration/winterpath` (no change) + full rerun
 `integration/winterpath` is still `a292b63` (already merged at `5af6145`), so the merge was a no-op. `wp_routing` unchanged at head.
 ```text
 $ git merge --no-edit integration/winterpath
@@ -44,6 +68,45 @@ All checks passed!
 $ (cd services/api && uv run ruff check . && uv run ruff format --check .)
 All checks passed!
 30 files already formatted
+```
+
+Second re-merge request, same day: `integration/winterpath` still `a292b63`.
+```text
+$ git merge --no-edit integration/winterpath
+Already up to date.
+$ alembic -c db/alembic.ini current
+0006_report_311_nature (head)
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=11.0 ms p95=26.3 ms max=86.3 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=76.0 ms p95=248.0 ms max=363.0 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=2.3 ms p95=4.5 ms max=8.7 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=6.1 ms p95=9.5 ms max=17.3 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=34.7 ms p95=198.6 ms max=2313.1 ms
+======================= 303 passed, 1 warning in 48.89s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+```
+Latencies are 2–7× the previous run with no code change; the host was shared with other agents' jobs at the time, so this reads as machine load, not a regression (API p95 assertion < 2 s still held; one 2.3 s outlier).
+
+Third re-merge request, same day: `integration/winterpath` still `a292b63` (`Already up to date.`); `wp_routing` at `0006_report_311_nature (head)`; load average ≈13.
+```text
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=10.7 ms p95=54.8 ms max=78.7 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=56.7 ms p95=152.0 ms max=244.3 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.7 ms p95=3.3 ms max=5.9 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=7.2 ms p95=36.2 ms max=144.5 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=5.9 ms p95=10.5 ms max=42.6 ms
+======================= 303 passed, 1 warning in 32.60s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+```
+
+Fourth re-merge request, same day: `integration/winterpath` still `a292b63` (`Already up to date.`); `wp_routing` at `0006_report_311_nature (head)`; load average ≈11.
+```text
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=6.5 ms p95=19.2 ms max=86.6 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=40.2 ms p95=97.3 ms max=217.2 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=2.0 ms p95=6.9 ms max=12.0 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=3.7 ms p95=5.3 ms max=32.6 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=8.0 ms p95=235.9 ms max=1197.2 ms
+======================= 303 passed, 1 warning in 29.64s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
 ```
 
 ### 0g. Cycle 9 — merge of `agent/data` `f6eb3b2`, DB re-migrated, full rerun

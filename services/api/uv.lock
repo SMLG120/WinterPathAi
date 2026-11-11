@@ -929,10 +929,12 @@ requires-dist = [
     { name = "joblib", specifier = ">=1.4" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pandas", specifier = ">=2.2" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'db'", specifier = ">=3.2" },
     { name = "pyarrow", specifier = ">=16" },
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "scipy", specifier = ">=1.13" },
 ]
+provides-extras = ["db"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]
