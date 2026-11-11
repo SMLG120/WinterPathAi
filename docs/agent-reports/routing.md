@@ -1,6 +1,6 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Status:** READY FOR REVIEW. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
 - **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
@@ -24,7 +24,29 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0g. Cycle 9 — merge of `agent/data` `f6eb3b2`, DB re-migrated, full rerun — current
+### 0h. Cycle 9b — re-merge of `integration/winterpath` (no change) + full rerun — current
+`integration/winterpath` is still `a292b63` (already merged at `5af6145`), so the merge was a no-op. `wp_routing` unchanged at head.
+```text
+$ git merge --no-edit integration/winterpath
+Already up to date.
+$ alembic -c db/alembic.ini current
+0006_report_311_nature (head)
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=6.0 ms p95=12.4 ms max=61.8 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=30.1 ms p95=75.5 ms max=135.8 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.0 ms p95=1.8 ms max=2.9 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=5.5 ms p95=20.2 ms max=38.3 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=5.1 ms p95=7.1 ms max=10.8 ms
+======================= 303 passed, 1 warning in 19.16s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+```
+
+### 0g. Cycle 9 — merge of `agent/data` `f6eb3b2`, DB re-migrated, full rerun
 **Order** (0006 was edited in place, so the applied version had to be undone with its own downgrade):
 1. **Downgrade with the applied 0006.** My scratchpad export of `agent/data`'s `db/` (identical to `4254dd7`'s 0006: `diff` empty) against **my own** DB:
    ```text
