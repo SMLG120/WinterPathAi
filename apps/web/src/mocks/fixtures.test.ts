@@ -2,19 +2,20 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { setupServer } from 'msw/node';
 import { contractValidator } from '@/test/openapi';
+import { PTS } from '@/test/pilotPoints';
 import { handlers, resetMockState } from './handlers';
 import * as fx from './fixtures';
 import { mockCompare } from './routes';
-import { nearestLineM, pointSegmentM } from './geo-mock';
+import { haversineM, nearestLineM, pointSegmentM } from './geo-mock';
+import { isInPilot } from '@/lib/geo';
 import { pilotMiniSegments, PILOT_MINI } from './pilotMini';
 import edgesRaw from '../../../../data/fixtures/pilot_mini/edges.geojson?raw';
 
 const v = contractValidator();
 const server = setupServer(...handlers);
 const BASE = 'http://localhost/api/v1';
-const IN_A = { lon: -73.5772, lat: 45.5048 };
-const IN_B = { lon: -73.5745, lat: 45.504 };
-const OFF_NET = { lon: -73.5698, lat: 45.5017 }; // inside pilot bbox, outside pilot_mini network
+// Derived from the checked-out pilot_mini fixture (inside pilot bbox; OFF_NET outside the network).
+const { A: IN_A, B: IN_B, OFF_NET } = PTS;
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterAll(() => server.close());
@@ -85,6 +86,13 @@ describe('mock payloads validate against docs/contracts/openapi.yaml', () => {
   it('test points actually snap to the real pilot_mini network (≤ 75 m)', () => {
     const lines = pilotMiniSegments().map((f) => f.geometry.coordinates as [number, number][]);
     for (const p of [IN_A, IN_B]) expect(nearestLineM([p.lon, p.lat], lines)).toBeLessThanOrEqual(75);
+  });
+
+  it('derived OFF_NET point is inside the pilot bbox and well beyond the 75 m snap limit; A ≠ B', () => {
+    const lines = pilotMiniSegments().map((f) => f.geometry.coordinates as [number, number][]);
+    expect(nearestLineM([OFF_NET.lon, OFF_NET.lat], lines)).toBeGreaterThan(100);
+    expect(isInPilot(OFF_NET)).toBe(true);
+    expect(haversineM([IN_A.lon, IN_A.lat], [IN_B.lon, IN_B.lat])).toBeGreaterThan(30);
   });
 
   it('POST /routes/compare step_free → 404 NO_ROUTE (no edge verified step-free in demo)', async () => {

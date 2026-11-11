@@ -45,7 +45,7 @@ test('language switch preserves route and re-localises results', async ({ page }
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CA');
   await expect(page.getByTestId('compare-card')).toContainText('Explication de démonstration simulée');
   // Points are kept in memory across the switch.
-  await expect(page.getByTestId('point-origin-value')).toContainText('45.50480');
+  await expect(page.getByTestId('point-origin-value')).toContainText(Number(IN_A.lat).toFixed(5));
 });
 
 test('outside coverage shows helpful 422 copy', async ({ page }) => {

@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import { PTS_INPUT } from '../src/test/pilotPoints';
 
 type PlanCopy = { results: { identical: string; riskLayer: Record<'model' | 'heuristic' | 'none', string> } };
 const planCopy = (lang: 'en' | 'fr'): PlanCopy =>
@@ -8,9 +9,9 @@ const planCopy = (lang: 'en' | 'fr'): PlanCopy =>
 
 const API = process.env.E2E_API_BASE_URL ?? 'http://localhost:8104/api/v1';
 const ADMIN_TOKEN = process.env.E2E_ADMIN_TOKEN; // plain token whose sha256 is the API's API_ADMIN_TOKEN_HASH
-const A = { lat: '45.5048', lon: '-73.5772' };
-const B = { lat: '45.5040', lon: '-73.5745' };
-const OFF_NET = { lat: '45.5017', lon: '-73.5698' };
+// Derived from the checked-out pilot_mini fixture — the same graph the API loads with
+// ROUTING_GRAPH_SOURCE=fixture (see src/test/pilotPoints.ts).
+const { A, B, OFF_NET } = PTS_INPUT;
 
 test.beforeAll(async ({ request }) => {
   const r = await request.get(`${API}/health`).catch(() => null);
