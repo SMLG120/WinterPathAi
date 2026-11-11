@@ -152,3 +152,32 @@ Design tokens: midnight navy, ice blue, frost white, teal, slate, amber for caut
 ## Owner decisions that will be needed (not yet asked)
 - Hosting upgrade, **only if** the measurements show the free tiers cannot hold the island graph.
 - Place-search source (open address data in our DB, or a third-party geocoder with verified terms).
+
+## Wave 2a: implement contract v1.8.0 (2e3d4b2)
+Start after your Wave 1 item is committed. Merge `integration/winterpath` first; it contains ml `df50641` (`winterpath_ml.weather_live`).
+
+### routing (API)
+1. Wire `LiveWeatherProvider` into the API (one provider per process, injectable for tests) and use it to serve:
+   - `/weather/forecast`: `periods` = hourly, plus `text_periods`, `freshness`, `provenance`;
+   - `/weather/alerts`;
+   - the `/weather/current` additions: `wind_chill_c`, `condition`, `freshness` and `provenance`. Keep SWOB observations from PostGIS as the primary observation, and say which source each field came from.
+2. Errors:
+   - 503 only when no validated payload exists or the last one has expired;
+   - otherwise serve the cached payload with its degraded freshness;
+   - a request must never trigger more than the single-flight refresh.
+3. `/data-status`: compute freshness for every listed product. Use `api_on_demand` for forecast and alerts, `scheduled_job` for observations and scores, `manual` for closures, 311 and graph.
+4. `routes/compare` `weather_context`: the hourly forecast covering `departure_time`; null when outside the forecast range. The risk score is unchanged (`used_for: display_only`).
+5. Env vars (names only, defaults safe): `WEATHER_LIVE_ENABLED` (default false in tests, true in deploy docs), `WEATHER_LIVE_USER_AGENT`. Tell me the final names; `.env.example` is coordinator-owned.
+6. Tests with ML's recorded fixtures, including the outage and stale paths. Do not call real ECCC from CI.
+
+### frontend
+Run `npm run gen:api` against v1.8, then build:
+- **Compact weather bar** (temperature, condition, next-hours precipitation, valid time, "updated N min ago" from `provenance.fetched_at`) with a stale/delayed label. It must never show stale data as current.
+- **Expandable panel:** hourly list, `text_periods`, alerts with verbatim text in the user's language, wind chill.
+- **Departure time choice:** Leave now / In 1 h / Later today / Pick a time within the forecast range. Show the route's `weather_context` and state that the forecast is shown for information only.
+- **Data status page or section** from `/data-status`.
+- MSW fixtures must validate against the schema and be labelled as fixtures.
+
+### platform
+- Contract tests for the v1.8 endpoints.
+- Freshness checks in the integrity-job proposal using `/data-status`: one request per run, no keep-alive.
