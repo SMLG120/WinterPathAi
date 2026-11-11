@@ -57,6 +57,18 @@ def test_blocks_passage_only_when_barred():
     assert set(gdf["evidence_state"]) == {"confirmed"}
 
 
+def test_status_is_publisher_lifecycle_only():
+    m = _main("u")
+    m["currentstatus"] = "Statut inédit"  # synthetic unseen value
+    gdf, unmapped = entraves.build_closures([_main("a"), m], [])
+    st = dict(zip(gdf["closure_id"], gdf["status"], strict=True))
+    assert st == {"entrave:a": "permit_issued", "entrave:u": "unknown"}
+    assert set(st.values()) <= set(entraves.CLOSURE_STATUS_VALUES)
+    raw = {r["currentstatus"] for r in gdf["attrs"]}
+    assert raw == {"Permis émis", "Statut inédit"}
+    assert unmapped["currentstatus='Statut inédit'"] == 1
+
+
 def test_closures_outside_bbox_dropped():
     gdf, _ = entraves.build_closures([_main("x", lon=-73.70, lat=45.60)], [])
     assert len(gdf) == 0

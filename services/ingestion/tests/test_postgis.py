@@ -81,6 +81,15 @@ V12_CLOSURE_COLS = {"attrs", "backsidewalk_blocks_passage"}
 V13_COLS = {("edge", "name"), ("community_report", "terminal_at")}
 
 
+def has_v14(url) -> bool:
+    with psycopg.connect(url) as c:
+        fn = c.execute("SELECT to_regprocedure('wp.closure_active_at(wp.closure,timestamptz)')")
+        ck = c.execute(
+            "SELECT 1 FROM pg_constraint WHERE conname='closure_status_check'"
+        ).fetchone()
+        return fn.fetchone()[0] is not None and ck is not None
+
+
 def has_v13(url) -> set[bool]:
     return {col in columns(url, table) for table, col in V13_COLS}
 
@@ -121,13 +130,21 @@ def test_migration_up_down_up(test_url):
     assert V12_EDGE_COLS <= columns(test_url, "edge")
     assert V12_CLOSURE_COLS <= columns(test_url, "closure")
     assert has_v13(test_url) == {True}
+    assert has_v14(test_url)
+    # one step down: 0004 removed, v1.3 intact
+    alembic(test_url, "downgrade", "0003_contract_v1_3_0")
+    assert not has_v14(test_url)
+    assert has_v13(test_url) == {True}
+    alembic(test_url, "upgrade", "head")
+    assert has_v14(test_url)
     # one step down: 0003 removed, v1.2 intact
     alembic(test_url, "downgrade", "0002_contract_v1_2_0")
+    assert not has_v14(test_url)
     assert has_v13(test_url) == {False}
     assert V12_EDGE_COLS <= columns(test_url, "edge")
     assert wp_tables(test_url) == EXPECTED
     alembic(test_url, "upgrade", "head")
-    assert has_v13(test_url) == {True}
+    assert has_v13(test_url) == {True} and has_v14(test_url)
     # one step down: back to exactly the v1 schema
     alembic(test_url, "downgrade", "0001_wp_schema_v1")
     assert wp_tables(test_url) == EXPECTED_0001
@@ -154,6 +171,92 @@ def test_constraints_reject_bad_rows(test_url):
                 "INSERT INTO wp.weather_daily (station_id, day, snow_on_ground_cm) "
                 "VALUES ('x', '2026-01-01', -1)"
             )
+
+
+# Synthetic schedules (not real permits). Monday 2026-11-16; America/Montreal = UTC-5 in Nov.
+_DAY = {"active": True, "all_day": True, "start": None, "end": None}
+_WIN = {"active": True, "all_day": False, "start": "09:00", "end": "17:00"}
+_OFF = {"active": False, "all_day": False, "start": None, "end": None}
+
+
+def _sched(mon):
+    days = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+    return {d: (mon if d == "mon" else _DAY) for d in days}
+
+
+ACTIVE_CASES = [
+    # id, status, valid_from, valid_to, monday schedule, t (UTC), expected
+    ("allday", "permit_issued", "2026-11-01", "2026-12-01", _DAY, "2026-11-16T15:00Z", True),
+    ("before", "permit_issued", "2026-11-20", "2026-12-01", _DAY, "2026-11-16T15:00Z", False),
+    ("ended", "permit_issued", "2026-11-01", "2026-11-10", _DAY, "2026-11-16T15:00Z", False),
+    ("win_in", "permit_issued", "2026-11-01", "2026-12-01", _WIN, "2026-11-16T15:00Z", True),
+    # 08:30 local = 13:30Z → before the 09:00 window
+    ("win_out", "permit_issued", "2026-11-01", "2026-12-01", _WIN, "2026-11-16T13:30Z", False),
+    # 23:30Z Sunday 15th = 18:30 local Sunday → Sunday's all-day schedule, not Monday's
+    ("tz_day", "permit_issued", "2026-11-01", "2026-12-01", _OFF, "2026-11-16T03:30Z", True),
+    ("off", "permit_issued", "2026-11-01", "2026-12-01", _OFF, "2026-11-16T15:00Z", False),
+    (
+        "null_flag",
+        "permit_issued",
+        "2026-11-01",
+        "2026-12-01",
+        {**_DAY, "active": None},
+        "2026-11-16T15:00Z",
+        None,
+    ),
+    (
+        "overnight",
+        "permit_issued",
+        "2026-11-01",
+        "2026-12-01",
+        {**_WIN, "start": "19:00", "end": "06:00"},
+        "2026-11-16T15:00Z",
+        None,
+    ),
+    (
+        "eod",
+        "permit_issued",
+        "2026-11-01",
+        "2026-12-01",
+        {**_WIN, "start": "18:00", "end": "23:59"},
+        "2026-11-17T04:59:30Z",
+        True,
+    ),
+    ("unknown", "unknown", "2026-11-01", "2026-12-01", _DAY, "2026-11-16T15:00Z", None),
+    ("cancel", "cancelled", "2026-11-01", "2026-12-01", _DAY, "2026-11-16T15:00Z", False),
+]
+
+
+def test_closure_status_and_active_at(test_url):
+    import json
+
+    alembic(test_url, "upgrade", "head")
+    with psycopg.connect(test_url, autocommit=True) as c:
+        c.execute(
+            "INSERT INTO wp.source (source_id, name, publisher, license, license_url, "
+            "commercial_use, attribution, url, status) VALUES ('syn','SYNTHETIC','t','t','t',"
+            "'unverified','t','t','disabled') ON CONFLICT DO NOTHING"
+        )
+        with pytest.raises(psycopg.errors.CheckViolation):
+            c.execute(
+                "INSERT INTO wp.closure (closure_id, geom, status, source_id) "
+                "VALUES ('syn:bad', ST_Point(-73.57,45.50,4326), 'Permis émis', 'syn')"
+            )
+        got = {}
+        for cid, st, vf, vt, mon, t, _ in ACTIVE_CASES:
+            c.execute(
+                "INSERT INTO wp.closure (closure_id, geom, status, valid_from, valid_to, attrs, "
+                "source_id) VALUES (%s, ST_Point(-73.57,45.50,4326), %s, "
+                "(%s::date::timestamp AT TIME ZONE 'America/Montreal'), "
+                "(%s::date::timestamp AT TIME ZONE 'America/Montreal'), %s, 'syn')",
+                (f"syn:{cid}", st, vf, vt, json.dumps({"weekly_schedule": _sched(mon)})),
+            )
+            got[cid] = c.execute(
+                "SELECT wp.closure_active_at(c, %s::timestamptz) FROM wp.closure c "
+                "WHERE closure_id=%s",
+                (t, f"syn:{cid}"),
+            ).fetchone()[0]
+    assert got == {cid: exp for cid, *_, exp in ACTIVE_CASES}
 
 
 def test_loader_atomic_and_idempotent(test_url, tmp_path):

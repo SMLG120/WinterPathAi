@@ -1,6 +1,6 @@
 # Agent report — data
 
-- **Status:** READY FOR REVIEW. v1 MERGED (bc6d6c5); contract v1.2.0 follow-up below
+- **Status:** READY FOR REVIEW. v1 MERGED (bc6d6c5); v1.2.0, v1.3.0 and CR-ROUTING-7 (migration 0004) follow-ups below
 - **Branch / SHA:** agent/data @ see `git log -1` (this report is committed in the final commit;
   code commits `bcf0c10` scaffold+graph+fixture, `10ca71b` pipelines+migrations+loader)
 - **Date (UTC):** 2026-11-10
@@ -486,3 +486,60 @@ part of the day** on some weekday, and 1 101 are inactive on at least one weekda
 4. If accepted, the Data agent will add migration 0004:
    `CHECK (status IN ('permit_issued','cancelled','completed','unknown'))`, mapping at ingest,
    and optionally a SQL function `wp.closure_active_at(timestamptz)`.
+
+## CR-ROUTING-7 accepted — migration 0004 (2026-11-10)
+- **`db/migrations/versions/0004_closure_status.py`** (revises 0003):
+  - Maps existing rows (`Permis émis`→`permit_issued`, anything else→`unknown`) and adds
+    `closure_status_check CHECK (status IN ('permit_issued','cancelled','completed','unknown'))`.
+    NULL is still allowed by the CHECK, but ingest always writes a value.
+  - `wp.closure_active_at(c wp.closure, t timestamptz) → boolean` (STABLE). It is three-valued:
+    `true` means active at t. `false` means explicitly inactive: outside valid_from..valid_to, an
+    inactive weekday, outside the window, or cancelled/completed. `NULL` means unknown: unknown
+    status, no valid_from, a missing or non-boolean flag, an unparseable time, or an overnight
+    window. Weekday and window use America/Montreal local time. Usage:
+    `SELECT … FROM wp.closure c WHERE c.blocks_passage AND wp.closure_active_at(c, now()) IS NOT FALSE`
+    (consumers decide the conservative branch for NULL; NULL is never clear).
+  - EXECUTE is granted to wp_reader, wp_writer and wp_migrator, and revoked from PUBLIC.
+  - Downgrade drops the function and the CHECK, then restores raw values from `attrs.currentstatus`.
+- **Deviations from the proposal text (please review):**
+  1. `valid_to` is treated as **inclusive** (`t <= valid_to`), not `t < valid_to`, because the
+     publisher writes `23:59:59` local as the end. An end time of `23:59` is treated as end of day.
+  2. **Overnight windows** (end ≤ start) return `NULL`. Whether `19:00–06:00` on Monday means
+     "Mon 19:00 → Tue 06:00" or "both ends on Monday" isn't documented. There are 170 such
+     day-windows in the citywide file and none in the pilot bbox.
+- **Ingest:** `entraves.CLOSURE_STATUS = {"Permis émis": "permit_issued"}`. Unmapped values
+  become `unknown` and are counted in `manifest.stats.unmapped` as `currentstatus=…`. The raw value
+  stays in `attrs.currentstatus`.
+- **Contract text:** `docs/contracts/data-model.md` on integration/winterpath still describes
+  `status` without a vocabulary. **CR-DATA-6 (for the coordinator):** add the enum and
+  `wp.closure_active_at` semantics above to the `wp.closure` section. I did not edit
+  `docs/contracts/*`.
+
+Literal results (Entraves file of 2026-11-10; `now()` ≈ 2026-11-10 evening UTC):
+```text
+$ uv run pytest -q            (services/ingestion)
+..........................................                               [100%]
+42 passed in 116.05s (0:01:56)
+$ ruff check .  → All checks passed!
+$ alembic upgrade head        (wp_data)  → version_num 0004_closure_status
+$ wp-ingest entraves --force  → "noop": false, "closures_in_bbox": 167, "unmapped": {}
+$ wp-ingest load --force
+{"source_id": "osm", "noop": false, "counts": {"node": 6987, "edge": 16652}}
+{"source_id": "mtl-voirie", "noop": false, "counts": {"sidewalk_polygon": 1495}}
+{"source_id": "mtl-entraves", "noop": false, "counts": {"closure": 167}}
+{"source_id": "mtl-311", "noop": false, "counts": {"report_311_cell": 68214}}
+{"source_id": "eccc-geomet", "noop": false, "counts": {"weather_obs": 84249, "weather_daily": 3550}}
+-- status:                         permit_issued|167
+-- closure_active_at(c, now()) | blocks_passage | count
+f|f|45   f|t|19   f||1   t|f|68   t|t|25   t||9
+```
+At that moment, 25 pilot closures were active **and** blocked passage; 9 were active with an
+unknown blocking status. New tests:
+- `test_closure_status_and_active_at` runs 12 synthetic cases: the date window, the weekday
+  window, a UTC→local weekday shift, a null flag, an overnight window, the 23:59 end, unknown and
+  cancelled statuses, and a CHECK rejection.
+- `test_status_is_publisher_lifecycle_only` covers the ingest mapping.
+- The migration test now also steps head→0003→head.
+
+Note: `ruff format --check db` flags `db/migrations/env.py`. That formatting predates this change,
+and I left it untouched.
