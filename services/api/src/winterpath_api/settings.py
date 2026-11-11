@@ -35,6 +35,13 @@ def _bool(v: str | None, default: bool) -> bool:
     raise ValueError(f"expected a boolean, got {v!r}")
 
 
+def _choice(v: str | None, default: str, allowed: tuple[str, ...]) -> str:
+    x = (v or "").strip().lower() or default
+    if x not in allowed:
+        raise ValueError(f"expected one of {allowed}, got {v!r}")
+    return x
+
+
 def _int(v: str | None, default: int, minimum: int = 0) -> int:
     n = int(v) if v and v.strip() else default
     if n < minimum:
@@ -66,6 +73,9 @@ class Settings:
     weather_max_age_minutes: int = 180
     #: station priority order; empty = most recent across stations
     weather_station_ids: list[str] = field(default_factory=list)
+    #: v1.7: where the ML risk provider reads daily scores: file (models/artifacts, local dev) |
+    #: postgis (wp.risk_cell_score through the API's shared engine)
+    risk_score_source: str = "file"
     #: v1.7: false → POST /reports and POST /pilot-requests return 503 WRITES_DISABLED
     public_writes: bool = True
     #: v1.7: SQLAlchemy pool, sized for Supabase's session pooler on a free-tier host. One engine
@@ -99,6 +109,7 @@ class Settings:
             weather_max_age_minutes=int(e.get("WEATHER_MAX_AGE_MINUTES") or 180),
             weather_station_ids=_csv(e.get("WEATHER_STATION_IDS")),
             public_writes=_bool(e.get("API_PUBLIC_WRITES"), True),
+            risk_score_source=_choice(e.get("RISK_SCORE_SOURCE"), "file", ("file", "postgis")),
             db_pool_size=_int(e.get("DATABASE_POOL_SIZE"), 3, minimum=1),
             db_max_overflow=_int(e.get("DATABASE_MAX_OVERFLOW"), 2),
         )

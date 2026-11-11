@@ -35,6 +35,26 @@ def engine_options(settings: Settings) -> dict[str, Any]:
     }
 
 
+def needs_db(settings: Settings) -> bool:
+    """Any PostGIS-backed component → one shared engine (stores, weather, risk scores)."""
+    return bool(settings.database_url) and (
+        settings.store_backend == "postgis"
+        or settings.weather_source == "postgis"
+        or (settings.risk_provider != "none" and settings.risk_score_source == "postgis")
+    )
+
+
+def ping(engine) -> bool:
+    from sqlalchemy import text
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
+
+
 def create_db_engine(settings: Settings):
     from sqlalchemy import create_engine
 

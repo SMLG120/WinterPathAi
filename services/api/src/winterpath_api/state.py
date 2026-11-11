@@ -19,7 +19,7 @@ from winterpath_routing import (
 
 from .adapters import WeatherAdapter, load_risk_provider
 from .compute import ComputePool
-from .db import create_db_engine
+from .db import create_db_engine, needs_db
 from .repositories.hazards import (
     HazardRepository,
     InMemoryHazardRepository,
@@ -106,24 +106,24 @@ def build_state(
 ) -> AppState:
     engine, graph_error = _load_graph(settings, graph_provider)
 
-    db_engine = None
-    if settings.store_backend == "postgis" and settings.database_url:
-        db_engine = create_db_engine(settings)
+    # One pooled engine per process, shared by every PostGIS-backed component.
+    db_engine = create_db_engine(settings) if needs_db(settings) else None
+    store_db = db_engine if settings.store_backend == "postgis" else None
 
     if reports is None:
-        reports = PostgisReportRepository(db_engine) if db_engine else InMemoryReportRepository()
+        reports = PostgisReportRepository(store_db) if store_db else InMemoryReportRepository()
     if hazards is None:
         hazards = (
-            PostgisHazardRepository(db_engine, reports)
-            if db_engine
+            PostgisHazardRepository(store_db, reports)
+            if store_db
             else InMemoryHazardRepository(reports)
         )
     if sources is None:
-        sources = PostgisSourceRepository(db_engine) if db_engine else StaticSourceRepository()
+        sources = PostgisSourceRepository(store_db) if store_db else StaticSourceRepository()
     if pilot_requests is None:
         pilot_requests = (
-            PostgisPilotRequestRepository(db_engine)
-            if db_engine
+            PostgisPilotRequestRepository(store_db)
+            if store_db
             else InMemoryPilotRequestRepository()
         )
     if risk is None:
@@ -136,7 +136,12 @@ def build_state(
                     e = edges.get(eid)
                     return e.coords if e is not None else None
 
-            risk = load_risk_provider(settings.risk_provider, edge_coords)
+            risk = load_risk_provider(
+                settings.risk_provider,
+                edge_coords,
+                engine=db_engine,
+                score_source=settings.risk_score_source,
+            )
         except (ImportError, AttributeError) as exc:
             log.warning("risk_provider_unavailable", error_type=type(exc).__name__)
             risk = NullRiskProvider()
@@ -146,11 +151,8 @@ def build_state(
 
         from .weather import ObservationWeatherAdapter, PostgisWeatherStore
 
-        if db_engine is None:  # weather from PostGIS while the stores stay in memory
-            db_engine = create_db_engine(settings)
-        weather_engine = db_engine
         weather = ObservationWeatherAdapter(
-            PostgisWeatherStore(weather_engine),
+            PostgisWeatherStore(db_engine),
             max_age=timedelta(minutes=settings.weather_max_age_minutes),
             station_ids=settings.weather_station_ids,
         )

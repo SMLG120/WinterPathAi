@@ -1,6 +1,6 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Status:** READY FOR REVIEW. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
 - **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
@@ -24,7 +24,56 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0l. Cycle 12b — merge of `integration/winterpath` `137e623` (deployment docs) — current
+### 0m. Cycle 13 — v1.7 risk wiring: merge data `360fdd4` + ml `79a0ee6`; shared engine → ML provider — current
+**Merges (exact commits, as instructed):**
+- `git merge --no-edit 360fdd4` → `40a61a4`.
+- `git merge --no-edit 79a0ee6` → `737d3e5`. This merge first refused because two untracked files would be overwritten: `models/artifacts/v2-8d19aa86/{coverage_cells.parquet,winter311-heuristic-v1.joblib}`, my local copies of ML's artifacts, which ML now commits. Their `git hash-object` matched `79a0ee6`'s blobs (`cae69c1…`, `360242b…`), so I moved them to the scratchpad and the merge then succeeded.
+- Afterwards `db/`, `services/ml`, `services/ingestion` and `models/` are identical to the named commits.
+- `wp_routing`: `alembic upgrade head` → `0007_risk_cell_score (head)`.
+
+**Fix (`state.py` / `adapters.py`):**
+- `load_risk_provider(spec, edge_coords, *, engine=None, score_source=None)` inspects the factory's signature. It passes `engine=` and `score_source=` only if they are accepted (keyword or `**kwargs`). Older factories that take no arguments are still called with none.
+- `build_state` passes the shared pooled engine and `settings.risk_score_source`. That setting comes from `RISK_SCORE_SOURCE` (`file` | `postgis`; default `file`; any other value fails at startup).
+- The shared engine is created whenever **any** component needs PostGIS: stores, weather, or ML scores from postgis. The production combination is in-memory stores + weather + risk from postgis, so the engine can no longer be missing there. The stores use PostGIS only when `API_STORE_BACKEND=postgis`.
+- `/health`: the `database` check now pings the engine itself. Before, with in-memory stores it called the in-memory repository's `ping()` and always said `ok`. The `risk` detail now names the score source.
+
+**Tests (`tests/test_api_risk_postgis.py`, 6):**
+- Factory wiring for v1.7, legacy, `**kwargs` and engine-only signatures.
+- The real `load_provider` signature.
+- `postgis` without a DB stays all-unknown (`disabled`).
+- Setting parsing.
+- A **real-DB test at 0007**. All 200 `pilot_mini` edges lie in **one** H3 r9 cell (`892baa441b3ffff`), so row and no-row can't be mixed inside one route on this fixture. The test exercises both on the same edges instead:
+  - (a) A fixture row (p=0.5) for today's America/Montreal day. `/map/segments`: every edge has a non-unknown level, `probability` null and evidence `model_estimate`. `compare`: `risk_layer=heuristic`, `unknown_share=0.0`.
+  - (b) The next local day, which has no rows, through the same client: `unknown_share=1.0`.
+  - (c) After deleting the row, a fresh client for today: every segment is `unknown` and `unknown_share=1.0`.
+  - The test skips rather than overwrite pre-existing rows, and checks that 0 rows remain afterwards.
+- **Mutation check:** with `engine=None` put back in `build_state`, the DB test fails (`{'status': 'disabled'} != {'status': 'ok'}`), i.e. it reproduces the reported gap.
+
+**(4) `/health` with `RISK_SCORE_SOURCE=postgis`** (uvicorn, `wp_routing` at 0007, in-memory stores, `pilot_mini` graph, writes disabled):
+```text
+{"status": "ok", "version": "0.1.0 (contract 1.7.0)",
+ "checks": {"graph": {"status": "ok"}, "database": {"status": "ok"},
+            "risk": {"status": "ok", "detail": "risk_layer=heuristic; score_source=postgis"},
+            "weather": {"status": "disabled", "detail": "No ECCC adapter configured."}}}
+/models/status: heuristic False winter311-hgb-v1
+wp.risk_cell_score rows in wp_routing: 0
+compare: risk_layer heuristic unknown_share [1.0, 1.0]
+SIGTERM exit=143
+```
+**Operational gap:** `/health` says risk `ok` even when `wp.risk_cell_score` has **no rows for today** (scoring job not run or failed); every route is then 100 % unknown. That is honest per edge, but invisible in `/health`. Proposal (needs coordinator/ML agreement, since health semantics are contract-adjacent): report `risk: degraded` when the active layer's `model_id` has no rows for today's local day. That needs ML's `status()` to expose the *active* layer's id; it currently reports `winter311-hgb-v1`, the gated-off model, while the heuristic is active (FYI already sent).
+
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.3 ms p95=2.3 ms max=2.7 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=4.1 ms p95=5.4 ms max=10.0 ms
+======================= 323 passed, 1 warning in 18.03s ========================
+$ ruff (routing / api): All checks passed! 20 / 33 files already formatted
+$ (cd services/api && uv lock --check)  → exit=0
+$ scripts/check-ownership.sh routing    → exit=1: 19 files, all from the two named commits
+```
+The ownership check fails as expected. It compares against integration, which doesn't yet contain `360fdd4`/`79a0ee6`. All 19 flagged files (`db/…/0007_risk_cell_score.py`, `services/ml/*`, `services/ingestion/*`, `models/artifacts/v2-8d19aa86/{coverage_cells.parquet,winter311-heuristic-v1.joblib}`, `docs/agent-reports/{data,ml}.md`) are byte-identical to `79a0ee6` (`git diff --quiet 79a0ee6 HEAD -- <file>` for each: 19/19 same). No routing commit touches them.
+
+### 0l. Cycle 12b — merge of `integration/winterpath` `137e623` (deployment docs)
 The merge commit is `1027e50`: docs only (`docs/{DATA_COMPLIANCE,ENVIRONMENT_VARIABLES,FREE_TIER_LIMITS,RECOVERY,SECURITY}.md`), no code or migrations. The API matches `docs/ENVIRONMENT_VARIABLES.md`:
 - `DATABASE_POOL_SIZE`/`DATABASE_MAX_OVERFLOW` default to 3 / 2.
 - `API_PUBLIC_WRITES=false` → 503 `WRITES_DISABLED`.
