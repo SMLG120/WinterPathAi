@@ -149,9 +149,77 @@ $ uv run python -m winterpath_ml.gate_logreg_2026 --check
 pins OK; coverage list OK
 ```
 
+### 2026-11-11 — artifact-dir bug fix; nature-summing reader verified against wp_data
+
+**Frontend bug fixed (4a88459).**
+- **Bug:** `inference._coverage()` and `score.py` built artifact paths from `REPO_ROOT` + the registry's repo-relative path, ignoring `MODEL_ARTIFACT_DIR`. When that variable pointed elsewhere, coverage wasn't found and the provider silently fell back to `NullRiskProvider`.
+- **Fix:** a new `inference.artifact_path()` resolves every registry entry under `config.ARTIFACT_DIR/<run_id>/…`.
+- **Warnings now logged:** `risk_registry_missing`, `risk_artifacts_missing` (names the expected path and `MODEL_ARTIFACT_DIR`), `risk_scores_missing`.
+- No gate-pinned file was touched.
+- **Regression tests:** `tests/test_artifact_dir.py` (4 tests).
+- **End-to-end check** in a fresh process:
+```text
+$ MODEL_ARTIFACT_DIR=<copy outside repo> uv run python -c "...load_provider()..."
+HeuristicRiskProvider
+$ MODEL_ARTIFACT_DIR=<X>/missing uv run python -c "...load_provider()..."
+WARNING:winterpath_ml.inference:risk_artifacts_missing: <X>/missing/v2-8d19aa86/coverage_cells.parquet not found (MODEL_ARTIFACT_DIR=<X>/missing); using NullRiskProvider (all unknown)
+NullRiskProvider
+```
+
+**Data migration 0006 merged** from the exact commit `agent/data` ee5f1fc, as authorised (cc94e2b). The merge was clean.
+
+**Reader:** `winterpath_ml.report_cells_db` (new module; `data_311.py` is untouched and still pinned).
+- `read_report_cells(conn)` runs `SUM(n) … WHERE nature = ANY(['requete','plainte']) GROUP BY h3, day, category`.
+- `psycopg` was added as the optional extra `db`.
+- `wp_data` state, read-only: alembic `0006_report_311_nature`; natures loaded `requete` 61,067 rows / n 70,574, `plainte` 2,631 / 2,714, `commentaire` 6,729 / 7,326 (no `information`: those rows have no coordinates). Latest mtl-311 ingest run 4ed17177…, succeeded 2026-11-11 03:54 UTC.
+
+**Verification** (`uv run --extra db python -m winterpath_ml.report_cells_db --compare --database-url <wp_data>`), literal output:
+```text
+db rows (h3, day, category) with nature in ('requete', 'plainte'): 63112, sum n = 73288
+{
+  "common_window_end": "2026-11-07",
+  "db_total_n": 73288,
+  "csv_label_total_n": 73264,
+  "csv_alley_rows": 24,
+  "db_vs_csv_label": {
+    "cell_days_count_differs": 24,
+    "abs_count_diff": 24,
+    "label_differs_cell_days": 18
+  },
+  "db_vs_csv_label_plus_alley": {
+    "cell_days_count_differs": 0,
+    "abs_count_diff": 0,
+    "label_differs_cell_days": 0
+  },
+  "v2_panel_rows": 2385020,
+  "v2_panel_label_flips": 18,
+  "v2_panel_flips_0_to_1": 18,
+  "v2_panel_flips_1_to_0": 0
+}
+```
+- **Result:** the prediction was confirmed exactly. The DB reader equals the CSV labels plus the two alley activities, with 0 differences. Against the label of record, the difference is the predicted 24 reports / 18 cell-days, all 0→1.
+- No other difference, so there is no snapshot drift up to 2026-11-07, the DB load's last day. The CSV file runs to 2026-11-09.
+- CR-ML-2 is not acted on: it awaits the user's decision. The CSV aggregation stays the label of record.
+
+**Checks:**
+```text
+$ uv run --with ruff ruff check . && uv run --with ruff ruff format --check .
+All checks passed!
+28 files already formatted
+$ uv run pytest -q
+43 passed, 1 skipped          (skip = live-DB test, opt-in via WP_ML_TEST_REPORT_DB_URL)
+$ WP_ML_TEST_REPORT_DB_URL=<wp_data> uv run --extra db pytest -q tests/test_report_cells_db.py
+3 passed
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+$ uv run --all-extras --with pip-audit pip-audit --skip-editable --progress-spinner off
+No known vulnerabilities found
+```
+- The first pip-audit attempt failed with "Request failed after 3 retries" (network); the retry above succeeded.
+
 ### Open items
-- Nature-summing reader: waiting for Data's `report_311_cell.nature` migration (not in d04da54).
-- CR-ML-2 (above): coordinator decision.
+- CR-ML-2: user decision.
+- Integration still lacks 0006. This branch now contains `agent/data` ee5f1fc, so merging `agent/ml` also brings that commit; the coordinator may prefer to merge Data first.
 - After Data's v1.5 migration lands: add the nature-summing reader and compare it with the CSV labels. The difference must equal the 18 cell-days predicted above.
 - Routing/API: wire `api_provider` as described above.
 - **2027-05-08 or later:** run `uv run python -m winterpath_ml.gate_logreg_2026` once. If the decision is PASS, open a reviewed commit that promotes `winter311-logreg-v1` in the registry, as the gate document describes.
