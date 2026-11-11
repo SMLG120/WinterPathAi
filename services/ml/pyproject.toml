@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-db = ["psycopg[binary]>=3.2"]
+db = ["psycopg[binary]>=3.2", "sqlalchemy>=2.0"]
 
 [dependency-groups]
 dev = ["pytest>=8"]

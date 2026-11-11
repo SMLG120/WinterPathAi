@@ -35,6 +35,11 @@ Exit status
 - 2: artifact or registry error (missing, sha256 mismatch, model disabled).
 - 3: download failed (311 or ECCC).
 - 4: stale, i.e. the newest scored day is more than STALE_HOURS old.
+- 5: database write failed (`--write-db`); the transaction rolled back.
+
+`--write-db` (contract v1.7) writes `wp.risk_cell_score` through `score_db.write_scores`: each
+scored (day, model_id) partition is replaced in one transaction, rows older than 30 days are
+deleted, and a `wp.ingest_run` row is recorded. Staleness is then checked against the table.
 
 Under GitHub Actions (`GITHUB_ACTIONS=true`), notices and errors are also emitted as
 `::notice::` / `::error::` annotations.
@@ -291,14 +296,13 @@ def newest_scored_day(out_dir: Path) -> date | None:
     return max(days, default=None)
 
 
-def staleness(out_dir: Path, now: datetime) -> str | None:
+def staleness(newest: date | None, now: datetime, where: str) -> str | None:
     """Reason string if the newest scored day began more than STALE_HOURS ago (in season only)."""
     local_now = now.astimezone(inference.LOCAL_TZ)
     if local_now.month not in config.SEASON_MONTHS:
         return None
-    newest = newest_scored_day(out_dir)
     if newest is None:
-        return f"no score tables in {out_dir}"
+        return f"no score tables in {where}"
     began = datetime(newest.year, newest.month, newest.day, tzinfo=inference.LOCAL_TZ)
     age_h = (now - began).total_seconds() / 3600
     if age_h > STALE_HOURS:
@@ -320,11 +324,19 @@ def main(argv: list[str] | None = None, now: datetime | None = None) -> int:
     ap.add_argument(
         "--fetch-311", action="store_true", help="download a fresh 311 CSV first"
     )
+    ap.add_argument(
+        "--write-db",
+        action="store_true",
+        help="write wp.risk_cell_score (DATABASE_URL) instead of parquet files",
+    )
+    ap.add_argument("--database-url", default=os.environ.get("DATABASE_URL"))
     a = ap.parse_args(argv)
+    if a.write_db and not a.database_url:
+        _annotate("error", "--write-db needs DATABASE_URL or --database-url")
+        return 2
     t0 = time.monotonic()
     try:
         plan = prepare(a.start, a.end or a.start, a.layer, a.fetch_311)
-        written = write(plan)
     except ValidationFailed as e:
         _annotate("error", f"validation failed; nothing written: {e}")
         return 1
@@ -334,6 +346,31 @@ def main(argv: list[str] | None = None, now: datetime | None = None) -> int:
     except DownloadFailed as e:
         _annotate("error", str(e))
         return 3
+    model_id = plan["registry"]["layers"][plan["layer"]]["id"]
+    db_summary = None
+    if a.write_db:
+        from . import score_db
+
+        try:
+            with score_db.connect(a.database_url) as conn:
+                if plan["tables"] or not plan["out_of_season"]:
+                    db_summary = score_db.write_scores(conn, plan)
+                newest = score_db.newest_day(conn, model_id)
+        except Exception as e:  # noqa: BLE001 - any DB failure is a loud failure
+            _annotate(
+                "error",
+                f"database write failed; transaction rolled back, previous scores intact: "
+                f"{type(e).__name__}: {e}",
+            )
+            return 5
+        written, where = (
+            [f"{score_db.TABLE} day={d}" for d in plan["tables"]],
+            score_db.TABLE,
+        )
+    else:
+        written = write(plan)
+        out_dir = inference.scores_dir(plan["registry"], plan["layer"])
+        newest, where = newest_scored_day(out_dir), str(out_dir)
     for d, why in plan["not_ready"].items():
         _annotate(
             "notice", f"{d} not scored yet: {why}. Will be scored on a later run."
@@ -342,17 +379,18 @@ def main(argv: list[str] | None = None, now: datetime | None = None) -> int:
         _annotate(
             "notice", f"out of season, not scored: {', '.join(plan['out_of_season'])}"
         )
-    out_dir = inference.scores_dir(plan["registry"], plan["layer"])
-    stale = staleness(out_dir, now or datetime.now(UTC))
+    stale = staleness(newest, now or datetime.now(UTC), where)
     print(
         json.dumps(
             {
                 "layer": plan["layer"],
+                "model_id": model_id,
                 "written": written,
                 "rows_per_day": {d: len(t) for d, t in plan["tables"].items()},
                 "not_ready": plan["not_ready"],
                 "out_of_season_skipped": plan["out_of_season"],
-                "newest_scored_day": str(newest_scored_day(out_dir)),
+                "newest_scored_day": str(newest),
+                "db": db_summary,
                 "source_311": plan.get("source_311"),
                 "wall_s": round(time.monotonic() - t0, 1),
             },

@@ -17,7 +17,10 @@ def _table(n=2, p=(0.01, 0.02)):
 
 def _plan(tables=None, not_ready=None, oos=None):
     return {
-        "registry": {},
+        "registry": {
+            "run_id": "r",
+            "layers": {"heuristic": {"id": "winter311-heuristic-v1"}},
+        },
         "layer": "heuristic",
         "tables": tables or {},
         "not_ready": not_ready or {},
@@ -89,7 +92,7 @@ def test_stale_newest_day_exit_4(scores, monkeypatch):
 
 
 def test_staleness_ignored_out_of_season(scores):
-    assert score.staleness(scores, datetime(2026, 7, 1, tzinfo=UTC)) is None
+    assert score.staleness(None, datetime(2026, 7, 1, tzinfo=UTC), "x") is None
 
 
 def test_download_error_is_explicit_exit_3(scores, monkeypatch, capsys):
