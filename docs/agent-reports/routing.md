@@ -1,6 +1,6 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Status:** READY FOR REVIEW. Cycle 14: `/routes/compare` under 0.1 CPU p95 4692→602 ms (memory store), byte-identical results, golden regression test; 324 passed. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
 - **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
@@ -24,7 +24,57 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0n. Cycle 13b — combined-trial blocker: real-layer ML tests gated on per-day score tables — current
+### 0o. Cycle 14 — `/routes/compare` performance under a 0.1 CPU cap, identical results — current
+**Method:**
+- **Image:** Platform's `infra/docker/api.Dockerfile` from `8623a30` (the trial's), built from `git archive HEAD` for *before* and from the working tree for *after*.
+- **Container:** `docker run --cpus=0.1 --memory=512m`, `ROUTING_GRAPH_SOURCE=postgis` on `wp_data` read only (`default_transaction_read_only=on`; graph 6,807 nodes / 16,296 edges inside the pilot bbox), `RISK_PROVIDER=none`, `ROUTING_WORKERS=1`, `API_PUBLIC_WRITES=false`.
+- **Load:** sequential `POST /routes/compare` with seeded random `{lon,lat}` pairs across the pilot bbox and mixed profiles; 10 warm-up requests not counted, then n=100 (same seed before/after). RSS from `docker stats`.
+- The host was shared with other agents (load average 8–15), so the *before* numbers vary between runs; both runs are shown.
+
+| Config | | p50 | p95 | max | statuses | RSS after boot / after load |
+|---|---|---|---|---|---|---|
+| `API_STORE_BACKEND=memory` (deployment config) | before | 804 ms | 4692 ms | 11891 ms | 200×67, 404×2, 422×31 | 134.9 / 138.8 MiB |
+| | **after** | **198 ms** | **602 ms** | 2302 ms | identical | 141.2 / 144.3 MiB |
+| `API_STORE_BACKEND=postgis` (hazards from DB per request) | before | 796 ms | 2590 ms | 6399 ms | 200×67, 404×2, 422×31 | 176.9 / 184.6 MiB |
+| | **after** | **292 ms** | **704 ms** | 2803 ms | identical | 141.8 / 149.2 MiB |
+
+Warm p95 is under the 2 s target in both configurations. Boot under the cap was 42–76 s before and 51 s after (noisy; graph load + precompute).
+
+**Profile** (cProfile, in-process, 100 ODs on the `wp_data` snapshot):
+- **Before:** 67 % of time in the two searches. Of that, 4.3 s was the neighbour generator: a NetworkX `out_edges` view per settled node plus a `_weight` → `_cost` call per arc. A further 25 % was `_context`, which ran the exclusion filter over all 16k edges and built a 16k-entry risk dict per request. Pydantic and response building were minor.
+
+**Changes** (`engine.py`, `graph.py`; same algorithms, same results):
+1. **Precomputed per engine:**
+   - adjacency, built from `g.out_edges(n, keys=True)` itself, so arc order and tie-breaking are unchanged;
+   - edge lengths;
+   - per profile, the statically allowed edge set (foot access, step-free rule, main component) and every edge's default `EdgeCost` (risk unknown, no hazard) with its `total_s`.
+2. **Per request, only the dynamic part:** active closures are subtracted from the static set. Edges with a hazard or a *known* risk estimate get `edge_cost(...)` on a copy of the static weights (lazily if there are more than 2048). Unknown and missing estimates cost and report identically, so only known ones are kept. `NullRiskProvider` is not called: its answer is "unknown" for every edge.
+3. **Specialised search loop `_run`:** it mirrors `search.astar` exactly: same relaxation order (start arcs; per node, out-arcs then end arcs), same `(priority, counter)` heap keys, same float expressions (`nd + h(v)`, heuristic `hypot(...) * per_m`). Dijkstra stays Dijkstra for the shortest route. A* with the existing admissible heuristic stays for winter-aware. **No bidirectional search or A* on the shortest route:** that could pick a different path among equal-cost ones, which would break "identical results". `search.astar`/`dijkstra` remain for tests.
+4. **Snapping:** `nearest_edges` no longer copies the 16k-edge allowed set per call.
+
+Engine-only on the `wp_data` snapshot, uncapped: before p50 42.5 ms / p95 128 ms; after p50 14.4–16.7 ms / p95 47–55 ms.
+
+**Results are identical:**
+- `wp_data`, 100 seeded ODs (66 routed, 34 errors), full engine output (`to_dict()`: geometry, steps, explanations, warnings, errors with details): `cmp golden_before.json golden_after.json` → **byte-identical**.
+- Golden-test cases (96), full `to_dict()` output: **byte-identical**.
+- HTTP bodies from the two images (status + body minus `request_id`/`computed_at`): **100/100 identical** for both store configs.
+- **New regression test `tests/test_routing_golden.py`**:
+  - Golden `fixtures/golden/compare_golden.json` generated from the **unmodified** engine before any change: 96 cases on real `pilot_mini` + a synthetic grid with mixed attributes, plus hard closure, possible closure, disruption and report hazards; no risk / static TEST risk; 3 profiles; EN/FR; 72 routed, 24 errors.
+  - Compared exactly: error codes, both routes' edge sequences, `identical`, warnings, explanation codes, hazards on/avoided, step count. Distances and costs within 0.05.
+  - Mutation checks: ignoring closures → fails (`synthetic/0/standard/none`, `edge_ids`); not applying hazard/risk costs → fails (`pilot_mini/15/standard/static`).
+  - Honest limit: reversing arc order did **not** change any golden case, so these OD sets contain no exact cost ties. Identical tie-breaking comes from building the adjacency from NetworkX's own iteration order, not from this test.
+
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=11.8 ms p95=32.1 ms max=304.7 ms   (was p50≈45 ms p95≈113 ms)
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.0 ms p95=1.8 ms max=2.2 ms (rejected >75 m from network: 4)
+======================= 324 passed, 1 warning in 16.78s ========================
+$ ruff (routing / api): All checks passed! 21 / 33 files already formatted
+```
+
+**Found while measuring (for the coordinator, not changed here):** with the deployment setting `API_STORE_BACKEND=memory` (`docs/ENVIRONMENT_VARIABLES.md`), `build_state` uses `InMemoryHazardRepository`. Closures (`wp.closure`) and 311 aggregates (`wp.report_311_cell`) are therefore **not** loaded in production, even though the DB has them. Routes would neither exclude active confirmed closures nor show 311 reports. Proposal: read hazards from PostGIS whenever a DB engine exists, and keep only *storing* community reports in memory. That is a behaviour change, so I'm awaiting your decision.
+
+### 0n. Cycle 13b — combined-trial blocker: real-layer ML tests gated on per-day score tables
 **Cause (coordinator's combined trial):** `test_real_heuristic_layer_in_season` and `test_real_heuristic_estimates_have_no_probability` failed with "expected scored cells on 2026-01-14". Their skip checked only `reg['coverage']['path']`. ML commits `coverage_cells.parquet` in v1.7, but the per-day score tables (`models/artifacts/v2-8d19aa86/scores/…`) are still git-ignored. CI and fresh checkouts therefore ran these tests with no scores, so every edge was `unknown`.
 
 **Fix (`tests/test_api_ml_risk.py`):**

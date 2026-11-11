@@ -1,0 +1,5085 @@
+{
+ "pilot_mini/0/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 77.3,
+    "duration_s": 59.5,
+    "edge_ids": [
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 61.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 3,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 77.3,
+    "duration_s": 59.5,
+    "edge_ids": [
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 61.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 3,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "pilot_mini/0/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 77.3,
+    "duration_s": 59.5,
+    "edge_ids": [
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 88.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 3,
+    "unknown_share": 0.345,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 77.3,
+    "duration_s": 59.5,
+    "edge_ids": [
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 88.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 3,
+    "unknown_share": 0.345,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "pilot_mini/1/reduced_mobility/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 244.8,
+    "duration_s": 272.0,
+    "edge_ids": [
+     "osm:n124074237>osm:n124072368:0",
+     "osm:n124072368>osm:n12011122379:0",
+     "osm:n12011122379>osm:n124072392:0",
+     "osm:n124072392>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 306.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 244.8,
+    "duration_s": 272.0,
+    "edge_ids": [
+     "osm:n124074237>osm:n124072368:0",
+     "osm:n124072368>osm:n12011122379:0",
+     "osm:n12011122379>osm:n124072392:0",
+     "osm:n124072392>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 306.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "pilot_mini/1/reduced_mobility/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 244.8,
+    "duration_s": 272.0,
+    "edge_ids": [
+     "osm:n124074237>osm:n124072368:0",
+     "osm:n124072368>osm:n12011122379:0",
+     "osm:n12011122379>osm:n124072392:0",
+     "osm:n124072392>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 383.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 0.213,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 244.8,
+    "duration_s": 272.0,
+    "edge_ids": [
+     "osm:n124074237>osm:n124072368:0",
+     "osm:n124072368>osm:n12011122379:0",
+     "osm:n12011122379>osm:n124072392:0",
+     "osm:n124072392>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 383.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 0.213,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "pilot_mini/10/reduced_mobility/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 66.9,
+    "duration_s": 74.3,
+    "edge_ids": [
+     "osm:n11292379091>osm:n924402169:0",
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 83.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 66.9,
+    "duration_s": 74.3,
+    "edge_ids": [
+     "osm:n11292379091>osm:n924402169:0",
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 83.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "No risk layer: risk is unknown along the whole route.",
+   "Origin is 41 m from the mapped pedestrian network.",
+   "Destination is 50 m from the mapped pedestrian network."
+  ]
+ },
+ "pilot_mini/10/reduced_mobility/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 66.9,
+    "duration_s": 74.3,
+    "edge_ids": [
+     "osm:n11292379091>osm:n924402169:0",
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 115.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 0.5302,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 66.9,
+    "duration_s": 74.3,
+    "edge_ids": [
+     "osm:n11292379091>osm:n924402169:0",
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 115.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 0.5302,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions.",
+   "Origin is 41 m from the mapped pedestrian network.",
+   "Destination is 50 m from the mapped pedestrian network."
+  ]
+ },
+ "pilot_mini/11/step_free/none": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/11/step_free/static": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/12/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 118.2,
+    "duration_s": 90.9,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 94.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 3,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 118.2,
+    "duration_s": 90.9,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 94.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 3,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "pilot_mini/12/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 118.2,
+    "duration_s": 90.9,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 119.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 3,
+    "unknown_share": 0.1074,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 118.2,
+    "duration_s": 90.9,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 119.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 3,
+    "unknown_share": 0.1074,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "pilot_mini/13/reduced_mobility/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 30.2,
+    "duration_s": 33.6,
+    "edge_ids": [
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 37.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 30.2,
+    "duration_s": 33.6,
+    "edge_ids": [
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 37.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "pilot_mini/13/reduced_mobility/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 30.2,
+    "duration_s": 33.6,
+    "edge_ids": [
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 70.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 0.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 30.2,
+    "duration_s": 33.6,
+    "edge_ids": [
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 70.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 0.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "pilot_mini/14/step_free/none": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/14/step_free/static": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/15/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 104.6,
+    "duration_s": 80.5,
+    "edge_ids": [
+     "osm:n124072401>osm:n924402169:0",
+     "osm:n924402169>osm:n11292368565:0",
+     "osm:n11292368565>osm:n11292379085:0",
+     "osm:n11292379085>osm:n11292379181:0",
+     "osm:n11292379181>osm:n11292379096:0",
+     "osm:n11292379096>osm:n11292379097:0",
+     "osm:n11292379097>osm:n1575941639:0",
+     "osm:n1575941639>osm:n1574439786:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 83.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 104.6,
+    "duration_s": 80.5,
+    "edge_ids": [
+     "osm:n124072401>osm:n924402169:0",
+     "osm:n924402169>osm:n11292368565:0",
+     "osm:n11292368565>osm:n11292379085:0",
+     "osm:n11292379085>osm:n11292379181:0",
+     "osm:n11292379181>osm:n11292379096:0",
+     "osm:n11292379096>osm:n11292379097:0",
+     "osm:n11292379097>osm:n1575941639:0",
+     "osm:n1575941639>osm:n1574439786:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 83.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "pilot_mini/15/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 104.6,
+    "duration_s": 80.5,
+    "edge_ids": [
+     "osm:n124072401>osm:n924402169:0",
+     "osm:n924402169>osm:n11292368565:0",
+     "osm:n11292368565>osm:n11292379085:0",
+     "osm:n11292379085>osm:n11292379181:0",
+     "osm:n11292379181>osm:n11292379096:0",
+     "osm:n11292379096>osm:n11292379097:0",
+     "osm:n11292379097>osm:n1575941639:0",
+     "osm:n1575941639>osm:n1574439786:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 108.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.4067,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 104.6,
+    "duration_s": 80.5,
+    "edge_ids": [
+     "osm:n124072401>osm:n924402169:0",
+     "osm:n924402169>osm:n11292368565:0",
+     "osm:n11292368565>osm:n11292379085:0",
+     "osm:n11292379085>osm:n11292379181:0",
+     "osm:n11292379181>osm:n11292379096:0",
+     "osm:n11292379096>osm:n11292379097:0",
+     "osm:n11292379097>osm:n1575941639:0",
+     "osm:n1575941639>osm:n1574439786:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 108.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.4067,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "pilot_mini/16/reduced_mobility/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 37.7,
+    "duration_s": 41.9,
+    "edge_ids": [
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 47.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 37.7,
+    "duration_s": 41.9,
+    "edge_ids": [
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 47.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "No risk layer: risk is unknown along the whole route.",
+   "Origin is 60 m from the mapped pedestrian network."
+  ]
+ },
+ "pilot_mini/16/reduced_mobility/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 37.7,
+    "duration_s": 41.9,
+    "edge_ids": [
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 66.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 0.5287,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 37.7,
+    "duration_s": 41.9,
+    "edge_ids": [
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 66.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 2,
+    "unknown_share": 0.5287,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions.",
+   "Origin is 60 m from the mapped pedestrian network."
+  ]
+ },
+ "pilot_mini/17/step_free/none": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/17/step_free/static": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/18/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 83.2,
+    "duration_s": 64.0,
+    "edge_ids": [
+     "osm:n11292368565>osm:n11292379085:0",
+     "osm:n11292379085>osm:n11292379086:0",
+     "osm:n11292379086>osm:n11292379087:0",
+     "osm:n11292379087>osm:n11292379088:0",
+     "osm:n11292379088>osm:n11292379089:0",
+     "osm:n11292379089>osm:n11292379091:0",
+     "osm:n11292379091>osm:n124056468:0",
+     "osm:n124056468>osm:n10946298335:0",
+     "osm:n10946298335>osm:n264346145:0",
+     "osm:n264346145>osm:n1282761433:0",
+     "osm:n1282761433>osm:n10926982188:0",
+     "osm:n10926982188>osm:n10946298336:0",
+     "osm:n10946298336>osm:n264345847:0",
+     "osm:n264345847>osm:n10946298339:0",
+     "osm:n10946298339>osm:n10946298348:0",
+     "osm:n10946298348>osm:n10946298349:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 66.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 16,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 83.2,
+    "duration_s": 64.0,
+    "edge_ids": [
+     "osm:n11292368565>osm:n11292379085:0",
+     "osm:n11292379085>osm:n11292379086:0",
+     "osm:n11292379086>osm:n11292379087:0",
+     "osm:n11292379087>osm:n11292379088:0",
+     "osm:n11292379088>osm:n11292379089:0",
+     "osm:n11292379089>osm:n11292379091:0",
+     "osm:n11292379091>osm:n124056468:0",
+     "osm:n124056468>osm:n10946298335:0",
+     "osm:n10946298335>osm:n264346145:0",
+     "osm:n264346145>osm:n1282761433:0",
+     "osm:n1282761433>osm:n10926982188:0",
+     "osm:n10926982188>osm:n10946298336:0",
+     "osm:n10946298336>osm:n264345847:0",
+     "osm:n264345847>osm:n10946298339:0",
+     "osm:n10946298339>osm:n10946298348:0",
+     "osm:n10946298348>osm:n10946298349:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 66.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 16,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "No risk layer: risk is unknown along the whole route.",
+   "Destination is 42 m from the mapped pedestrian network."
+  ]
+ },
+ "pilot_mini/18/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 83.2,
+    "duration_s": 64.0,
+    "edge_ids": [
+     "osm:n11292368565>osm:n11292379085:0",
+     "osm:n11292379085>osm:n11292379086:0",
+     "osm:n11292379086>osm:n11292379087:0",
+     "osm:n11292379087>osm:n11292379088:0",
+     "osm:n11292379088>osm:n11292379089:0",
+     "osm:n11292379089>osm:n11292379091:0",
+     "osm:n11292379091>osm:n124056468:0",
+     "osm:n124056468>osm:n10946298335:0",
+     "osm:n10946298335>osm:n264346145:0",
+     "osm:n264346145>osm:n1282761433:0",
+     "osm:n1282761433>osm:n10926982188:0",
+     "osm:n10926982188>osm:n10946298336:0",
+     "osm:n10946298336>osm:n264345847:0",
+     "osm:n264345847>osm:n10946298339:0",
+     "osm:n10946298339>osm:n10946298348:0",
+     "osm:n10946298348>osm:n10946298349:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 76.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 16,
+    "unknown_share": 0.261,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 83.2,
+    "duration_s": 64.0,
+    "edge_ids": [
+     "osm:n11292368565>osm:n11292379085:0",
+     "osm:n11292379085>osm:n11292379086:0",
+     "osm:n11292379086>osm:n11292379087:0",
+     "osm:n11292379087>osm:n11292379088:0",
+     "osm:n11292379088>osm:n11292379089:0",
+     "osm:n11292379089>osm:n11292379091:0",
+     "osm:n11292379091>osm:n124056468:0",
+     "osm:n124056468>osm:n10946298335:0",
+     "osm:n10946298335>osm:n264346145:0",
+     "osm:n264346145>osm:n1282761433:0",
+     "osm:n1282761433>osm:n10926982188:0",
+     "osm:n10926982188>osm:n10946298336:0",
+     "osm:n10946298336>osm:n264345847:0",
+     "osm:n264345847>osm:n10946298339:0",
+     "osm:n10946298339>osm:n10946298348:0",
+     "osm:n10946298348>osm:n10946298349:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 76.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 16,
+    "unknown_share": 0.261,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions.",
+   "Destination is 42 m from the mapped pedestrian network."
+  ]
+ },
+ "pilot_mini/19/reduced_mobility/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 63.5,
+    "duration_s": 70.6,
+    "edge_ids": [
+     "osm:n124072401>osm:n924402169:0",
+     "osm:n924402169>osm:n11292379091:0",
+     "osm:n11292379091>osm:n124056468:0",
+     "osm:n124056468>osm:n10946298335:0",
+     "osm:n10946298335>osm:n264346145:0",
+     "osm:n264346145>osm:n1282761427:0",
+     "osm:n1282761427>osm:n10926986709:0",
+     "osm:n10926986709>osm:n10946298347:0",
+     "osm:n10946298347>osm:n10946298337:0",
+     "osm:n10946298337>osm:n10946298340:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 678.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 9,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 63.5,
+    "duration_s": 70.6,
+    "edge_ids": [
+     "osm:n124072401>osm:n924402169:0",
+     "osm:n924402169>osm:n11292379091:0",
+     "osm:n11292379091>osm:n124056468:0",
+     "osm:n124056468>osm:n10946298335:0",
+     "osm:n10946298335>osm:n264346145:0",
+     "osm:n264346145>osm:n1282761427:0",
+     "osm:n1282761427>osm:n10926986709:0",
+     "osm:n10926986709>osm:n10946298347:0",
+     "osm:n10946298347>osm:n10946298337:0",
+     "osm:n10946298337>osm:n10946298340:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 678.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 9,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "pilot_mini/19/reduced_mobility/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 63.5,
+    "duration_s": 70.6,
+    "edge_ids": [
+     "osm:n124072401>osm:n924402169:0",
+     "osm:n924402169>osm:n11292379091:0",
+     "osm:n11292379091>osm:n124056468:0",
+     "osm:n124056468>osm:n10946298335:0",
+     "osm:n10946298335>osm:n264346145:0",
+     "osm:n264346145>osm:n1282761427:0",
+     "osm:n1282761427>osm:n10926986709:0",
+     "osm:n10926986709>osm:n10946298347:0",
+     "osm:n10946298347>osm:n10946298337:0",
+     "osm:n10946298337>osm:n10946298340:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 695.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 9,
+    "unknown_share": 0.501,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 63.5,
+    "duration_s": 70.6,
+    "edge_ids": [
+     "osm:n124072401>osm:n924402169:0",
+     "osm:n924402169>osm:n11292379091:0",
+     "osm:n11292379091>osm:n124056468:0",
+     "osm:n124056468>osm:n10946298335:0",
+     "osm:n10946298335>osm:n264346145:0",
+     "osm:n264346145>osm:n1282761427:0",
+     "osm:n1282761427>osm:n10926986709:0",
+     "osm:n10926986709>osm:n10946298347:0",
+     "osm:n10946298347>osm:n10946298337:0",
+     "osm:n10946298337>osm:n10946298340:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 695.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 9,
+    "unknown_share": 0.501,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "pilot_mini/2/step_free/none": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/2/step_free/static": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/20/step_free/none": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/20/step_free/static": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/21/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 184.2,
+    "duration_s": 141.7,
+    "edge_ids": [
+     "osm:n1575941616>osm:n1575941639:0",
+     "osm:n1575941639>osm:n11292379097:0",
+     "osm:n11292379097>osm:n11292379096:0",
+     "osm:n11292379096>osm:n11292379071:0",
+     "osm:n11292379071>osm:n11292379070:0",
+     "osm:n11292379070>osm:n924402167:0",
+     "osm:n924402167>osm:n11292375157:0",
+     "osm:n11292375157>osm:n11292375158:0",
+     "osm:n11292375158>osm:n11292375159:0",
+     "osm:n11292375159>osm:n11292375160:0",
+     "osm:n11292375160>osm:n1574821582:0",
+     "osm:n1574821582>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n10946755235:0",
+     "osm:n10946755235>osm:n10946755246:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 147.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 16,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 184.2,
+    "duration_s": 141.7,
+    "edge_ids": [
+     "osm:n1575941616>osm:n1575941639:0",
+     "osm:n1575941639>osm:n11292379097:0",
+     "osm:n11292379097>osm:n11292379096:0",
+     "osm:n11292379096>osm:n11292379071:0",
+     "osm:n11292379071>osm:n11292379070:0",
+     "osm:n11292379070>osm:n924402167:0",
+     "osm:n924402167>osm:n11292375157:0",
+     "osm:n11292375157>osm:n11292375158:0",
+     "osm:n11292375158>osm:n11292375159:0",
+     "osm:n11292375159>osm:n11292375160:0",
+     "osm:n11292375160>osm:n1574821582:0",
+     "osm:n1574821582>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n10946755235:0",
+     "osm:n10946755235>osm:n10946755246:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 147.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 16,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Aucune couche de risque : risque inconnu sur tout le trajet.",
+   "L'arriv\u00e9e est \u00e0 43 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "pilot_mini/21/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 184.2,
+    "duration_s": 141.7,
+    "edge_ids": [
+     "osm:n1575941616>osm:n1575941639:0",
+     "osm:n1575941639>osm:n11292379097:0",
+     "osm:n11292379097>osm:n11292379096:0",
+     "osm:n11292379096>osm:n11292379071:0",
+     "osm:n11292379071>osm:n11292379070:0",
+     "osm:n11292379070>osm:n924402167:0",
+     "osm:n924402167>osm:n11292375157:0",
+     "osm:n11292375157>osm:n11292375158:0",
+     "osm:n11292375158>osm:n11292375159:0",
+     "osm:n11292375159>osm:n11292375160:0",
+     "osm:n11292375160>osm:n1574821582:0",
+     "osm:n1574821582>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n10946755235:0",
+     "osm:n10946755235>osm:n10946755246:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 185.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 16,
+    "unknown_share": 0.4635,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 184.2,
+    "duration_s": 141.7,
+    "edge_ids": [
+     "osm:n1575941616>osm:n1575941639:0",
+     "osm:n1575941639>osm:n11292379097:0",
+     "osm:n11292379097>osm:n11292379096:0",
+     "osm:n11292379096>osm:n11292379071:0",
+     "osm:n11292379071>osm:n11292379070:0",
+     "osm:n11292379070>osm:n924402167:0",
+     "osm:n924402167>osm:n11292375157:0",
+     "osm:n11292375157>osm:n11292375158:0",
+     "osm:n11292375158>osm:n11292375159:0",
+     "osm:n11292375159>osm:n11292375160:0",
+     "osm:n11292375160>osm:n1574821582:0",
+     "osm:n1574821582>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n10946755235:0",
+     "osm:n10946755235>osm:n10946755246:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 185.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 16,
+    "unknown_share": 0.4635,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs.",
+   "L'arriv\u00e9e est \u00e0 43 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "pilot_mini/22/reduced_mobility/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 155.3,
+    "duration_s": 172.5,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n124072396:0",
+     "osm:n124072396>osm:n1574821582:0",
+     "osm:n1574821582>osm:n1574821550:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 194.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 5,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 155.3,
+    "duration_s": 172.5,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n124072396:0",
+     "osm:n124072396>osm:n1574821582:0",
+     "osm:n1574821582>osm:n1574821550:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 194.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 5,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "pilot_mini/22/reduced_mobility/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 155.3,
+    "duration_s": 172.5,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n124072396:0",
+     "osm:n124072396>osm:n1574821582:0",
+     "osm:n1574821582>osm:n1574821550:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 220.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 5,
+    "unknown_share": 0.2684,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 155.3,
+    "duration_s": 172.5,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n124072396:0",
+     "osm:n124072396>osm:n1574821582:0",
+     "osm:n1574821582>osm:n1574821550:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 220.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 5,
+    "unknown_share": 0.2684,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "pilot_mini/23/step_free/none": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/23/step_free/static": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/3/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 250.7,
+    "duration_s": 192.8,
+    "edge_ids": [
+     "osm:n11819720635>osm:n213285584:0",
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n10946755235:0",
+     "osm:n10946755235>osm:n10946755246:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 200.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 250.7,
+    "duration_s": 192.8,
+    "edge_ids": [
+     "osm:n11819720635>osm:n213285584:0",
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n10946755235:0",
+     "osm:n10946755235>osm:n10946755246:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 200.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "pilot_mini/3/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 250.7,
+    "duration_s": 192.8,
+    "edge_ids": [
+     "osm:n11819720635>osm:n213285584:0",
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n10946755235:0",
+     "osm:n10946755235>osm:n10946755246:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 236.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.3146,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 250.7,
+    "duration_s": 192.8,
+    "edge_ids": [
+     "osm:n11819720635>osm:n213285584:0",
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n10946755235:0",
+     "osm:n10946755235>osm:n10946755246:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 236.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.3146,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "pilot_mini/4/reduced_mobility/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 74.1,
+    "duration_s": 82.4,
+    "edge_ids": [
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n11289774857:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 92.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 74.1,
+    "duration_s": 82.4,
+    "edge_ids": [
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n11289774857:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 92.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "pilot_mini/4/reduced_mobility/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 74.1,
+    "duration_s": 82.4,
+    "edge_ids": [
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n11289774857:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 97.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 0.3411,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 74.1,
+    "duration_s": 82.4,
+    "edge_ids": [
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n11069903362:0",
+     "osm:n11069903362>osm:n11289774857:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 97.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 0.3411,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "pilot_mini/5/step_free/none": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/5/step_free/static": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/6/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 278.5,
+    "duration_s": 214.3,
+    "edge_ids": [
+     "osm:n11582633976>osm:n11069903355:0",
+     "osm:n11069903355>osm:n124072380:0",
+     "osm:n124072380>osm:n12011122381:0",
+     "osm:n12011122381>osm:n124072368:0",
+     "osm:n124072368>osm:n12011122379:0",
+     "osm:n12011122379>osm:n124072392:0",
+     "osm:n124072392>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 222.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 278.5,
+    "duration_s": 214.3,
+    "edge_ids": [
+     "osm:n11582633976>osm:n11069903355:0",
+     "osm:n11069903355>osm:n124072380:0",
+     "osm:n124072380>osm:n12011122381:0",
+     "osm:n12011122381>osm:n124072368:0",
+     "osm:n124072368>osm:n12011122379:0",
+     "osm:n12011122379>osm:n124072392:0",
+     "osm:n124072392>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 222.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "No risk layer: risk is unknown along the whole route.",
+   "Destination is 27 m from the mapped pedestrian network."
+  ]
+ },
+ "pilot_mini/6/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 278.5,
+    "duration_s": 214.3,
+    "edge_ids": [
+     "osm:n11582633976>osm:n11069903355:0",
+     "osm:n11069903355>osm:n124072380:0",
+     "osm:n124072380>osm:n12011122381:0",
+     "osm:n12011122381>osm:n124072368:0",
+     "osm:n124072368>osm:n12011122379:0",
+     "osm:n12011122379>osm:n124072392:0",
+     "osm:n124072392>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 272.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.391,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 278.5,
+    "duration_s": 214.3,
+    "edge_ids": [
+     "osm:n11582633976>osm:n11069903355:0",
+     "osm:n11069903355>osm:n124072380:0",
+     "osm:n124072380>osm:n12011122381:0",
+     "osm:n12011122381>osm:n124072368:0",
+     "osm:n124072368>osm:n12011122379:0",
+     "osm:n12011122379>osm:n124072392:0",
+     "osm:n124072392>osm:n124072396:0",
+     "osm:n124072396>osm:n213285577:0",
+     "osm:n213285577>osm:n392505311:0",
+     "osm:n392505311>osm:n11289831527:0",
+     "osm:n11289831527>osm:n389780987:0",
+     "osm:n389780987>osm:n11290091794:0",
+     "osm:n11290091794>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 272.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.391,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions.",
+   "Destination is 27 m from the mapped pedestrian network."
+  ]
+ },
+ "pilot_mini/7/reduced_mobility/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 193.4,
+    "duration_s": 214.9,
+    "edge_ids": [
+     "osm:n14334504015>osm:n10946298340:0",
+     "osm:n10946298340>osm:n10946298337:0",
+     "osm:n10946298337>osm:n10946298347:0",
+     "osm:n10946298347>osm:n10926986709:0",
+     "osm:n10926986709>osm:n1282761427:0",
+     "osm:n1282761427>osm:n264346145:0",
+     "osm:n264346145>osm:n10946298335:0",
+     "osm:n10946298335>osm:n124056468:0",
+     "osm:n124056468>osm:n11292379091:0",
+     "osm:n11292379091>osm:n924402169:0",
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 841.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 10,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 193.4,
+    "duration_s": 214.9,
+    "edge_ids": [
+     "osm:n14334504015>osm:n10946298340:0",
+     "osm:n10946298340>osm:n10946298337:0",
+     "osm:n10946298337>osm:n10946298347:0",
+     "osm:n10946298347>osm:n10926986709:0",
+     "osm:n10926986709>osm:n1282761427:0",
+     "osm:n1282761427>osm:n264346145:0",
+     "osm:n264346145>osm:n10946298335:0",
+     "osm:n10946298335>osm:n124056468:0",
+     "osm:n124056468>osm:n11292379091:0",
+     "osm:n11292379091>osm:n924402169:0",
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 841.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 10,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Aucune couche de risque : risque inconnu sur tout le trajet.",
+   "Le d\u00e9part est \u00e0 53 m du r\u00e9seau pi\u00e9ton cartographi\u00e9.",
+   "L'arriv\u00e9e est \u00e0 61 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "pilot_mini/7/reduced_mobility/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 193.4,
+    "duration_s": 214.9,
+    "edge_ids": [
+     "osm:n14334504015>osm:n10946298340:0",
+     "osm:n10946298340>osm:n10946298337:0",
+     "osm:n10946298337>osm:n10946298347:0",
+     "osm:n10946298347>osm:n10926986709:0",
+     "osm:n10926986709>osm:n1282761427:0",
+     "osm:n1282761427>osm:n264346145:0",
+     "osm:n264346145>osm:n10946298335:0",
+     "osm:n10946298335>osm:n124056468:0",
+     "osm:n124056468>osm:n11292379091:0",
+     "osm:n11292379091>osm:n924402169:0",
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 973.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 10,
+    "unknown_share": 0.2226,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 193.4,
+    "duration_s": 214.9,
+    "edge_ids": [
+     "osm:n14334504015>osm:n10946298340:0",
+     "osm:n10946298340>osm:n10946298337:0",
+     "osm:n10946298337>osm:n10946298347:0",
+     "osm:n10946298347>osm:n10926986709:0",
+     "osm:n10926986709>osm:n1282761427:0",
+     "osm:n1282761427>osm:n264346145:0",
+     "osm:n264346145>osm:n10946298335:0",
+     "osm:n10946298335>osm:n124056468:0",
+     "osm:n124056468>osm:n11292379091:0",
+     "osm:n11292379091>osm:n924402169:0",
+     "osm:n924402169>osm:n124072401:0",
+     "osm:n124072401>osm:n213285584:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 973.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 10,
+    "unknown_share": 0.2226,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs.",
+   "Le d\u00e9part est \u00e0 53 m du r\u00e9seau pi\u00e9ton cartographi\u00e9.",
+   "L'arriv\u00e9e est \u00e0 61 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "pilot_mini/8/step_free/none": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/8/step_free/static": {
+  "error": "OUTSIDE_COVERAGE"
+ },
+ "pilot_mini/9/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 227.7,
+    "duration_s": 175.2,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n124072396:0",
+     "osm:n124072396>osm:n1574821582:0",
+     "osm:n1574821582>osm:n11292375160:0",
+     "osm:n11292375160>osm:n11956716702:0",
+     "osm:n11956716702>osm:n124074278:0",
+     "osm:n124074278>osm:n1282761408:0",
+     "osm:n1282761408>osm:n11289783694:0",
+     "osm:n11289783694>osm:n11289783695:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 182.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 227.7,
+    "duration_s": 175.2,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n124072396:0",
+     "osm:n124072396>osm:n1574821582:0",
+     "osm:n1574821582>osm:n11292375160:0",
+     "osm:n11292375160>osm:n11956716702:0",
+     "osm:n11956716702>osm:n124074278:0",
+     "osm:n124074278>osm:n1282761408:0",
+     "osm:n1282761408>osm:n11289783694:0",
+     "osm:n11289783694>osm:n11289783695:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 182.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Aucune couche de risque : risque inconnu sur tout le trajet.",
+   "Le d\u00e9part est \u00e0 42 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "pilot_mini/9/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 227.7,
+    "duration_s": 175.2,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n124072396:0",
+     "osm:n124072396>osm:n1574821582:0",
+     "osm:n1574821582>osm:n11292375160:0",
+     "osm:n11292375160>osm:n11956716702:0",
+     "osm:n11956716702>osm:n124074278:0",
+     "osm:n124074278>osm:n1282761408:0",
+     "osm:n1282761408>osm:n11289783694:0",
+     "osm:n11289783694>osm:n11289783695:0"
+    ],
+    "explanation": [
+     "SHORTEST_DISTANCE",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 212.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.3473,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 227.7,
+    "duration_s": 175.2,
+    "edge_ids": [
+     "osm:n213285584>osm:n124072401:0",
+     "osm:n124072401>osm:n11290091794:0",
+     "osm:n11290091794>osm:n389780987:0",
+     "osm:n389780987>osm:n11289831527:0",
+     "osm:n11289831527>osm:n392505311:0",
+     "osm:n392505311>osm:n213285577:0",
+     "osm:n213285577>osm:n124072396:0",
+     "osm:n124072396>osm:n1574821582:0",
+     "osm:n1574821582>osm:n11292375160:0",
+     "osm:n11292375160>osm:n11956716702:0",
+     "osm:n11956716702>osm:n124074278:0",
+     "osm:n124074278>osm:n1282761408:0",
+     "osm:n1282761408>osm:n11289783694:0",
+     "osm:n11289783694>osm:n11289783695:0"
+    ],
+    "explanation": [
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 212.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.3473,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs.",
+   "Le d\u00e9part est \u00e0 42 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "synthetic/0/standard/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 690.2,
+    "duration_s": 530.9,
+    "edge_ids": [
+     "s4_6>s5_6:0",
+     "s5_6>s5_5:0",
+     "s5_5>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_5:0",
+     "s10_5>s10_4:0",
+     "s10_4>s10_3:0",
+     "s10_3>s10_2:0",
+     "s10_2>s9_1:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 794.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-21",
+     "TEST-HZ-5",
+     "TEST-HZ-17"
+    ],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 705.2,
+    "duration_s": 542.5,
+    "edge_ids": [
+     "s5_6>s4_6:0",
+     "s4_6>s4_5:0",
+     "s4_5>s4_4:0",
+     "s4_4>s5_4:0",
+     "s5_4>s6_4:0",
+     "s6_4>s7_4:0",
+     "s7_4>s8_4:0",
+     "s8_4>s9_4:0",
+     "s9_4>s9_3:0",
+     "s9_3>s10_3:0",
+     "s10_3>s10_2:0",
+     "s10_2>s9_1:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 574.1,
+    "hazards_avoided": [
+     "TEST-HZ-21",
+     "TEST-HZ-5",
+     "TEST-HZ-17"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 8,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route.",
+   "A permitted sidewalk closure lies on a route, but its schedule at this time is unknown: it may be in effect."
+  ]
+ },
+ "synthetic/0/standard/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 690.2,
+    "duration_s": 530.9,
+    "edge_ids": [
+     "s4_6>s5_6:0",
+     "s5_6>s5_5:0",
+     "s5_5>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_5:0",
+     "s10_5>s10_4:0",
+     "s10_4>s10_3:0",
+     "s10_3>s10_2:0",
+     "s10_2>s9_1:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 933.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-21",
+     "TEST-HZ-5",
+     "TEST-HZ-17"
+    ],
+    "n_steps": 6,
+    "unknown_share": 0.5184,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 810.4,
+    "duration_s": 623.4,
+    "edge_ids": [
+     "s4_6>s5_6:0",
+     "s5_6>s5_7:0",
+     "s5_7>s6_7:0",
+     "s6_7>s6_6:0",
+     "s6_6>s6_5:0",
+     "s6_5>s6_4:0",
+     "s6_4>s7_4:0",
+     "s7_4>s8_4:0",
+     "s8_4>s9_4:0",
+     "s9_4>s9_3:0",
+     "s9_3>s10_3:0",
+     "s10_3>s10_2:0",
+     "s10_2>s9_1:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 711.3,
+    "hazards_avoided": [
+     "TEST-HZ-21",
+     "TEST-HZ-5",
+     "TEST-HZ-17"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 10,
+    "unknown_share": 0.5288,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions.",
+   "A permitted sidewalk closure lies on a route, but its schedule at this time is unknown: it may be in effect."
+  ]
+ },
+ "synthetic/1/reduced_mobility/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 1022.3,
+    "duration_s": 1135.9,
+    "edge_ids": [
+     "s6_0>s5_0:0",
+     "s5_0>s5_1:0",
+     "s5_1>s5_2:0",
+     "s5_2>s5_3:0",
+     "s5_3>s5_4:0",
+     "s5_4>s5_5:0",
+     "s5_5>s5_6:0",
+     "s5_6>s5_7:0",
+     "s5_7>s5_8:0",
+     "s5_8>s5_9:0",
+     "s5_9>s5_10:0",
+     "s5_10>s5_11:0",
+     "s5_11>s4_11:0",
+     "s4_11>s3_11:0",
+     "s3_11>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s1_12:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "PASSES_CONFIRMED_DISRUPTION",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 2580.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-38",
+     "TEST-HZ-21",
+     "TEST-HZ-15"
+    ],
+    "n_steps": 7,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 1022.3,
+    "duration_s": 1135.9,
+    "edge_ids": [
+     "s6_0>s5_0:0",
+     "s5_0>s5_1:0",
+     "s5_1>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s3_5:0",
+     "s3_5>s3_6:0",
+     "s3_6>s3_7:0",
+     "s3_7>s3_8:0",
+     "s3_8>s3_9:0",
+     "s3_9>s3_10:0",
+     "s3_10>s2_10:0",
+     "s2_10>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s1_12:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "AVOIDS_CONFIRMED_DISRUPTION",
+     "AVOIDS_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1215.4,
+    "hazards_avoided": [
+     "TEST-HZ-38",
+     "TEST-HZ-21",
+     "TEST-HZ-15"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 11,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet.",
+   "Une fermeture autoris\u00e9e du trottoir se trouve sur un trajet, mais son horaire \u00e0 ce moment est inconnu : elle peut \u00eatre en vigueur."
+  ]
+ },
+ "synthetic/1/reduced_mobility/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 1022.3,
+    "duration_s": 1135.9,
+    "edge_ids": [
+     "s6_0>s5_0:0",
+     "s5_0>s5_1:0",
+     "s5_1>s5_2:0",
+     "s5_2>s5_3:0",
+     "s5_3>s5_4:0",
+     "s5_4>s5_5:0",
+     "s5_5>s5_6:0",
+     "s5_6>s5_7:0",
+     "s5_7>s5_8:0",
+     "s5_8>s5_9:0",
+     "s5_9>s5_10:0",
+     "s5_10>s5_11:0",
+     "s5_11>s4_11:0",
+     "s4_11>s3_11:0",
+     "s3_11>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s1_12:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "PASSES_CONFIRMED_DISRUPTION",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 2924.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-38",
+     "TEST-HZ-21",
+     "TEST-HZ-15"
+    ],
+    "n_steps": 7,
+    "unknown_share": 0.3632,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 1022.3,
+    "duration_s": 1135.9,
+    "edge_ids": [
+     "s6_0>s5_0:0",
+     "s5_0>s5_1:0",
+     "s5_1>s5_2:0",
+     "s5_2>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s3_5:0",
+     "s3_5>s3_6:0",
+     "s3_6>s3_7:0",
+     "s3_7>s3_8:0",
+     "s3_8>s3_9:0",
+     "s3_9>s2_9:0",
+     "s2_9>s2_10:0",
+     "s2_10>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s1_12:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "AVOIDS_CONFIRMED_DISRUPTION",
+     "AVOIDS_UNVERIFIED_REPORT",
+     "LOWER_MODELED_RISK",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1454.6,
+    "hazards_avoided": [
+     "TEST-HZ-38",
+     "TEST-HZ-21",
+     "TEST-HZ-15"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 11,
+    "unknown_share": 0.4323,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs.",
+   "Une fermeture autoris\u00e9e du trottoir se trouve sur un trajet, mais son horaire \u00e0 ce moment est inconnu : elle peut \u00eatre en vigueur."
+  ]
+ },
+ "synthetic/10/reduced_mobility/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 964.6,
+    "duration_s": 1071.8,
+    "edge_ids": [
+     "s5_0>s4_0:0",
+     "s4_0>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s3_5:0",
+     "s3_5>s3_6:0",
+     "s3_6>s3_7:0",
+     "s3_7>s3_8:0",
+     "s3_8>s3_9:0",
+     "s3_9>s3_10:0",
+     "s3_10>s3_11:0",
+     "s3_11>s3_12:0",
+     "s3_12>s2_12:0",
+     "s2_12>s1_12:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1440.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 997.4,
+    "duration_s": 1108.3,
+    "edge_ids": [
+     "s5_0>s4_0:0",
+     "s4_0>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s3_5:0",
+     "s3_5>s3_6:0",
+     "s3_6>s3_7:0",
+     "s3_7>s3_8:0",
+     "s3_8>s3_9:0",
+     "s3_9>s3_10:0",
+     "s3_10>s2_10:0",
+     "s2_10>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s1_12:0",
+     "s1_12>s2_12:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1185.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 10,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "synthetic/10/reduced_mobility/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 964.6,
+    "duration_s": 1071.8,
+    "edge_ids": [
+     "s5_0>s4_0:0",
+     "s4_0>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s3_5:0",
+     "s3_5>s3_6:0",
+     "s3_6>s3_7:0",
+     "s3_7>s3_8:0",
+     "s3_8>s3_9:0",
+     "s3_9>s3_10:0",
+     "s3_10>s3_11:0",
+     "s3_11>s3_12:0",
+     "s3_12>s2_12:0",
+     "s2_12>s1_12:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1652.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.3056,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 1043.9,
+    "duration_s": 1159.8,
+    "edge_ids": [
+     "s4_0>s5_0:0",
+     "s5_0>s5_1:0",
+     "s5_1>s5_2:0",
+     "s5_2>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s3_5:0",
+     "s3_5>s3_6:0",
+     "s3_6>s3_7:0",
+     "s3_7>s3_8:0",
+     "s3_8>s3_9:0",
+     "s3_9>s2_9:0",
+     "s2_9>s2_10:0",
+     "s2_10>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s1_12:0",
+     "s1_12>s2_12:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1496.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 12,
+    "unknown_share": 0.4457,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "synthetic/11/step_free/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 1398.1,
+    "duration_s": 1075.5,
+    "edge_ids": [
+     "s2_8>s1_8:0",
+     "s1_8>s1_7:0",
+     "s1_7>s1_6:0",
+     "s1_6>s1_5:0",
+     "s1_5>s0_5:0",
+     "s0_5>s0_4:0",
+     "s0_4>s0_3:0",
+     "s0_3>s1_3:0",
+     "s1_3>s2_3:0",
+     "s2_3>s3_3:0",
+     "s3_3>s4_4:0",
+     "s4_4>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s7_6:0",
+     "s7_6>s7_7:0",
+     "s7_7>s7_8:0",
+     "s7_8>s8_8:0",
+     "s8_8>s9_8:0",
+     "s9_8>s10_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "STEP_FREE_TAGGED_ONLY",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1136.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 15,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 1398.1,
+    "duration_s": 1075.5,
+    "edge_ids": [
+     "s2_8>s1_8:0",
+     "s1_8>s1_7:0",
+     "s1_7>s1_6:0",
+     "s1_6>s1_5:0",
+     "s1_5>s0_5:0",
+     "s0_5>s0_4:0",
+     "s0_4>s0_3:0",
+     "s0_3>s1_3:0",
+     "s1_3>s2_3:0",
+     "s2_3>s3_3:0",
+     "s3_3>s4_4:0",
+     "s4_4>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s7_6:0",
+     "s7_6>s7_7:0",
+     "s7_7>s7_8:0",
+     "s7_8>s8_8:0",
+     "s8_8>s9_8:0",
+     "s9_8>s10_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "STEP_FREE_TAGGED_ONLY",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1136.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 15,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet.",
+   "L'arriv\u00e9e est \u00e0 29 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "synthetic/11/step_free/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 1398.1,
+    "duration_s": 1075.5,
+    "edge_ids": [
+     "s2_8>s1_8:0",
+     "s1_8>s1_7:0",
+     "s1_7>s1_6:0",
+     "s1_6>s1_5:0",
+     "s1_5>s0_5:0",
+     "s0_5>s0_4:0",
+     "s0_4>s0_3:0",
+     "s0_3>s1_3:0",
+     "s1_3>s2_3:0",
+     "s2_3>s3_3:0",
+     "s3_3>s4_4:0",
+     "s4_4>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s7_6:0",
+     "s7_6>s7_7:0",
+     "s7_7>s7_8:0",
+     "s7_8>s8_8:0",
+     "s8_8>s9_8:0",
+     "s9_8>s10_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "STEP_FREE_TAGGED_ONLY",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1474.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 15,
+    "unknown_share": 0.16,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 1398.1,
+    "duration_s": 1075.5,
+    "edge_ids": [
+     "s2_8>s1_8:0",
+     "s1_8>s0_8:0",
+     "s0_8>s0_7:0",
+     "s0_7>s0_6:0",
+     "s0_6>s0_5:0",
+     "s0_5>s0_4:0",
+     "s0_4>s0_3:0",
+     "s0_3>s1_3:0",
+     "s1_3>s2_3:0",
+     "s2_3>s3_3:0",
+     "s3_3>s4_4:0",
+     "s4_4>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s7_6:0",
+     "s7_6>s7_7:0",
+     "s7_7>s7_8:0",
+     "s7_8>s8_8:0",
+     "s8_8>s9_8:0",
+     "s9_8>s10_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "RISK_UNKNOWN_SHARE",
+     "STEP_FREE_TAGGED_ONLY",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1423.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 14,
+    "unknown_share": 0.2965,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs.",
+   "L'arriv\u00e9e est \u00e0 29 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "synthetic/12/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 517.8,
+    "duration_s": 398.3,
+    "edge_ids": [
+     "s0_3>s0_2:0",
+     "s0_2>s1_2:0",
+     "s1_2>s2_2:0",
+     "s2_2>s3_2:0",
+     "s3_2>s4_2:0",
+     "s4_2>s5_2:0",
+     "s5_2>s6_2:0",
+     "s6_2>s6_1:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 415.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 517.8,
+    "duration_s": 398.3,
+    "edge_ids": [
+     "s0_3>s0_2:0",
+     "s0_2>s1_2:0",
+     "s1_2>s2_2:0",
+     "s2_2>s3_2:0",
+     "s3_2>s4_2:0",
+     "s4_2>s5_2:0",
+     "s5_2>s6_2:0",
+     "s6_2>s6_1:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 415.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "synthetic/12/standard/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 517.8,
+    "duration_s": 398.3,
+    "edge_ids": [
+     "s0_3>s0_2:0",
+     "s0_2>s1_2:0",
+     "s1_2>s2_2:0",
+     "s2_2>s3_2:0",
+     "s3_2>s4_2:0",
+     "s4_2>s5_2:0",
+     "s5_2>s6_2:0",
+     "s6_2>s6_1:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 659.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.2109,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 571.3,
+    "duration_s": 439.5,
+    "edge_ids": [
+     "s0_2>s0_3:0",
+     "s0_3>s1_3:0",
+     "s1_3>s2_3:0",
+     "s2_3>s2_2:0",
+     "s2_2>s3_2:0",
+     "s3_2>s3_1:0",
+     "s3_1>s4_1:0",
+     "s4_1>s5_1:0",
+     "s5_1>s6_1:0",
+     "s6_1>s6_2:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 563.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 9,
+    "unknown_share": 0.3811,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "synthetic/13/reduced_mobility/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 820.9,
+    "duration_s": 912.1,
+    "edge_ids": [
+     "s1_0>s1_1:0",
+     "s1_1>s2_2:0",
+     "s2_2>s3_3:0",
+     "s3_3>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_6:0",
+     "s10_6>s10_7:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1418.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-37",
+     "TEST-HZ-3"
+    ],
+    "n_steps": 8,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 924.3,
+    "duration_s": 1026.9,
+    "edge_ids": [
+     "s1_1>s1_0:0",
+     "s1_0>s2_0:0",
+     "s2_0>s2_1:0",
+     "s2_1>s3_1:0",
+     "s3_1>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_6:0",
+     "s10_6>s10_7:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1151.0,
+    "hazards_avoided": [
+     "TEST-HZ-37"
+    ],
+    "hazards_on_route": [
+     "TEST-HZ-39",
+     "TEST-HZ-3"
+    ],
+    "n_steps": 10,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet.",
+   "Une fermeture autoris\u00e9e du trottoir se trouve sur un trajet, mais son horaire \u00e0 ce moment est inconnu : elle peut \u00eatre en vigueur."
+  ]
+ },
+ "synthetic/13/reduced_mobility/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 820.9,
+    "duration_s": 912.1,
+    "edge_ids": [
+     "s1_0>s1_1:0",
+     "s1_1>s2_2:0",
+     "s2_2>s3_3:0",
+     "s3_3>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_6:0",
+     "s10_6>s10_7:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1770.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-37",
+     "TEST-HZ-3"
+    ],
+    "n_steps": 8,
+    "unknown_share": 0.2854,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 962.3,
+    "duration_s": 1069.2,
+    "edge_ids": [
+     "s1_1>s1_0:0",
+     "s1_0>s2_0:0",
+     "s2_0>s2_1:0",
+     "s2_1>s3_1:0",
+     "s3_1>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_5:0",
+     "s10_5>s10_6:0",
+     "s10_6>s10_7:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "AVOIDS_UNVERIFIED_REPORT",
+     "LOWER_MODELED_RISK",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1372.0,
+    "hazards_avoided": [
+     "TEST-HZ-37",
+     "TEST-HZ-3"
+    ],
+    "hazards_on_route": [
+     "TEST-HZ-39"
+    ],
+    "n_steps": 9,
+    "unknown_share": 0.3169,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs.",
+   "Une fermeture autoris\u00e9e du trottoir se trouve sur un trajet, mais son horaire \u00e0 ce moment est inconnu : elle peut \u00eatre en vigueur."
+  ]
+ },
+ "synthetic/14/step_free/none": {
+  "error": "NO_ROUTE"
+ },
+ "synthetic/14/step_free/static": {
+  "error": "NO_ROUTE"
+ },
+ "synthetic/15/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 658.4,
+    "duration_s": 506.5,
+    "edge_ids": [
+     "s2_8>s2_7:0",
+     "s2_7>s3_7:0",
+     "s3_7>s4_7:0",
+     "s4_7>s5_7:0",
+     "s5_7>s6_7:0",
+     "s6_7>s7_7:0",
+     "s7_7>s8_7:0",
+     "s8_7>s9_7:0",
+     "s9_7>s10_8:0",
+     "s10_8>s11_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 533.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-7"
+    ],
+    "n_steps": 5,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 658.4,
+    "duration_s": 506.5,
+    "edge_ids": [
+     "s2_8>s2_7:0",
+     "s2_7>s3_7:0",
+     "s3_7>s4_7:0",
+     "s4_7>s5_7:0",
+     "s5_7>s6_7:0",
+     "s6_7>s7_7:0",
+     "s7_7>s8_7:0",
+     "s8_7>s9_7:0",
+     "s9_7>s10_8:0",
+     "s10_8>s11_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 533.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-7"
+    ],
+    "n_steps": 5,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "synthetic/15/standard/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 658.4,
+    "duration_s": 506.5,
+    "edge_ids": [
+     "s2_8>s2_7:0",
+     "s2_7>s3_7:0",
+     "s3_7>s4_7:0",
+     "s4_7>s5_7:0",
+     "s5_7>s6_7:0",
+     "s6_7>s7_7:0",
+     "s7_7>s8_7:0",
+     "s8_7>s9_7:0",
+     "s9_7>s10_8:0",
+     "s10_8>s11_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT"
+    ],
+    "generalized_cost_s": 743.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-7"
+    ],
+    "n_steps": 5,
+    "unknown_share": 0.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 752.1,
+    "duration_s": 578.5,
+    "edge_ids": [
+     "s2_7>s2_8:0",
+     "s2_8>s3_8:0",
+     "s3_8>s3_9:0",
+     "s3_9>s4_9:0",
+     "s4_9>s5_9:0",
+     "s5_9>s6_9:0",
+     "s6_9>s7_9:0",
+     "s7_9>s8_9:0",
+     "s8_9>s9_9:0",
+     "s9_9>s10_9:0",
+     "s10_9>s10_8:0",
+     "s10_8>s11_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 672.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-7"
+    ],
+    "n_steps": 9,
+    "unknown_share": 0.6811,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "synthetic/16/reduced_mobility/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 746.7,
+    "duration_s": 829.7,
+    "edge_ids": [
+     "s6_0>s6_1:0",
+     "s6_1>s6_2:0",
+     "s6_2>s6_3:0",
+     "s6_3>s6_4:0",
+     "s6_4>s6_5:0",
+     "s6_5>s6_6:0",
+     "s6_6>s6_7:0",
+     "s6_7>s5_7:0",
+     "s5_7>s4_7:0",
+     "s4_7>s4_8:0",
+     "s4_8>s3_8:0",
+     "s3_8>s2_8:0",
+     "s2_8>s1_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 2194.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 5,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 746.7,
+    "duration_s": 829.7,
+    "edge_ids": [
+     "s6_0>s6_1:0",
+     "s6_1>s5_1:0",
+     "s5_1>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s3_5:0",
+     "s3_5>s3_6:0",
+     "s3_6>s3_7:0",
+     "s3_7>s2_7:0",
+     "s2_7>s2_8:0",
+     "s2_8>s1_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 964.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 9,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "synthetic/16/reduced_mobility/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 746.7,
+    "duration_s": 829.7,
+    "edge_ids": [
+     "s6_0>s6_1:0",
+     "s6_1>s6_2:0",
+     "s6_2>s6_3:0",
+     "s6_3>s6_4:0",
+     "s6_4>s6_5:0",
+     "s6_5>s6_6:0",
+     "s6_6>s6_7:0",
+     "s6_7>s5_7:0",
+     "s5_7>s4_7:0",
+     "s4_7>s4_8:0",
+     "s4_8>s3_8:0",
+     "s3_8>s2_8:0",
+     "s2_8>s1_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 2284.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 5,
+    "unknown_share": 0.6203,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 746.7,
+    "duration_s": 829.7,
+    "edge_ids": [
+     "s6_0>s6_1:0",
+     "s6_1>s5_1:0",
+     "s5_1>s5_2:0",
+     "s5_2>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s3_5:0",
+     "s3_5>s3_6:0",
+     "s3_6>s3_7:0",
+     "s3_7>s2_7:0",
+     "s2_7>s2_8:0",
+     "s2_8>s1_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1138.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 11,
+    "unknown_share": 0.5114,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "synthetic/17/step_free/none": {
+  "error": "NO_ROUTE"
+ },
+ "synthetic/17/step_free/static": {
+  "error": "NO_ROUTE"
+ },
+ "synthetic/18/standard/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 586.9,
+    "duration_s": 451.5,
+    "edge_ids": [
+     "s11_9>s10_9:0",
+     "s10_9>s10_8:0",
+     "s10_8>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s9_5:0",
+     "s9_5>s9_4:0",
+     "s9_4>s8_4:0",
+     "s8_4>s7_4:0",
+     "s7_4>s7_3:0",
+     "s7_3>s6_3:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_CONFIRMED_DISRUPTION",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 549.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-3",
+     "TEST-HZ-6"
+    ],
+    "n_steps": 8,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 586.9,
+    "duration_s": 451.5,
+    "edge_ids": [
+     "s11_9>s10_9:0",
+     "s10_9>s10_8:0",
+     "s10_8>s9_7:0",
+     "s9_7>s9_6:0",
+     "s9_6>s9_5:0",
+     "s9_5>s8_5:0",
+     "s8_5>s7_5:0",
+     "s7_5>s7_4:0",
+     "s7_4>s7_3:0",
+     "s7_3>s6_3:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_UNVERIFIED_REPORT",
+     "PASSES_CONFIRMED_DISRUPTION",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 518.4,
+    "hazards_avoided": [
+     "TEST-HZ-3"
+    ],
+    "hazards_on_route": [
+     "TEST-HZ-6"
+    ],
+    "n_steps": 8,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "synthetic/18/standard/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 586.9,
+    "duration_s": 451.5,
+    "edge_ids": [
+     "s11_9>s10_9:0",
+     "s10_9>s10_8:0",
+     "s10_8>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s9_5:0",
+     "s9_5>s9_4:0",
+     "s9_4>s8_4:0",
+     "s8_4>s7_4:0",
+     "s7_4>s7_3:0",
+     "s7_3>s6_3:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_CONFIRMED_DISRUPTION",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 638.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-3",
+     "TEST-HZ-6"
+    ],
+    "n_steps": 8,
+    "unknown_share": 0.2602,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 586.9,
+    "duration_s": 451.5,
+    "edge_ids": [
+     "s11_9>s10_9:0",
+     "s10_9>s10_8:0",
+     "s10_8>s9_7:0",
+     "s9_7>s9_6:0",
+     "s9_6>s9_5:0",
+     "s9_5>s8_5:0",
+     "s8_5>s7_5:0",
+     "s7_5>s7_4:0",
+     "s7_4>s7_3:0",
+     "s7_3>s6_3:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_UNVERIFIED_REPORT",
+     "LOWER_MODELED_RISK",
+     "PASSES_CONFIRMED_DISRUPTION",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 514.2,
+    "hazards_avoided": [
+     "TEST-HZ-3"
+    ],
+    "hazards_on_route": [
+     "TEST-HZ-6"
+    ],
+    "n_steps": 8,
+    "unknown_share": 0.7617,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "synthetic/19/reduced_mobility/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 569.0,
+    "duration_s": 632.2,
+    "edge_ids": [
+     "s4_0>s4_1:0",
+     "s4_1>s5_2:0",
+     "s5_2>s5_3:0",
+     "s5_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s6_6:0",
+     "s6_6>s6_7:0",
+     "s6_7>s6_8:0",
+     "s6_8>s7_9:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 672.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-35"
+    ],
+    "n_steps": 7,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 569.0,
+    "duration_s": 632.2,
+    "edge_ids": [
+     "s4_0>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s6_6:0",
+     "s6_6>s6_7:0",
+     "s6_7>s6_8:0",
+     "s6_8>s7_9:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 670.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-35"
+    ],
+    "n_steps": 5,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "synthetic/19/reduced_mobility/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 569.0,
+    "duration_s": 632.2,
+    "edge_ids": [
+     "s4_0>s4_1:0",
+     "s4_1>s5_2:0",
+     "s5_2>s5_3:0",
+     "s5_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s6_6:0",
+     "s6_6>s6_7:0",
+     "s6_7>s6_8:0",
+     "s6_8>s7_9:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 893.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-35"
+    ],
+    "n_steps": 7,
+    "unknown_share": 0.1631,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 569.0,
+    "duration_s": 632.2,
+    "edge_ids": [
+     "s4_0>s4_1:0",
+     "s4_1>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s6_6:0",
+     "s6_6>s6_7:0",
+     "s6_7>s6_8:0",
+     "s6_8>s7_9:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 850.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-35"
+    ],
+    "n_steps": 5,
+    "unknown_share": 0.1631,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "synthetic/2/step_free/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 537.3,
+    "duration_s": 413.3,
+    "edge_ids": [
+     "s7_8>s7_7:0",
+     "s7_7>s7_6:0",
+     "s7_6>s7_5:0",
+     "s7_5>s6_5:0",
+     "s6_5>s5_4:0",
+     "s5_4>s5_3:0",
+     "s5_3>s5_2:0",
+     "s5_2>s4_1:0",
+     "s4_1>s4_0:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "STEP_FREE_TAGGED_ONLY"
+    ],
+    "generalized_cost_s": 441.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 7,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 537.3,
+    "duration_s": 413.3,
+    "edge_ids": [
+     "s7_8>s7_7:0",
+     "s7_7>s7_6:0",
+     "s7_6>s7_5:0",
+     "s7_5>s6_5:0",
+     "s6_5>s5_4:0",
+     "s5_4>s4_3:0",
+     "s4_3>s4_2:0",
+     "s4_2>s4_1:0",
+     "s4_1>s4_0:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "STEP_FREE_TAGGED_ONLY"
+    ],
+    "generalized_cost_s": 440.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 5,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "synthetic/2/step_free/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 537.3,
+    "duration_s": 413.3,
+    "edge_ids": [
+     "s7_8>s7_7:0",
+     "s7_7>s7_6:0",
+     "s7_6>s7_5:0",
+     "s7_5>s6_5:0",
+     "s6_5>s5_4:0",
+     "s5_4>s5_3:0",
+     "s5_3>s5_2:0",
+     "s5_2>s4_1:0",
+     "s4_1>s4_0:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "STEP_FREE_TAGGED_ONLY"
+    ],
+    "generalized_cost_s": 712.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 7,
+    "unknown_share": 0.2846,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 537.3,
+    "duration_s": 413.3,
+    "edge_ids": [
+     "s7_8>s7_7:0",
+     "s7_7>s7_6:0",
+     "s7_6>s7_5:0",
+     "s7_5>s6_5:0",
+     "s6_5>s5_4:0",
+     "s5_4>s4_3:0",
+     "s4_3>s4_2:0",
+     "s4_2>s4_1:0",
+     "s4_1>s4_0:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "RISK_UNKNOWN_SHARE",
+     "STEP_FREE_TAGGED_ONLY"
+    ],
+    "generalized_cost_s": 635.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 5,
+    "unknown_share": 0.2237,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "synthetic/20/step_free/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 1504.9,
+    "duration_s": 1157.6,
+    "edge_ids": [
+     "s0_10>s1_10:0",
+     "s1_10>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s2_12:0",
+     "s2_12>s2_13:0",
+     "s2_13>s3_13:0",
+     "s3_13>s4_13:0",
+     "s4_13>s5_13:0",
+     "s5_13>s4_12:0",
+     "s4_12>s5_12:0",
+     "s5_12>s6_12:0",
+     "s6_12>s7_12:0",
+     "s7_12>s8_12:0",
+     "s8_12>s8_11:0",
+     "s8_11>s8_10:0",
+     "s8_10>s8_9:0",
+     "s8_9>s9_9:0",
+     "s9_9>s9_8:0",
+     "s9_8>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s10_5:0",
+     "s10_5>s9_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "STEP_FREE_TAGGED_ONLY",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1266.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-31",
+     "TEST-HZ-23"
+    ],
+    "n_steps": 18,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 1504.9,
+    "duration_s": 1157.6,
+    "edge_ids": [
+     "s0_10>s1_10:0",
+     "s1_10>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s2_12:0",
+     "s2_12>s2_13:0",
+     "s2_13>s3_13:0",
+     "s3_13>s4_13:0",
+     "s4_13>s5_13:0",
+     "s5_13>s4_12:0",
+     "s4_12>s5_12:0",
+     "s5_12>s6_12:0",
+     "s6_12>s6_11:0",
+     "s6_11>s7_11:0",
+     "s7_11>s8_11:0",
+     "s8_11>s8_10:0",
+     "s8_10>s8_9:0",
+     "s8_9>s8_8:0",
+     "s8_8>s9_8:0",
+     "s9_8>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s10_5:0",
+     "s10_5>s9_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "STEP_FREE_TAGGED_ONLY",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1259.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-31",
+     "TEST-HZ-23"
+    ],
+    "n_steps": 18,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route.",
+   "Destination is 29 m from the mapped pedestrian network."
+  ]
+ },
+ "synthetic/20/step_free/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 1504.9,
+    "duration_s": 1157.6,
+    "edge_ids": [
+     "s0_10>s1_10:0",
+     "s1_10>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s2_12:0",
+     "s2_12>s2_13:0",
+     "s2_13>s3_13:0",
+     "s3_13>s4_13:0",
+     "s4_13>s5_13:0",
+     "s5_13>s4_12:0",
+     "s4_12>s5_12:0",
+     "s5_12>s6_12:0",
+     "s6_12>s7_12:0",
+     "s7_12>s8_12:0",
+     "s8_12>s8_11:0",
+     "s8_11>s8_10:0",
+     "s8_10>s8_9:0",
+     "s8_9>s9_9:0",
+     "s9_9>s9_8:0",
+     "s9_8>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s10_5:0",
+     "s10_5>s9_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "STEP_FREE_TAGGED_ONLY",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1595.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-31",
+     "TEST-HZ-23"
+    ],
+    "n_steps": 18,
+    "unknown_share": 0.2679,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 1504.9,
+    "duration_s": 1157.6,
+    "edge_ids": [
+     "s0_10>s1_10:0",
+     "s1_10>s2_11:0",
+     "s2_11>s1_11:0",
+     "s1_11>s2_12:0",
+     "s2_12>s2_13:0",
+     "s2_13>s3_13:0",
+     "s3_13>s4_13:0",
+     "s4_13>s5_13:0",
+     "s5_13>s4_12:0",
+     "s4_12>s5_12:0",
+     "s5_12>s6_12:0",
+     "s6_12>s7_12:0",
+     "s7_12>s8_12:0",
+     "s8_12>s8_11:0",
+     "s8_11>s8_10:0",
+     "s8_10>s8_9:0",
+     "s8_9>s9_9:0",
+     "s9_9>s9_8:0",
+     "s9_8>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s10_5:0",
+     "s10_5>s9_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "STEP_FREE_TAGGED_ONLY",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1595.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-31",
+     "TEST-HZ-23"
+    ],
+    "n_steps": 18,
+    "unknown_share": 0.2679,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions.",
+   "Destination is 29 m from the mapped pedestrian network."
+  ]
+ },
+ "synthetic/21/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 566.5,
+    "duration_s": 435.7,
+    "edge_ids": [
+     "s5_8>s5_7:0",
+     "s5_7>s6_7:0",
+     "s6_7>s7_7:0",
+     "s7_7>s8_7:0",
+     "s8_7>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s11_6:0",
+     "s11_6>s11_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 472.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-15"
+    ],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 566.5,
+    "duration_s": 435.7,
+    "edge_ids": [
+     "s5_8>s5_7:0",
+     "s5_7>s6_7:0",
+     "s6_7>s7_7:0",
+     "s7_7>s8_7:0",
+     "s8_7>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s11_6:0",
+     "s11_6>s11_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 472.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-15"
+    ],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "synthetic/21/standard/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 566.5,
+    "duration_s": 435.7,
+    "edge_ids": [
+     "s5_8>s5_7:0",
+     "s5_7>s6_7:0",
+     "s6_7>s7_7:0",
+     "s7_7>s8_7:0",
+     "s8_7>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s11_6:0",
+     "s11_6>s11_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 671.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-15"
+    ],
+    "n_steps": 6,
+    "unknown_share": 0.063,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 593.9,
+    "duration_s": 456.9,
+    "edge_ids": [
+     "s5_8>s5_7:0",
+     "s5_7>s6_7:0",
+     "s6_7>s6_6:0",
+     "s6_6>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_5:0",
+     "s10_5>s11_5:0",
+     "s11_5>s11_6:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 542.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-15"
+    ],
+    "n_steps": 6,
+    "unknown_share": 0.3994,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "synthetic/22/reduced_mobility/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 370.0,
+    "duration_s": 411.1,
+    "edge_ids": [
+     "s0_7>s0_8:0",
+     "s0_8>s1_9:0",
+     "s1_9>s2_9:0",
+     "s2_9>s3_9:0",
+     "s3_9>s3_10:0",
+     "s3_10>s4_10:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 551.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-13"
+    ],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 408.0,
+    "duration_s": 453.3,
+    "edge_ids": [
+     "s0_7>s0_8:0",
+     "s0_8>s1_8:0",
+     "s1_8>s1_9:0",
+     "s1_9>s2_9:0",
+     "s2_9>s2_10:0",
+     "s2_10>s3_10:0",
+     "s3_10>s4_10:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 470.7,
+    "hazards_avoided": [
+     "TEST-HZ-13"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 7,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route.",
+   "A permitted sidewalk closure lies on a route, but its schedule at this time is unknown: it may be in effect."
+  ]
+ },
+ "synthetic/22/reduced_mobility/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 370.0,
+    "duration_s": 411.1,
+    "edge_ids": [
+     "s0_7>s0_8:0",
+     "s0_8>s1_9:0",
+     "s1_9>s2_9:0",
+     "s2_9>s3_9:0",
+     "s3_9>s3_10:0",
+     "s3_10>s4_10:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 592.6,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-13"
+    ],
+    "n_steps": 6,
+    "unknown_share": 0.5286,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 408.0,
+    "duration_s": 453.3,
+    "edge_ids": [
+     "s0_7>s0_8:0",
+     "s0_8>s1_8:0",
+     "s1_8>s1_9:0",
+     "s1_9>s2_9:0",
+     "s2_9>s2_10:0",
+     "s2_10>s3_10:0",
+     "s3_10>s4_10:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 498.4,
+    "hazards_avoided": [
+     "TEST-HZ-13"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 7,
+    "unknown_share": 0.7199,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions.",
+   "A permitted sidewalk closure lies on a route, but its schedule at this time is unknown: it may be in effect."
+  ]
+ },
+ "synthetic/23/step_free/none": {
+  "error": "NO_ROUTE"
+ },
+ "synthetic/23/step_free/static": {
+  "error": "NO_ROUTE"
+ },
+ "synthetic/3/standard/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 246.5,
+    "duration_s": 189.6,
+    "edge_ids": [
+     "s5_10>s5_9:0",
+     "s5_9>s4_9:0",
+     "s4_9>s3_9:0",
+     "s3_9>s2_9:0",
+     "s2_9>s2_10:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 198.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 246.5,
+    "duration_s": 189.6,
+    "edge_ids": [
+     "s5_10>s5_9:0",
+     "s5_9>s4_9:0",
+     "s4_9>s3_9:0",
+     "s3_9>s2_9:0",
+     "s2_9>s2_10:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 198.0,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "synthetic/3/standard/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 246.5,
+    "duration_s": 189.6,
+    "edge_ids": [
+     "s5_10>s5_9:0",
+     "s5_9>s4_9:0",
+     "s4_9>s3_9:0",
+     "s3_9>s2_9:0",
+     "s2_9>s2_10:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 195.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 0.7131,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 246.5,
+    "duration_s": 189.6,
+    "edge_ids": [
+     "s5_10>s5_9:0",
+     "s5_9>s4_9:0",
+     "s4_9>s3_9:0",
+     "s3_9>s2_9:0",
+     "s2_9>s2_10:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 195.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 0.7131,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "synthetic/4/reduced_mobility/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 722.1,
+    "duration_s": 802.3,
+    "edge_ids": [
+     "s1_3>s2_3:0",
+     "s2_3>s3_3:0",
+     "s3_3>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_6:0",
+     "s10_6>s10_7:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1306.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-37",
+     "TEST-HZ-3"
+    ],
+    "n_steps": 8,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 804.3,
+    "duration_s": 893.7,
+    "edge_ids": [
+     "s1_3>s2_3:0",
+     "s2_3>s3_4:0",
+     "s3_4>s4_4:0",
+     "s4_4>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_6:0",
+     "s10_6>s10_7:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 987.6,
+    "hazards_avoided": [
+     "TEST-HZ-37"
+    ],
+    "hazards_on_route": [
+     "TEST-HZ-3"
+    ],
+    "n_steps": 9,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route.",
+   "A permitted sidewalk closure lies on a route, but its schedule at this time is unknown: it may be in effect."
+  ]
+ },
+ "synthetic/4/reduced_mobility/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 722.1,
+    "duration_s": 802.3,
+    "edge_ids": [
+     "s1_3>s2_3:0",
+     "s2_3>s3_3:0",
+     "s3_3>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_6:0",
+     "s10_6>s10_7:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 1495.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-37",
+     "TEST-HZ-3"
+    ],
+    "n_steps": 8,
+    "unknown_share": 0.4223,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 842.3,
+    "duration_s": 935.9,
+    "edge_ids": [
+     "s1_3>s2_3:0",
+     "s2_3>s3_4:0",
+     "s3_4>s4_4:0",
+     "s4_4>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_5:0",
+     "s7_5>s8_5:0",
+     "s8_5>s9_5:0",
+     "s9_5>s10_5:0",
+     "s10_5>s10_6:0",
+     "s10_6>s10_7:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "AVOIDS_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 1211.7,
+    "hazards_avoided": [
+     "TEST-HZ-37",
+     "TEST-HZ-3"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 8,
+    "unknown_share": 0.3621,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions.",
+   "A permitted sidewalk closure lies on a route, but its schedule at this time is unknown: it may be in effect."
+  ]
+ },
+ "synthetic/5/step_free/none": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 412.1,
+    "duration_s": 317.0,
+    "edge_ids": [
+     "s8_8>s9_8:0",
+     "s9_8>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s10_5:0",
+     "s10_5>s9_5:0",
+     "s9_5>s8_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "STEP_FREE_TAGGED_ONLY"
+    ],
+    "generalized_cost_s": 335.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 412.1,
+    "duration_s": 317.0,
+    "edge_ids": [
+     "s8_8>s9_8:0",
+     "s9_8>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s10_5:0",
+     "s10_5>s9_5:0",
+     "s9_5>s8_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "STEP_FREE_TAGGED_ONLY"
+    ],
+    "generalized_cost_s": 335.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "synthetic/5/step_free/static": {
+  "identical": true,
+  "routes": [
+   {
+    "distance_m": 412.1,
+    "duration_s": 317.0,
+    "edge_ids": [
+     "s8_8>s9_8:0",
+     "s9_8>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s10_5:0",
+     "s10_5>s9_5:0",
+     "s9_5>s8_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "STEP_FREE_TAGGED_ONLY"
+    ],
+    "generalized_cost_s": 475.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.2819,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 412.1,
+    "duration_s": 317.0,
+    "edge_ids": [
+     "s8_8>s9_8:0",
+     "s9_8>s9_7:0",
+     "s9_7>s10_7:0",
+     "s10_7>s10_6:0",
+     "s10_6>s10_5:0",
+     "s10_5>s9_5:0",
+     "s9_5>s8_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "IDENTICAL_TO_SHORTEST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "STEP_FREE_TAGGED_ONLY"
+    ],
+    "generalized_cost_s": 475.1,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 6,
+    "unknown_share": 0.2819,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "synthetic/6/standard/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 677.2,
+    "duration_s": 520.9,
+    "edge_ids": [
+     "s3_1>s3_2:0",
+     "s3_2>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_6:0",
+     "s7_6>s7_7:0",
+     "s7_7>s7_8:0",
+     "s7_8>s8_9:0",
+     "s8_9>s8_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 550.7,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 8,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 677.2,
+    "duration_s": 520.9,
+    "edge_ids": [
+     "s3_1>s3_2:0",
+     "s3_2>s3_3:0",
+     "s3_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s5_6:0",
+     "s5_6>s5_7:0",
+     "s5_7>s6_8:0",
+     "s6_8>s7_8:0",
+     "s7_8>s8_9:0",
+     "s8_9>s8_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE"
+    ],
+    "generalized_cost_s": 546.3,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 10,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "No risk layer: risk is unknown along the whole route."
+  ]
+ },
+ "synthetic/6/standard/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 677.2,
+    "duration_s": 520.9,
+    "edge_ids": [
+     "s3_1>s3_2:0",
+     "s3_2>s4_2:0",
+     "s4_2>s4_3:0",
+     "s4_3>s5_4:0",
+     "s5_4>s6_5:0",
+     "s6_5>s7_6:0",
+     "s7_6>s7_7:0",
+     "s7_7>s7_8:0",
+     "s7_8>s8_9:0",
+     "s8_9>s8_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 587.9,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 8,
+    "unknown_share": 0.3343,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 677.2,
+    "duration_s": 520.9,
+    "edge_ids": [
+     "s3_1>s3_2:0",
+     "s3_2>s3_3:0",
+     "s3_3>s4_4:0",
+     "s4_4>s4_5:0",
+     "s4_5>s5_6:0",
+     "s5_6>s5_7:0",
+     "s5_7>s6_8:0",
+     "s6_8>s7_8:0",
+     "s7_8>s8_9:0",
+     "s8_9>s8_8:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "LOWER_MODELED_RISK",
+     "RISK_UNKNOWN_SHARE"
+    ],
+    "generalized_cost_s": 561.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [],
+    "n_steps": 10,
+    "unknown_share": 0.6006,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMULATED: synthetic demo data.",
+   "Risk levels are a heuristic (historical winter 311 report frequency \u00d7 observed weather): not probabilities and not sidewalk conditions."
+  ]
+ },
+ "synthetic/7/reduced_mobility/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 254.8,
+    "duration_s": 283.1,
+    "edge_ids": [
+     "s1_6>s1_5:0",
+     "s1_5>s2_5:0",
+     "s2_5>s2_4:0",
+     "s2_4>s2_3:0",
+     "s2_3>s3_4:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_CONFIRMED_DISRUPTION",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 363.4,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-18"
+    ],
+    "n_steps": 5,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 254.8,
+    "duration_s": 283.1,
+    "edge_ids": [
+     "s1_6>s1_5:0",
+     "s1_5>s1_4:0",
+     "s1_4>s1_3:0",
+     "s1_3>s2_3:0",
+     "s2_3>s3_4:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_CONFIRMED_DISRUPTION",
+     "RISK_LAYER_UNAVAILABLE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 309.9,
+    "hazards_avoided": [
+     "TEST-HZ-18"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet."
+  ]
+ },
+ "synthetic/7/reduced_mobility/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 254.8,
+    "duration_s": 283.1,
+    "edge_ids": [
+     "s1_6>s1_5:0",
+     "s1_5>s2_5:0",
+     "s2_5>s2_4:0",
+     "s2_4>s2_3:0",
+     "s2_3>s3_4:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_CONFIRMED_DISRUPTION",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 364.2,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-18"
+    ],
+    "n_steps": 5,
+    "unknown_share": 0.4718,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 254.8,
+    "duration_s": 283.1,
+    "edge_ids": [
+     "s1_6>s1_5:0",
+     "s1_5>s1_4:0",
+     "s1_4>s1_3:0",
+     "s1_3>s2_3:0",
+     "s2_3>s3_4:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_CONFIRMED_DISRUPTION",
+     "RISK_UNKNOWN_SHARE",
+     "REDUCED_MOBILITY_SPEED"
+    ],
+    "generalized_cost_s": 342.2,
+    "hazards_avoided": [
+     "TEST-HZ-18"
+    ],
+    "hazards_on_route": [],
+    "n_steps": 4,
+    "unknown_share": 0.4718,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs."
+  ]
+ },
+ "synthetic/8/step_free/none": {
+  "error": "NO_ROUTE"
+ },
+ "synthetic/8/step_free/static": {
+  "error": "NO_ROUTE"
+ },
+ "synthetic/9/standard/none": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 700.5,
+    "duration_s": 538.9,
+    "edge_ids": [
+     "s0_11>s1_11:0",
+     "s1_11>s2_11:0",
+     "s2_11>s3_11:0",
+     "s3_11>s4_11:0",
+     "s4_11>s5_11:0",
+     "s5_11>s5_10:0",
+     "s5_10>s5_9:0",
+     "s5_9>s5_8:0",
+     "s5_8>s5_7:0",
+     "s5_7>s5_6:0",
+     "s5_6>s5_5:0",
+     "s5_5>s6_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 748.5,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-1",
+     "TEST-HZ-15",
+     "TEST-HZ-21"
+    ],
+    "n_steps": 6,
+    "unknown_share": 1.0,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 782.7,
+    "duration_s": 602.1,
+    "edge_ids": [
+     "s0_11>s1_11:0",
+     "s1_11>s1_10:0",
+     "s1_10>s1_9:0",
+     "s1_9>s1_8:0",
+     "s1_8>s2_8:0",
+     "s2_8>s2_7:0",
+     "s2_7>s2_6:0",
+     "s2_6>s3_6:0",
+     "s3_6>s3_5:0",
+     "s3_5>s4_5:0",
+     "s4_5>s4_4:0",
+     "s4_4>s5_5:0",
+     "s5_5>s6_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "AVOIDS_UNVERIFIED_REPORT",
+     "PASSES_POSSIBLE_CLOSURE",
+     "RISK_LAYER_UNAVAILABLE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 676.6,
+    "hazards_avoided": [
+     "TEST-HZ-15",
+     "TEST-HZ-21"
+    ],
+    "hazards_on_route": [
+     "TEST-HZ-1"
+    ],
+    "n_steps": 11,
+    "unknown_share": 1.0,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Aucune couche de risque : risque inconnu sur tout le trajet.",
+   "Une fermeture autoris\u00e9e du trottoir se trouve sur un trajet, mais son horaire \u00e0 ce moment est inconnu : elle peut \u00eatre en vigueur.",
+   "Le d\u00e9part est \u00e0 26 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ },
+ "synthetic/9/standard/static": {
+  "identical": false,
+  "routes": [
+   {
+    "distance_m": 700.5,
+    "duration_s": 538.9,
+    "edge_ids": [
+     "s0_11>s1_11:0",
+     "s1_11>s2_11:0",
+     "s2_11>s3_11:0",
+     "s3_11>s4_11:0",
+     "s4_11>s5_11:0",
+     "s5_11>s5_10:0",
+     "s5_10>s5_9:0",
+     "s5_9>s5_8:0",
+     "s5_8>s5_7:0",
+     "s5_7>s5_6:0",
+     "s5_6>s5_5:0",
+     "s5_5>s6_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "SHORTEST_DISTANCE",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "PASSES_POSSIBLE_CLOSURE",
+     "PASSES_UNVERIFIED_REPORT",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 888.8,
+    "hazards_avoided": [],
+    "hazards_on_route": [
+     "TEST-HZ-1",
+     "TEST-HZ-15",
+     "TEST-HZ-21"
+    ],
+    "n_steps": 6,
+    "unknown_share": 0.3584,
+    "variant": "shortest"
+   },
+   {
+    "distance_m": 784.1,
+    "duration_s": 603.2,
+    "edge_ids": [
+     "s0_11>s1_11:0",
+     "s1_11>s1_10:0",
+     "s1_10>s1_9:0",
+     "s1_9>s2_9:0",
+     "s2_9>s3_9:0",
+     "s3_9>s4_9:0",
+     "s4_9>s5_9:0",
+     "s5_9>s5_8:0",
+     "s5_8>s6_8:0",
+     "s6_8>s6_7:0",
+     "s6_7>s6_6:0",
+     "s6_6>s6_5:0",
+     "s6_5>s5_5:0"
+    ],
+    "explanation": [
+     "SIMULATED_DATA",
+     "WINTER_AWARE_COST",
+     "EXCLUDES_CONFIRMED_CLOSURE",
+     "AVOIDS_POSSIBLE_CLOSURE",
+     "AVOIDS_UNVERIFIED_REPORT",
+     "LOWER_MODELED_RISK",
+     "PASSES_POSSIBLE_CLOSURE",
+     "RISK_UNKNOWN_SHARE",
+     "INCLUDES_STEPS"
+    ],
+    "generalized_cost_s": 696.9,
+    "hazards_avoided": [
+     "TEST-HZ-15",
+     "TEST-HZ-21"
+    ],
+    "hazards_on_route": [
+     "TEST-HZ-1"
+    ],
+    "n_steps": 8,
+    "unknown_share": 0.5006,
+    "variant": "winter_aware"
+   }
+  ],
+  "warnings": [
+   "SIMUL\u00c9 : donn\u00e9es de d\u00e9monstration synth\u00e9tiques.",
+   "Niveaux de risque heuristiques (fr\u00e9quence historique des requ\u00eates 311 hivernales \u00d7 m\u00e9t\u00e9o observ\u00e9e) : ce ne sont ni des probabilit\u00e9s ni l'\u00e9tat des trottoirs.",
+   "Une fermeture autoris\u00e9e du trottoir se trouve sur un trajet, mais son horaire \u00e0 ce moment est inconnu : elle peut \u00eatre en vigueur.",
+   "Le d\u00e9part est \u00e0 26 m du r\u00e9seau pi\u00e9ton cartographi\u00e9."
+  ]
+ }
+}
