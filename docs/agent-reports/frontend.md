@@ -2,7 +2,7 @@
 
 - **Status:** READY FOR REVIEW
 - **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
-- **Date (UTC):** 2026-11-11 (update 3: post contract v1.5.0 merge)
+- **Date (UTC):** 2026-11-11 (update 4: coordinator follow-up after merge 3b189bd)
 - **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts. Contract **v1.4.0/v1.5.0** + routing/data/platform merged after 249570b — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
@@ -350,13 +350,39 @@ largest lazy chunks:
      221.1 KB gz  assets/Scene3D-D7aT1PGj.js
 ```
 
+## Update 4 — coordinator follow-up (risk-layer-aware real-API test)
+The coordinator found 14/16 real-API tests passing against the merged API with the ML heuristic layer on. The two `compare on the real pilot_mini graph` tests hard-coded "None — risk is unknown", while the UI correctly showed "Labelled heuristic". Fix (`e2e-real/real-api.spec.ts`): the test now captures the `/routes/compare` response the UI received and asserts:
+- the EN/FR copy for **that** `risk_layer` (read from `src/i18n/locales/<lang>/plan.json`) and none of the other two;
+- one evidence badge for every `evidence_state` in the response, plus an `unknown` badge when the layer is `none`;
+- that "Both routes are the same" is shown exactly when `identical` is true;
+- no `simulated` badge on real data.
+
+Then `git merge --no-edit integration/winterpath` (3b189bd), no conflicts. Re-run at the merge commit:
+```text
+$ npx tsc -b && npx eslint . --max-warnings 0 → LINT_OK
+$ npx vitest run
+ Test Files  11 passed (11)
+      Tests  106 passed (106)
+$ npx playwright test --reporter=line                 (mock build)
+  96 passed (3.4m)
+$ npx playwright test -c playwright.real.config.ts    RISK_PROVIDER=none
+  16 passed (1.2m)
+$ npx playwright test -c playwright.real.config.ts    RISK_PROVIDER=winterpath_ml.inference:load_provider
+models/status risk_layer: heuristic enabled: False
+compare risk_layer: heuristic identical: True evidence: ['unknown']
+  16 passed (57.0s)
+```
+`risk_layer: model` is covered by the same branch of the test but was not exercised, because the registry has the model disabled.
+
+**Finding for the ML agent (not a frontend change):** `RISK_PROVIDER=winterpath_ml.inference:load_provider` **silently falls back to `NullRiskProvider`** in a worktree without `models/artifacts/v2-8d19aa86/`. `_coverage()` reads `REPO_ROOT / registry["coverage"]["path"]` and ignores `MODEL_ARTIFACT_DIR`, so setting that env var does not help, and nothing is logged. `/models/status` then reports `none`. For the heuristic run above I added a temporary, git-ignored symlink `models/artifacts/v2-8d19aa86 → ../winterpath-ml/models/artifacts/v2-8d19aa86` and removed it afterwards; nothing outside my owned paths was committed. Suggestion: resolve the coverage path via `config.ARTIFACT_DIR` and log a warning when falling back.
+
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
 |---|---|---|
 | Six pages render EN + FR, desktop + 390 px, light + dark | Yes (automated) | `pages.spec.ts` matrix: 7 pages × 2 langs × 2 themes × 2 viewports, h1 + no horizontal overflow + axe clean |
 | Planner end-to-end against mocks; real API is env-only | Yes, both | mock: `planner.spec.ts`; real: `e2e-real/real-api.spec.ts` 16/16 against local `services/api` (fixture graph, memory store) |
 | Evidence states icon + text everywhere; no unlabelled demo data | Yes | `EvidenceBadge.test.tsx`, honesty tests in `fixtures.test.ts`, demo banner asserted on every page |
-| build / lint / test / playwright pass, bundle sizes | Yes | Outputs above; initial JS 143.9 KB gz (budget 250); vitest 106/106; mock e2e 96/96; real-API e2e 16/16 |
+| build / lint / test / playwright pass, bundle sizes | Yes | Outputs above; initial JS 143.9 KB gz (budget 250); vitest 106/106; mock e2e 96/96; real-API e2e 16/16 with risk layer none and heuristic |
 | Asset/font licence manifest | Yes | `apps/web/ASSET_LICENSES.md`, `assets/3d/README.md` |
 | Bilingual planning journey, geolocation-denied journey, axe per page | Yes | `planner.spec.ts`, `geolocation.spec.ts`, `pages.spec.ts` |
 | EN/FR key parity test | Yes | `src/i18n/parity.test.ts` (keys, interpolation vars, no empty or untranslated strings) |
