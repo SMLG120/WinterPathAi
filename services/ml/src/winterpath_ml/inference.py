@@ -13,6 +13,7 @@ Honesty rules enforced here:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
@@ -27,6 +28,8 @@ import h3
 import pandas as pd
 
 from . import config
+
+log = logging.getLogger("winterpath_ml.inference")
 
 LOCAL_TZ = ZoneInfo("America/Montreal")
 LEVELS = ("low", "moderate", "elevated", "high")
@@ -124,6 +127,21 @@ def load_registry(path: Path = config.REGISTRY_PATH) -> dict:
 
 def _artifact_dir(registry: dict) -> Path:
     return config.ARTIFACT_DIR / registry["run_id"]
+
+
+def artifact_path(registry: dict, entry: dict | str) -> Path:
+    """Resolve a registry artifact entry under config.ARTIFACT_DIR (honours MODEL_ARTIFACT_DIR).
+
+    Registry paths are recorded repo-relative (``models/artifacts/<run_id>/<file>``) for provenance;
+    only the part after ``<run_id>`` is used, so artifacts can live anywhere.
+    """
+    rel = Path(entry["path"] if isinstance(entry, dict) else entry)
+    run_id = registry["run_id"]
+    parts = rel.parts
+    tail = (
+        Path(*parts[parts.index(run_id) + 1 :]) if run_id in parts else Path(rel.name)
+    )
+    return _artifact_dir(registry) / tail
 
 
 def scores_dir(registry: dict, layer: str) -> Path:
@@ -292,6 +310,9 @@ def model_status(registry: dict) -> dict:
 def _read_scores(d: Path) -> pd.DataFrame:
     files = sorted(d.glob("*.parquet")) if d.exists() else []
     if not files:
+        log.warning(
+            "risk_scores_missing: no score tables in %s; every edge will be unknown", d
+        )
         return pd.DataFrame(
             {
                 "h3": [],
@@ -306,7 +327,7 @@ def _read_scores(d: Path) -> pd.DataFrame:
 
 def _coverage(registry: dict) -> frozenset[str]:
     return frozenset(
-        pd.read_parquet(config.REPO_ROOT / registry["coverage"]["path"])["h3"]
+        pd.read_parquet(artifact_path(registry, registry["coverage"]))["h3"]
     )
 
 
@@ -314,8 +335,20 @@ def load_provider(registry_path: Path = config.REGISTRY_PATH) -> RiskProvider:
     """Provider for the registry's active layer; NullRiskProvider if registry/artifacts are missing."""
     try:
         reg = load_registry(registry_path)
+    except FileNotFoundError:
+        log.warning(
+            "risk_registry_missing: %s not found; using NullRiskProvider (all unknown)",
+            registry_path,
+        )
+        return NullRiskProvider()
+    try:
         cov = _coverage(reg)
     except FileNotFoundError:
+        log.warning(
+            "risk_artifacts_missing: %s not found (MODEL_ARTIFACT_DIR=%s); using NullRiskProvider (all unknown)",
+            artifact_path(reg, reg["coverage"]),
+            config.ARTIFACT_DIR,
+        )
         return NullRiskProvider()
     layer = reg["active_layer"]
     cls = ModelRiskProvider if layer == "model" else HeuristicRiskProvider
