@@ -10,10 +10,10 @@ Included `ACTI_NOM` → normalised category (only `NATURE ∈ {Requete, Plainte}
 
 | ACTI_NOM | category |
 |---|---|
-| Trottoir glissant | slippery_sidewalk |
-| Chaussée glissante | slippery_roadway |
+| Trottoir glissant | sidewalk_slippery |
+| Chaussée glissante | roadway_slippery |
 | Opération déneigement | snow_clearing |
-| Dépôt Illégal - Neige | illegal_snow_dump |
+| Dépôt Illégal - Neige | snow_dumping |
 
 Counts by `NATURE` for these activities (whole file):
 
@@ -30,15 +30,15 @@ Total winter reports: **75350** of 3271617 rows in the file.
 
 ## 2. Counts by season and category
 
-| winter | illegal_snow_dump | slippery_roadway | slippery_sidewalk | snow_clearing |
+| winter | roadway_slippery | sidewalk_slippery | snow_clearing | snow_dumping |
 |---|---|---|---|---|
-| off-season (May–Oct) | 58 | 13 | 25 | 186 |
-| 2021-22 | 793 | 1817 | 2141 | 6893 |
-| 2022-23 | 1602 | 1263 | 1408 | 11278 |
-| 2023-24 | 647 | 1362 | 1958 | 7400 |
-| 2024-25 | 1398 | 1708 | 1726 | 13249 |
-| 2025-26 | 1156 | 3277 | 3369 | 10616 |
-| 2026-27 | 1 | 0 | 1 | 5 |
+| off-season (May–Oct) | 13 | 25 | 186 | 58 |
+| 2021-22 | 1817 | 2141 | 6893 | 793 |
+| 2022-23 | 1263 | 1408 | 11278 | 1602 |
+| 2023-24 | 1362 | 1958 | 7400 | 647 |
+| 2024-25 | 1708 | 1726 | 13249 | 1398 |
+| 2025-26 | 3277 | 3369 | 10616 | 1156 |
+| 2026-27 | 0 | 1 | 5 | 1 |
 
 Off-season rows exist (mostly snow-clearing complaints logged late); the model is only defined Nov–Apr.
 

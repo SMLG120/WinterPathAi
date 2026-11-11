@@ -13,6 +13,7 @@ Honesty rules enforced here:
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -347,3 +348,63 @@ def edge_risk_rows(
             }
         )
     return rows
+
+
+# --- Adapter for services/api + services/routing (edge-id protocol) ---------------------------------
+# winterpath_routing.RiskProvider is `risk_layer` + `edge_risk(edge_ids, at) -> {edge_id: RiskEstimate}`.
+# The API wraps whatever it loads in NormalisingRiskProvider, which accepts our dicts.
+# Use with: RISK_PROVIDER=winterpath_ml.inference:api_provider
+
+DEFAULT_EDGES_GEOJSON = (
+    config.REPO_ROOT / "data" / "fixtures" / "pilot_mini" / "edges.geojson"
+)
+
+
+class EdgeIdRiskProvider:
+    """Maps edge ids to geometry (from a GeoJSON FeatureCollection) and delegates to a cell provider."""
+
+    def __init__(
+        self, inner: RiskProvider, edge_coords: dict[str, Sequence[Sequence[float]]]
+    ):
+        self.inner = inner
+        self.edge_coords = edge_coords
+        st = inner.status()
+        self.risk_layer = (
+            st["risk_layer"]
+            if st["risk_layer"] in ("model", "heuristic", "none")
+            else "none"
+        )
+
+    @classmethod
+    def from_geojson(cls, inner: RiskProvider, path: Path) -> EdgeIdRiskProvider:
+        fc = json.loads(Path(path).read_text())
+        coords = {}
+        for f in fc["features"]:
+            eid = f.get("id") or f["properties"].get("edge_id")
+            if eid and f["geometry"]["type"] == "LineString":
+                coords[str(eid)] = f["geometry"]["coordinates"]
+        return cls(inner, coords)
+
+    def edge_risk(self, edge_ids: Sequence[str], at: datetime) -> dict[str, dict]:
+        out = {}
+        for eid in edge_ids:
+            coords = self.edge_coords.get(eid)
+            est = (
+                unknown("Edge geometry not available to the risk layer.")
+                if coords is None
+                else self.inner.edge_risk(coords, at)
+            )
+            out[eid] = est.to_dict()
+        return out
+
+    def model_status(self) -> dict:
+        return self.inner.status()
+
+
+def api_provider() -> EdgeIdRiskProvider:
+    """Factory for the API's RISK_PROVIDER setting. Edge geometry from WP_EDGES_GEOJSON (default: pilot_mini)."""
+    path = Path(os.environ.get("WP_EDGES_GEOJSON", DEFAULT_EDGES_GEOJSON))
+    inner = load_provider()
+    if not path.exists():
+        return EdgeIdRiskProvider(inner, {})  # every edge -> unknown, never low
+    return EdgeIdRiskProvider.from_geojson(inner, path)

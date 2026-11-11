@@ -389,18 +389,22 @@ def test_report_lifecycle_and_moderation(client, admin) -> None:
     )
     validate_response(route, "/routes/compare", "post")
 
-    # deletion: well-formed wrong token → 404 (no existence leak); malformed token or id → 422
-    # (declared since contract v1.1.0); right token → 204
-    bad = client.delete(f"/api/v1/reports/{rid}", headers={"X-Deletion-Token": "x" * 40})
-    assert bad.status_code == 404
-    validate_response(bad, "/reports/{reportId}", "delete")
+    # deletion (contract v1.5, CR-ROUTING-4): wrong, missing or malformed token, or an unknown
+    # or non-UUID id → 404, all with the same body shape (no existence leak); right token → 204
     for resp in (
+        client.delete(f"/api/v1/reports/{rid}", headers={"X-Deletion-Token": "x" * 40}),
         client.delete(f"/api/v1/reports/{rid}"),
         client.delete(f"/api/v1/reports/{rid}", headers={"X-Deletion-Token": "short"}),
         client.delete("/api/v1/reports/not-a-uuid", headers={"X-Deletion-Token": token}),
+        client.delete(
+            "/api/v1/reports/00000000-0000-4000-8000-000000000000",
+            headers={"X-Deletion-Token": token},
+        ),
     ):
-        assert resp.status_code == 422
+        assert resp.status_code == 404, resp.text
         validate_response(resp, "/reports/{reportId}", "delete")
+        assert resp.json()["code"] == "NOT_FOUND"
+        assert resp.json()["message"] == "Report not found."
     ok = client.delete(f"/api/v1/reports/{rid}", headers={"X-Deletion-Token": token})
     assert ok.status_code == 204
     assert (
