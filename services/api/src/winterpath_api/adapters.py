@@ -16,6 +16,7 @@ endpoints return 503 ``UPSTREAM_UNAVAILABLE`` — values are never invented.
 from __future__ import annotations
 
 import importlib
+import inspect
 from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
@@ -163,8 +164,37 @@ class CoordinateRiskAdapter:
         return self._status or None
 
 
-def load_risk_provider(spec: str, edge_coords: EdgeCoords | None = None) -> RiskProvider:
+def _accepted_kwargs(factory: Callable[..., Any], offered: Mapping[str, Any]) -> dict[str, Any]:
+    """The subset of ``offered`` keyword arguments that ``factory``'s signature accepts.
+
+    v1.7 factories take ``engine=`` / ``score_source=``; older ones take nothing and are called
+    exactly as before (backward compatible). ``**kwargs`` accepts everything offered.
+    """
+    try:
+        params = inspect.signature(factory).parameters
+    except (TypeError, ValueError):  # builtins / C callables without a signature
+        return {}
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return dict(offered)
+    ok = (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    return {k: v for k, v in offered.items() if k in params and params[k].kind in ok}
+
+
+def load_risk_provider(
+    spec: str,
+    edge_coords: EdgeCoords | None = None,
+    *,
+    engine: Any = None,
+    score_source: str | None = None,
+) -> RiskProvider:
     """``none`` → NullRiskProvider; ``pkg.module:factory`` → factory() wrapped for normalisation.
+
+    v1.7: the API's shared SQLAlchemy ``engine`` and ``score_source`` (``RISK_SCORE_SOURCE``) are
+    passed to the factory when its signature accepts them (``winterpath_ml.inference``'s
+    ``load_provider(registry_path, *, engine=None, score_source=None)``), so a
+    ``RISK_SCORE_SOURCE=postgis`` provider reads ``wp.risk_cell_score`` through the API's pool
+    instead of falling back to all-unknown. Factories without those parameters are called with
+    no arguments, as before.
 
     A coordinate-keyed provider (``winterpath_ml.inference``) needs ``edge_coords``; without a
     graph there is nothing to look up, so every edge is unknown (NullRiskProvider).
@@ -173,7 +203,11 @@ def load_risk_provider(spec: str, edge_coords: EdgeCoords | None = None) -> Risk
         return NullRiskProvider()
     module_name, _, attr = spec.partition(":")
     factory = getattr(importlib.import_module(module_name), attr or "RiskProvider")
-    inner = factory() if callable(factory) else factory
+    if callable(factory):
+        offered = {"engine": engine, "score_source": score_source}
+        inner = factory(**_accepted_kwargs(factory, offered))
+    else:
+        inner = factory
     if is_coordinate_provider(inner):
         if edge_coords is None:
             log.warning("risk_provider_without_graph")

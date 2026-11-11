@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from api_testlib import PILOT_MINI, REPO, validate_response
+from api_testlib import PILOT_MINI, validate_response
 from winterpath_routing import (
     FixtureGraphProvider,
     NullRiskProvider,
@@ -130,20 +130,54 @@ def test_coordinate_provider_without_graph_is_null(monkeypatch) -> None:
 
 
 # ----------------------------------------------------------------------------- real ML package
-def _artifacts_reason() -> str | None:
-    try:
-        import json
+IN_SEASON_DAY = "2026-01-14"  # the in-season day the real-layer tests route on
 
-        reg = json.loads((REPO / "models" / "registry.json").read_text())
+
+def _artifacts_reason() -> str | None:
+    """Registry + coverage, resolved exactly as ML resolves them (honours MODEL_ARTIFACT_DIR)."""
+    try:
+        from winterpath_ml.inference import artifact_path, load_registry
+
+        reg = load_registry()
     except FileNotFoundError:
         return "models/registry.json absent"
-    if not (REPO / reg["coverage"]["path"]).exists():
-        return f"ML artifacts absent ({reg['coverage']['path']} is git-ignored; copy from agent/ml)"
+    cov = artifact_path(reg, reg["coverage"])
+    if not cov.exists():
+        return f"ML coverage artifact absent ({cov})"
+    return None
+
+
+def _scores_reason(day: str) -> str | None:
+    """The per-day score tables are git-ignored (only coverage + the heuristic joblib are
+    committed in v1.7), so CI and fresh checkouts have none. Without rows for ``day`` every
+    edge is unknown and the in-season assertions cannot hold: skip, saying why."""
+    base = _artifacts_reason()
+    if base:
+        return base
+    import pandas as pd
+    from winterpath_ml.inference import load_registry, scores_dir
+
+    reg = load_registry()
+    d = scores_dir(reg, reg["active_layer"])
+    files = sorted(d.glob("*.parquet")) if d.is_dir() else []
+    if not files:
+        return (
+            f"ML per-day score tables absent ({d}/*.parquet is git-ignored; copy "
+            f"models/artifacts/{reg['run_id']}/scores/ from agent/ml or run the ML score job)"
+        )
+    days = set()
+    for f in files:
+        t = pd.read_parquet(f, columns=["day", "p"])
+        days |= set(pd.to_datetime(t.loc[t["p"].notna(), "day"]).dt.strftime("%Y-%m-%d"))
+    if day not in days:
+        return f"ML score tables in {d} have no scored rows for {day}"
     return None
 
 
 REASON = _artifacts_reason()
+SCORES_REASON = _scores_reason(IN_SEASON_DAY)
 needs_artifacts = pytest.mark.skipif(REASON is not None, reason=REASON or "")
+needs_scores = pytest.mark.skipif(SCORES_REASON is not None, reason=SCORES_REASON or "")
 SPEC = "winterpath_ml.inference:load_provider"
 
 
@@ -165,9 +199,9 @@ def _compare(client, graph, when: str):
     )
 
 
-@needs_artifacts
+@needs_scores
 def test_real_heuristic_layer_in_season(ml, graph) -> None:
-    r = _compare(ml, graph, "2026-01-14T15:00:00Z")
+    r = _compare(ml, graph, f"{IN_SEASON_DAY}T15:00:00Z")
     assert r.status_code == 200, r.text
     validate_response(r, "/routes/compare", "post")
     body = r.json()
@@ -182,12 +216,13 @@ def test_real_heuristic_layer_in_season(ml, graph) -> None:
     assert any("heuristic" in x for x in s["limitations"])
 
 
-@needs_artifacts
+@needs_scores
 def test_real_heuristic_estimates_have_no_probability(graph) -> None:
-    p = load_risk_provider(SPEC, lambda eid: graph.edges[eid].coords)
+    # score_source pinned to "file": an ambient RISK_SCORE_SOURCE=postgis must not change it.
+    p = load_risk_provider(SPEC, lambda eid: graph.edges[eid].coords, score_source="file")
     out = p.edge_risk(list(graph.edges), datetime(2026, 1, 14, 15, tzinfo=UTC))
     known = [e for e in out.values() if not e.is_unknown]
-    assert known, "expected scored cells on 2026-01-14"
+    assert known, f"expected scored cells on {IN_SEASON_DAY}"
     assert all(e.probability is None for e in out.values())
     assert {e.evidence.state.value for e in known} == {"model_estimate"}
     assert all("mtl-311" in e.evidence.source_ids for e in known)

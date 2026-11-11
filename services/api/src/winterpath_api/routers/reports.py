@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 import structlog
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 
-from ..deps import get_state
+from ..deps import get_state, require_public_writes
 from ..errors import ApiError
 from ..params import decode_cursor, encode_cursor, in_coverage
 from ..repositories.reports import StoredReport
@@ -56,7 +56,13 @@ def admin_view(r: StoredReport) -> dict:
     }
 
 
-@router.post("/reports", status_code=201, response_model=ReportReceipt, tags=["reports"])
+@router.post(
+    "/reports",
+    status_code=201,
+    response_model=ReportReceipt,
+    tags=["reports"],
+    dependencies=[Depends(require_public_writes)],
+)
 def create_report(
     body: ReportCreate, request: Request, state: AppState = Depends(get_state)
 ) -> ReportReceipt:

@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 
 from .. import CONTRACT_VERSION, __version__
 from ..adapters import WeatherUnavailableError, default_model_status
-from ..deps import get_state
+from ..db import ping as db_ping
+from ..deps import get_state, require_public_writes
 from ..errors import ApiError
 from ..repositories.sources import PilotRequestRow
 from ..schemas import (
@@ -40,9 +41,11 @@ def get_health(state: AppState = Depends(get_state)) -> Health:
     if state.db_engine is None:
         checks["database"] = {"status": "disabled", "detail": "In-memory stores (no DATABASE)."}
     else:
+        # Ping the shared engine itself: with in-memory stores it may serve only weather and
+        # risk scores, and an in-memory store's ping would always say "ok".
         checks["database"] = (
             {"status": "ok"}
-            if state.reports.ping()
+            if db_ping(state.db_engine)
             else {"status": "down", "detail": "PostGIS unreachable."}
         )
 
@@ -50,7 +53,10 @@ def get_health(state: AppState = Depends(get_state)) -> Health:
     checks["risk"] = (
         {"status": "disabled", "detail": "No risk layer; risk reported as unknown."}
         if layer == "none"
-        else {"status": "ok", "detail": f"risk_layer={layer}"}
+        else {
+            "status": "ok",
+            "detail": f"risk_layer={layer}; score_source={state.settings.risk_score_source}",
+        }
     )
     if state.weather is None:
         checks["weather"] = {"status": "disabled", "detail": "No ECCC adapter configured."}
@@ -144,7 +150,12 @@ def get_model_status(state: AppState = Depends(get_state)) -> ModelStatus:
     return ModelStatus.model_validate(default_model_status(state.risk))
 
 
-@router.post("/pilot-requests", status_code=201, tags=["system"])
+@router.post(
+    "/pilot-requests",
+    status_code=201,
+    tags=["system"],
+    dependencies=[Depends(require_public_writes)],
+)
 def create_pilot_request(
     body: PilotRequest, request: Request, state: AppState = Depends(get_state)
 ) -> Response:

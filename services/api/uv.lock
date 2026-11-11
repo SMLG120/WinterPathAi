@@ -933,6 +933,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=16" },
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "scipy", specifier = ">=1.13" },
+    { name = "sqlalchemy", marker = "extra == 'db'", specifier = ">=2.0" },
 ]
 provides-extras = ["db"]
 

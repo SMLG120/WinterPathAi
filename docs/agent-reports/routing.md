@@ -1,6 +1,6 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Status:** READY FOR REVIEW. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
 - **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
@@ -24,7 +24,186 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0i. Cycle 10 — merge of `integration/winterpath` `6a712e9` (all five agents) + `services/api/uv.lock` refresh — current
+### 0n. Cycle 13b — combined-trial blocker: real-layer ML tests gated on per-day score tables — current
+**Cause (coordinator's combined trial):** `test_real_heuristic_layer_in_season` and `test_real_heuristic_estimates_have_no_probability` failed with "expected scored cells on 2026-01-14". Their skip checked only `reg['coverage']['path']`. ML commits `coverage_cells.parquet` in v1.7, but the per-day score tables (`models/artifacts/v2-8d19aa86/scores/…`) are still git-ignored. CI and fresh checkouts therefore ran these tests with no scores, so every edge was `unknown`.
+
+**Fix (`tests/test_api_ml_risk.py`):**
+- New `needs_scores` marker. It resolves the directory with ML's own `scores_dir(reg, active_layer)` (which honours `MODEL_ARTIFACT_DIR`), reads the `*.parquet` tables there, and skips unless they contain non-null `p` rows for `IN_SEASON_DAY = "2026-01-14"`, the day both tests route on.
+- The reason text names the missing path, says it is git-ignored, and says how to obtain it (copy `models/artifacts/v2-8d19aa86/scores/` from agent/ml or run the score job).
+- The coverage check now also uses ML's `artifact_path` rather than a repo-relative path.
+- `test_real_layer_out_of_season_is_unknown` (2026-07-01) needs no scores, so it keeps the coverage-only marker.
+- `test_real_heuristic_estimates_have_no_probability` now pins `score_source="file"`, so an ambient `RISK_SCORE_SOURCE=postgis` cannot change what it tests.
+
+**Verified both ways:**
+```text
+=== WITH scores dir
+test_real_heuristic_layer_in_season PASSED / test_real_heuristic_estimates_have_no_probability PASSED / test_real_layer_out_of_season_is_unknown PASSED
+========================= 7 passed, 1 warning in 1.89s =========================
+=== WITHOUT scores dir (moved to scratchpad)
+SKIPPED [1] services/api/tests/test_api_ml_risk.py:202: ML per-day score tables absent (…/models/artifacts/v2-8d19aa86/scores/winter311-heuristic-v1/*.parquet is git-ignored; copy models/artifacts/v2-8d19aa86/scores/ from agent/ml or run the ML score job)
+SKIPPED [1] services/api/tests/test_api_ml_risk.py:219: (same reason)
+=================== 5 passed, 2 skipped, 1 warning in 1.52s ====================
+=== fresh-checkout equivalent: ONLY git-tracked artifacts present (features.parquet, metrics.json, winter311-hgb-v1.joblib, scores/ moved aside), full suite
+================== 321 passed, 2 skipped, 1 warning in 24.32s ==================
+=== all local artifacts restored, full suite
+======================= 323 passed, 1 warning in 28.47s ========================
+$ ruff (routing / api): All checks passed! 20 / 33 files already formatted
+$ (cd services/api && uv lock --check)  → exit=0
+$ scripts/check-ownership.sh routing    → 19 flagged files, 19/19 byte-identical to 79a0ee6 (unchanged from 0m)
+```
+
+### 0m. Cycle 13 — v1.7 risk wiring: merge data `360fdd4` + ml `79a0ee6`; shared engine → ML provider
+**Merges (exact commits, as instructed):**
+- `git merge --no-edit 360fdd4` → `40a61a4`.
+- `git merge --no-edit 79a0ee6` → `737d3e5`. This merge first refused because two untracked files would be overwritten: `models/artifacts/v2-8d19aa86/{coverage_cells.parquet,winter311-heuristic-v1.joblib}`, my local copies of ML's artifacts, which ML now commits. Their `git hash-object` matched `79a0ee6`'s blobs (`cae69c1…`, `360242b…`), so I moved them to the scratchpad and the merge then succeeded.
+- Afterwards `db/`, `services/ml`, `services/ingestion` and `models/` are identical to the named commits.
+- `wp_routing`: `alembic upgrade head` → `0007_risk_cell_score (head)`.
+- `services/api/uv.lock`: ML's `79a0ee6` added `sqlalchemy>=2.0` to `services/ml`'s `db` extra. The API lock now records it (metadata only, one line, no resolved version change), and `uv lock --check` exits 0.
+
+**Fix (`state.py` / `adapters.py`):**
+- `load_risk_provider(spec, edge_coords, *, engine=None, score_source=None)` inspects the factory's signature. It passes `engine=` and `score_source=` only if they are accepted (keyword or `**kwargs`). Older factories that take no arguments are still called with none.
+- `build_state` passes the shared pooled engine and `settings.risk_score_source`. That setting comes from `RISK_SCORE_SOURCE` (`file` | `postgis`; default `file`; any other value fails at startup).
+- The shared engine is created whenever **any** component needs PostGIS: stores, weather, or ML scores from postgis. The production combination is in-memory stores + weather + risk from postgis, so the engine can no longer be missing there. The stores use PostGIS only when `API_STORE_BACKEND=postgis`.
+- `/health`: the `database` check now pings the engine itself. Before, with in-memory stores it called the in-memory repository's `ping()` and always said `ok`. The `risk` detail now names the score source.
+
+**Tests (`tests/test_api_risk_postgis.py`, 6):**
+- Factory wiring for v1.7, legacy, `**kwargs` and engine-only signatures.
+- The real `load_provider` signature.
+- `postgis` without a DB stays all-unknown (`disabled`).
+- Setting parsing.
+- A **real-DB test at 0007**. All 200 `pilot_mini` edges lie in **one** H3 r9 cell (`892baa441b3ffff`), so row and no-row can't be mixed inside one route on this fixture. The test exercises both on the same edges instead:
+  - (a) A fixture row (p=0.5) for today's America/Montreal day. `/map/segments`: every edge has a non-unknown level, `probability` null and evidence `model_estimate`. `compare`: `risk_layer=heuristic`, `unknown_share=0.0`.
+  - (b) The next local day, which has no rows, through the same client: `unknown_share=1.0`.
+  - (c) After deleting the row, a fresh client for today: every segment is `unknown` and `unknown_share=1.0`.
+  - The test skips rather than overwrite pre-existing rows, and checks that 0 rows remain afterwards.
+- **Mutation check:** with `engine=None` put back in `build_state`, the DB test fails (`{'status': 'disabled'} != {'status': 'ok'}`), i.e. it reproduces the reported gap.
+
+**(4) `/health` with `RISK_SCORE_SOURCE=postgis`** (uvicorn, `wp_routing` at 0007, in-memory stores, `pilot_mini` graph, writes disabled):
+```text
+{"status": "ok", "version": "0.1.0 (contract 1.7.0)",
+ "checks": {"graph": {"status": "ok"}, "database": {"status": "ok"},
+            "risk": {"status": "ok", "detail": "risk_layer=heuristic; score_source=postgis"},
+            "weather": {"status": "disabled", "detail": "No ECCC adapter configured."}}}
+/models/status: heuristic False winter311-hgb-v1
+wp.risk_cell_score rows in wp_routing: 0
+compare: risk_layer heuristic unknown_share [1.0, 1.0]
+SIGTERM exit=143
+```
+**Operational gap:** `/health` says risk `ok` even when `wp.risk_cell_score` has **no rows for today** (scoring job not run or failed); every route is then 100 % unknown. That is honest per edge, but invisible in `/health`. Proposal (needs coordinator/ML agreement, since health semantics are contract-adjacent): report `risk: degraded` when the active layer's `model_id` has no rows for today's local day. That needs ML's `status()` to expose the *active* layer's id; it currently reports `winter311-hgb-v1`, the gated-off model, while the heuristic is active (FYI already sent).
+
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.3 ms p95=2.3 ms max=2.7 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=4.1 ms p95=5.4 ms max=10.0 ms
+======================= 323 passed, 1 warning in 18.03s ========================
+$ ruff (routing / api): All checks passed! 20 / 33 files already formatted
+$ (cd services/api && uv lock --check)  → exit=0
+$ scripts/check-ownership.sh routing    → exit=1: 19 files, all from the two named commits
+```
+The ownership check fails as expected. It compares against integration, which doesn't yet contain `360fdd4`/`79a0ee6`. All 19 flagged files (`db/…/0007_risk_cell_score.py`, `services/ml/*`, `services/ingestion/*`, `models/artifacts/v2-8d19aa86/{coverage_cells.parquet,winter311-heuristic-v1.joblib}`, `docs/agent-reports/{data,ml}.md`) are byte-identical to `79a0ee6` (`git diff --quiet 79a0ee6 HEAD -- <file>` for each: 19/19 same). No routing commit touches them.
+
+### 0l. Cycle 12b — merge of `integration/winterpath` `137e623` (deployment docs)
+The merge commit is `1027e50`: docs only (`docs/{DATA_COMPLIANCE,ENVIRONMENT_VARIABLES,FREE_TIER_LIMITS,RECOVERY,SECURITY}.md`), no code or migrations. The API matches `docs/ENVIRONMENT_VARIABLES.md`:
+- `DATABASE_POOL_SIZE`/`DATABASE_MAX_OVERFLOW` default to 3 / 2.
+- `API_PUBLIC_WRITES=false` → 503 `WRITES_DISABLED`.
+- `API_LOG_LEVEL=info` is accepted case-insensitively (root level `INFO`).
+- The production combination `API_STORE_BACKEND=memory` + `WEATHER_SOURCE=postgis` uses the single shared pooled engine.
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.8 ms p95=5.8 ms max=9.2 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=6.7 ms p95=19.4 ms max=86.8 ms
+======================= 317 passed, 1 warning in 25.11s ========================
+$ ruff (routing / api): All checks passed! 20 / 32 files already formatted
+$ (cd services/api && uv lock --check)  → exit=0
+$ scripts/check-ownership.sh routing    → ownership OK for agent/routing
+```
+
+### 0k. Cycle 12 — contract v1.7.0 (free-tier deployment): merge `07a1f29`, read-only mode, pooler settings, boot/SIGTERM
+The coordinator's message reached me truncated: it starts mid-sentence at "…X_OVERFLOW (default 2)", so items (1)–(2) were missing. I implemented the API's share of contract v1.7.0 as written in `07a1f29` (`API_PUBLIC_WRITES`, pooler-friendly engine), plus items (3)–(5). **If (1)–(2) asked for anything else, please resend them.**
+
+**Merge:** `integration/winterpath` `07a1f29` → `ef665fc`, no conflicts (contracts and `.env.example` only).
+
+**Changes:**
+- `CONTRACT_VERSION = "1.7.0"`; error code `WRITES_DISABLED` added.
+- **`API_PUBLIC_WRITES`** (default true; accepts `1/true/yes/on` and `0/false/no/off`; any other value fails at startup, so a typo can't silently open writes). When false, `POST /reports` and `POST /pilot-requests` return **503 `WRITES_DISABLED`**. The check is a route dependency, so it answers before body validation, rate limiting or any store access, and nothing about the request is stored. Reads, routing and `DELETE /reports/{id}` are unchanged.
+- **Pool (`winterpath_api/db.py`):**
+  - Settings:
+    - `DATABASE_POOL_SIZE`: default 3 (my choice, since the message didn't give one).
+    - `DATABASE_MAX_OVERFLOW`: default 2.
+    - `pool_pre_ping=True` and `pool_recycle=300`.
+    - `pool_timeout=10` s, so an exhausted pool fails fast and the endpoint returns 503.
+    - `connect_timeout=10` s and `application_name=winterpath-api`.
+  - One engine per process, shared by every repository and the weather store. Previously, weather got a second engine when the stores were in memory.
+  - Session pooler (port 5432) keeps psycopg's prepared statements working, so no `prepare_threshold` change. `sslmode=require` belongs in `DATABASE_URL`, which is never logged.
+- **Graph load (`PostgisGraphProvider`):** one connection via `NullPool`, `connect_timeout`, and `engine.dispose()` in `finally` (also on failure). The startup load therefore never holds a pooler slot.
+- **Shutdown:** a FastAPI lifespan hook runs after uvicorn drains requests on SIGTERM/SIGINT. It shuts the route worker pool and disposes the DB engine, then logs `shutdown_complete`.
+- **Tests:** `tests/test_api_deploy_v17.py` has 14 tests covering settings parsing and invalid values, engine/pool options, graph load (`NullPool` + dispose on failure), 503 on both write endpoints validated against the contract (valid and invalid bodies, repository spies prove no write), the gate answering before the limiter, reads unaffected, writes on by default, and lifespan shutdown releasing the pool and engine.
+
+**(4) Startup, measured against `wp_data`.** Settings: `ROUTING_GRAPH_SOURCE=postgis`, `API_STORE_BACKEND=postgis`, `API_PUBLIC_WRITES=false`, pool 3+2. The URL carries `options=-c default_transaction_read_only=on`, so the session could not write to Data's DB (`show default_transaction_read_only` → `on`). uvicorn started exactly as the image's CMD (`--no-access-log`), on loopback port 8102. A scratch `sitecustomize` recorded every non-loopback socket connect.
+```text
+wp_data: alembic 0006_report_311_nature; wp.node 7042, wp.edge 16846 (16694 in pilot bbox); wp.risk_cell_score absent (0007 not applied)
+label=none risk=none boot_to_health_200_s=4.8 rss_after_boot_mb=125
+health: ok {'graph': 'ok', 'database': 'ok', 'risk': 'disabled', 'weather': 'disabled'}
+graph: 6807 nodes 16296 edges
+compare 200 0.262568s / 0.066025s / 0.063107s / 0.064201s / 0.076824s
+rss_after_5_routes_mb=147
+POST /reports with writes disabled: 503
+SIGTERM -> exit=143 in 0.17s
+graph_loaded log lines: 1
+probe: no non-loopback connections
+
+label=ml risk=winterpath_ml.inference:load_provider boot_to_health_200_s=9.37 rss_after_boot_mb=162
+health: ok {'graph': 'ok', 'database': 'ok', 'risk': 'ok', 'weather': 'disabled'}
+compare 200 1.090192s / 0.106014s / 0.103326s / 0.097676s / 0.099556s
+rss_after_5_routes_mb=149
+SIGTERM -> exit=143 in 0.25s
+graph_loaded log lines: 1
+probe: no non-loopback connections
+
+in-process (sys.setprofile over create_app, ML provider):
+PostgisGraphProvider.load calls during startup: 1
+fit/train/calibrate/download calls during startup: none
+```
+- These figures sit within the coordinator's ~12 s / 125–215 MB. Boot is 4.8 s without a risk layer and 9.4 s with the file-based ML provider; RSS is 125–162 MB. The host load average was ~11–15 throughout.
+- With the ML layer, the first route of each Montréal local day pays about 1 s, because the adapter scores the day's edges and caches them per (edge, local day).
+- **(5) SIGTERM:** the uvicorn log shows `Shutting down` → `Waiting for application shutdown.` → `shutdown_complete` → `Application shutdown complete.` → `Finished server process`, in 0.17–0.25 s. Exit status 143 (128+15) is expected: uvicorn 0.54 re-raises the captured signal after a graceful shutdown (`server.py`: `signal.raise_signal(captured_signal)`).
+
+```text
+$ uv run --project services/api pytest services/routing services/api -rs
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.7 ms p95=2.9 ms max=4.6 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=5.6 ms p95=8.3 ms max=65.1 ms
+======================= 317 passed, 1 warning in 24.13s ========================
+$ ruff (routing / api): All checks passed! 20 / 32 files already formatted (after `ruff format` of the new test file)
+$ (cd services/api && uv lock --check); echo exit=$?    → exit=0
+$ scripts/check-ownership.sh routing                    → ownership OK for agent/routing
+```
+
+**For other agents:**
+- **Platform:**
+  - `infra/docker/api.Dockerfile` hard-codes `--port 8000`. v1.7 says the image binds `0.0.0.0:$PORT`, so it should be `--port "${PORT:-8000}"`.
+  - With `uvicorn --workers N`, each worker loads the graph and holds its own pool. Keep the default single worker on Render Free, or size the pool as N×(pool+overflow) against the pooler limit.
+- **ML:** `RISK_SCORE_SOURCE=postgis` / the DB-backed provider isn't on integration yet; the API loads whatever `RISK_PROVIDER` names. If that provider opens its own engine, please keep it to a tiny pool (or accept an engine from the API) so the total stays inside the session-pooler budget.
+
+### 0j. Cycle 11 — merge of `integration/winterpath` `3aa6438`
+This was a fast-forward from `0823006`, because integration already contained it. It changes nothing under `db/` or `services/`; the incoming changes are the frontend explainer, Platform's CI changes and other agents' reports. `wp_routing` stays at `0006_report_311_nature (head)`.
+```text
+$ git merge --no-edit integration/winterpath      # HEAD → 3aa6438
+$ (cd services/api && uv lock --check); echo exit=$?
+exit=0
+$ uv run --project services/api pytest services/routing services/api -rs     # load average ≈15
+[latency] SYNTHETIC grid 25x25 over PILOT_BBOX: nodes=625 directed_edges=2400 n=100 compare() p50=7.9 ms p95=20.6 ms max=87.9 ms
+[latency] SYNTHETIC grid 60x60 over PILOT_BBOX: nodes=3600 directed_edges=14160 n=100 compare() p50=47.4 ms p95=110.7 ms max=171.4 ms
+[latency] REAL pilot_mini (OSM, 200 edges) n=100 compare() p50=1.5 ms p95=2.8 ms max=3.8 ms (rejected >75 m from network: 4)
+[latency] API POST /routes/compare SYNTHETIC toy grid (38 edges), n=100: p50=4.9 ms p95=6.3 ms max=10.9 ms
+[latency] API POST /routes/compare REAL pilot_mini (200 edges), n=100 node-pair ODs: p50=6.1 ms p95=12.0 ms max=55.2 ms
+======================= 303 passed, 1 warning in 22.55s ========================
+$ ruff (routing / api): All checks passed! 20 / 30 files already formatted
+$ scripts/check-ownership.sh routing; echo exit=$?
+ownership OK for agent/routing
+exit=0
+```
+
+### 0i. Cycle 10 — merge of `integration/winterpath` `6a712e9` (all five agents) + `services/api/uv.lock` refresh
 The merge commit is `83ee512` (no conflicts; 25 incoming commits). It changes nothing under `services/routing`, `services/api` or `db/`, and `db/` is identical to `f6eb3b2`, so `wp_routing` stays at `0006_report_311_nature (head)` with no re-migration. ML added a `db` extra to `services/ml`, which made `services/api/uv.lock` stale. `uv lock` adds only that metadata (`psycopg[binary]>=3.2` under `extra == 'db'`, `provides-extras = ["db"]`); no resolved package versions change.
 ```text
 $ git merge --no-edit integration/winterpath      # 6a712e9
