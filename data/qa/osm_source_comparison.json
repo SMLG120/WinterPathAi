@@ -1,0 +1,105 @@
+{
+ "snapshots": {
+  "overpass": "2026-11-10T20:43:04Z",
+  "geofabrik": "2026-11-08T21:21:00Z"
+ },
+ "builds": {
+  "overpass/old_policy": {
+   "ways_included": 4936,
+   "nodes": 6987,
+   "directed_edges": 16652,
+   "components": 159,
+   "largest_component_node_share": 0.9157,
+   "largest_component_length_share": 0.9711,
+   "gap_count": 351,
+   "total_length_m_undirected": 172906.7,
+   "near_miss_gaps": 0,
+   "component_gaps": 351
+  },
+  "overpass/new_policy": {
+   "ways_included": 4975,
+   "nodes": 7042,
+   "directed_edges": 16846,
+   "components": 145,
+   "largest_component_node_share": 0.9324,
+   "largest_component_length_share": 0.9786,
+   "gap_count": 336,
+   "total_length_m_undirected": 175206.0,
+   "near_miss_gaps": 0,
+   "component_gaps": 336
+  },
+  "geofabrik/old_policy": {
+   "ways_included": 4936,
+   "nodes": 6987,
+   "directed_edges": 16652,
+   "components": 159,
+   "largest_component_node_share": 0.9157,
+   "largest_component_length_share": 0.9711,
+   "gap_count": 351,
+   "total_length_m_undirected": 172906.7,
+   "near_miss_gaps": 0,
+   "component_gaps": 351
+  },
+  "geofabrik/new_policy": {
+   "ways_included": 4975,
+   "nodes": 7042,
+   "directed_edges": 16846,
+   "components": 145,
+   "largest_component_node_share": 0.9324,
+   "largest_component_length_share": 0.9786,
+   "gap_count": 336,
+   "total_length_m_undirected": 175206.0,
+   "near_miss_gaps": 0,
+   "component_gaps": 336
+  }
+ },
+ "source_effect_old_policy (overpass vs geofabrik)": {
+  "edges_common": 16652,
+  "edges_only_first": 0,
+  "edges_only_second": 0,
+  "nodes_common": 6987,
+  "nodes_only_first": 0,
+  "nodes_only_second": 0
+ },
+ "policy_effect_geofabrik (old vs new)": {
+  "edges_common": 16642,
+  "edges_only_first": 10,
+  "edges_only_second": 204,
+  "nodes_common": 6987,
+  "nodes_only_first": 0,
+  "nodes_only_second": 55
+ },
+ "total (overpass/old vs geofabrik/new)": {
+  "edges_common": 16642,
+  "edges_only_first": 10,
+  "edges_only_second": 204,
+  "nodes_common": 6987,
+  "nodes_only_first": 0,
+  "nodes_only_second": 55
+ },
+ "raw_ways": {
+  "overpass": 6853,
+  "geofabrik_clip": 6853,
+  "common": 6853,
+  "only_overpass": 0,
+  "only_geofabrik": 0,
+  "common_with_changed_nodes_or_tags": 0
+ },
+ "common_edges_geometry_changed": 0,
+ "added_by_policy": {
+  "directed_edges_by_highway_foot": {
+   "cycleway/designated": 8,
+   "service/permissive": 66,
+   "service/yes": 110
+  },
+  "ways": 39,
+  "ways_with_access_no_or_private": [
+   112854780,
+   503388659,
+   1296208357,
+   1379125200,
+   1460735759,
+   1460735762
+  ]
+ }
+}

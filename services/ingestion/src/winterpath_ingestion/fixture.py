@@ -29,7 +29,8 @@ Real data, not simulated (`"simulated": false` in metadata.json).
 - **OpenStreetMap**: © OpenStreetMap contributors — https://www.openstreetmap.org/copyright.
   Data available under the Open Database Licence (ODbL 1.0). This fixture is a derived
   database extract and is itself distributed under the ODbL.
-- Downloaded via the Overpass API (overpass-api.de, FOSSGIS); single cached query.
+- Source extract: Geofabrik `quebec-latest.osm.pbf` (download.geofabrik.de), clipped to the
+  pilot bbox; exact dated file, MD5 and OSM timestamp in metadata.json (`osm_source`).
 
 Caveats: OSM tags describe mapped infrastructure, not current winter conditions. Nothing in this
 fixture states that a sidewalk is cleared, ice-free, safe or wheelchair accessible.
@@ -135,7 +136,12 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
             if voirie_used
             else "not enriched (empty lists mean not computed)",
             "osm_snapshot": m["osm_snapshot"],
-            "osm_raw_sha256": m["input_checksum"],
+            "osm_raw_sha256": m.get("raw_sha256"),
+            "osm_pipeline_checksum": m["input_checksum"],
+            "osm_source": {
+                k: (m.get("provenance") or {}).get(k)
+                for k in ("provider", "url", "last_modified", "osm_replication_timestamp", "md5")
+            },
             "parent_bbox": m["bbox"],
             "bbox": [round(float(x), 6) for x in b],
             "anchor": list(ANCHOR),

@@ -1,16 +1,16 @@
 {
-  "finished_at": "2026-11-10T21:47:22+00:00",
-  "ingest_run_id": "1f415e57-e03e-42a7-bbea-7fc905c52289",
-  "input_checksum": "a7ee9f8c1af78a1756c7500fdeac37ebc82b0afdd309dd18ac38a0e8e4f02e2a+37835930f4d4a3d9c2121fe241aa4162284449928fa4f7e63801b5fbbe1d3f99",
+  "finished_at": "2026-11-11T03:53:29+00:00",
+  "ingest_run_id": "626b1e78-bbfe-42fc-bfee-9cecd97095a6",
+  "input_checksum": "b1f22407cf7838e8fe320f0586a2095b72a11635fc01742981d9e8876722e0fb+4facebaecb7198349d2d5381dc85eff41fc11f9267d014559087bda05dccd0ec",
   "name": "pilot_mini",
   "stats": {
     "bbox": [
-      -73.578035,
-      45.503034,
-      -73.573657,
-      45.505518
+      -73.578801,
+      45.503026,
+      -73.576318,
+      45.505218
     ],
     "edge_count": 200,
-    "node_count": 88
+    "node_count": 92
   }
 }
