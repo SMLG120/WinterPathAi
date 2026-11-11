@@ -42,6 +42,11 @@ services:
       # --- data sources: everything from PostGIS (Supabase) ---
       - key: ROUTING_GRAPH_SOURCE
         value: postgis
+      # postgis: "memory" loads no closures or 311 hazards. Writes stay blocked by API_PUBLIC_WRITES=false,
+      # and the wp_api DB login is read-only anyway.
+      # REQUIRES routing's pending fix: with writes off, the community-report and pilot stores must stay
+      # in memory, because wp_reader has no SELECT on community_report. Without that fix this setting
+      # breaks those stores. Merge together with routing's change.
       - key: API_STORE_BACKEND
         value: postgis
       - key: WEATHER_SOURCE

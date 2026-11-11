@@ -5,6 +5,18 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (l) — `API_STORE_BACKEND` comment (Render service live)
+The coordinator reported that Render `winterpath-api` is live and asked for `API_STORE_BACKEND=postgis` in `infra/render.yaml`. **It was already `postgis`** on this branch and on integration b81b5b9 (since update (f)). If the live service runs `memory`, that comes from a dashboard value, not the blueprint. I added the requested comment: memory loads no closures or 311 hazards; writes stay blocked by `API_PUBLIC_WRITES=false`; the `wp_api` login is read-only.
+**Follow-up (coordinator):** the comment now also states that this setting requires routing's pending fix. With writes off, the community-report and pilot stores must stay in memory, because `wp_reader` has no SELECT on `community_report`. The coordinator will merge it together with that fix.
+The CI `deploy-readiness` smoke test does **not** assert the store backend. It sets `API_STORE_BACKEND=memory` only because that job has no database, and a comment now says so. No functional change.
+```text
+$ git show integration/winterpath:infra/render.yaml | grep -n -A1 API_STORE_BACKEND
+45:      - key: API_STORE_BACKEND
+46-        value: postgis
+$ actionlint -> [actionlint exit 0]
+$ (PyYAML) render.yaml API_STORE_BACKEND -> postgis
+```
+
 ## Update 2026-11-11 (k) — scoring job: `--fetch-311 --write-db`
 The coordinator set the `WP_ETL_DATABASE_URL` secret and dispatched `scheduled.yml` on main 0e9adef (run 43084925719). The weather job succeeded end to end (Supabase's latest observation: 19:00 UTC). Scoring failed with `311 aggregates missing … (use --fetch-311)`, exit 2. The step now runs:
 `uv run --locked python -m "$SCORING_MODULE" --start "$day" --fetch-311 --write-db`
