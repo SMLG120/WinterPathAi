@@ -30,6 +30,7 @@ docs/agent-reports/routing.md
 - `git merge --no-edit 79a0ee6` → `737d3e5`. This merge first refused because two untracked files would be overwritten: `models/artifacts/v2-8d19aa86/{coverage_cells.parquet,winter311-heuristic-v1.joblib}`, my local copies of ML's artifacts, which ML now commits. Their `git hash-object` matched `79a0ee6`'s blobs (`cae69c1…`, `360242b…`), so I moved them to the scratchpad and the merge then succeeded.
 - Afterwards `db/`, `services/ml`, `services/ingestion` and `models/` are identical to the named commits.
 - `wp_routing`: `alembic upgrade head` → `0007_risk_cell_score (head)`.
+- `services/api/uv.lock`: ML's `79a0ee6` added `sqlalchemy>=2.0` to `services/ml`'s `db` extra. The API lock now records it (metadata only, one line, no resolved version change), and `uv lock --check` exits 0.
 
 **Fix (`state.py` / `adapters.py`):**
 - `load_risk_provider(spec, edge_coords, *, engine=None, score_source=None)` inspects the factory's signature. It passes `engine=` and `score_source=` only if they are accepted (keyword or `**kwargs`). Older factories that take no arguments are still called with none.
