@@ -1,7 +1,7 @@
 # Agent report — routing
 
 - **Status:** READY FOR REVIEW. Cycle 6 adopts contract **v1.5.0**: 311 natures, CR-ROUTING-4 and CR-ROUTING-9 accepted. Cycle 5 added v1.4.0 closure activity and `terminal_at`; cycle 4 added v1.3.0 and the ML risk layer; earlier cycles were merged at `517a493` (1–2) and `d179845` (3).
-- **Branch / SHA:** `agent/routing` @ `864aa80` (code). `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
+- **Branch / SHA:** `agent/routing` — the latest merge of `integration/winterpath` is `d04da54`, as `ac80a71`; the 0005 boundary test follows it. Cycle-6 code is `864aa80`. `integration/winterpath` (`bbae7d3`, v1.5.0) was merged in first as `71afb2b`. Cycle 5 code is `b6b62c4`, on merge `c6d603f`. This report is committed on top.
 - **Date (UTC):** 2026-11-10
 
 ## Files changed
@@ -24,7 +24,30 @@ docs/agent-reports/routing.md
 ```
 
 ## Commands run and literal results
-### 0b. Cycle 6 run (contract v1.5.0) — current
+### 0c. Merge of `integration/winterpath` `d04da54` (Data migration 0005) — current
+- `git merge --no-edit integration/winterpath` → `ac80a71`, with no conflicts. It brought migration `0005_closure_active_exclusive_end` and the Data and Platform report updates.
+- `wp_routing` was upgraded: `alembic … current` → `0005_closure_active_excl_end (head)`.
+- I added the boundary case `TEST-RT-ends-at-t` (`valid_to` exactly at `t` → inactive → dropped) to the PostGIS closure-activity test. It passes against the 0005 function.
+- `/health` keeps `checks.weather.status = degraded` when the latest observation is stale or absent (`test_api_weather_stale_is_503_and_health_degraded`).
+
+`uptime`: `load averages: 15.59 20.59 25.86`.
+```text
+$ uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider
+======================= 291 passed, 1 warning in 23.92s ========================
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+20 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+30 files already formatted
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
+$ row counts in wp_routing after run
+{'edge': 0, 'node': 0, 'closure': 0, 'community_report': 0, 'pilot_request': 0, 'weather_obs': 0, 'weather_daily': 0, 'report_311_cell': 0}
+```
+Integration note: the coordinator's `d04da54` includes routing up to `32e69f6` only. Cycle 6 (`864aa80`: v1.5.0 311 natures, 404 for every bad deletion attempt, `CONTRACT_VERSION` 1.5.0) and this commit are not yet in integration. After they are merged, the Platform harness must expect 404, not 422, for a malformed deletion token or id.
+
+### 0b. Cycle 6 run (contract v1.5.0)
 `uptime` at start: `load averages: 11.79 23.10 29.56`. `wp_routing` at `0004_closure_status (head)`; no migration for `report_311_cell.nature` exists yet.
 ```text
 $ set -a; source .env.local; set +a; uv run --project services/api pytest services/routing services/api -rs -p no:cacheprovider -s   # filtered to latency + summary
@@ -353,7 +376,12 @@ Resolved by v1.4.0 and adopted in cycle 5: closure status vocabulary and activit
 Resolved by v1.5.0 and adopted in cycle 6: CR-ROUTING-4 (404 for any bad deletion attempt) and CR-ROUTING-9 (explanation evidence mapping, old #7).
 
 Still open (pending coordinator/user decision; not implemented):
-1. `.env.example`: still missing `WEATHER_SOURCE`, `WEATHER_MAX_AGE_MINUTES`, `WEATHER_STATION_IDS`. Also: `RISK_PROVIDER=winterpath_ml.inference:load_provider` enables the ML layer, and `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
+1. **CR-ROUTING-10 — `.env.example` (names only; the coordinator will add them):**
+   - `WEATHER_SOURCE`: `none` (default, weather endpoints 503) or `postgis` (read `wp.weather_obs` / `wp.weather_daily` via `DATABASE_URL`);
+   - `WEATHER_MAX_AGE_MINUTES`: default `180`; an older latest observation is stale → `/weather/current` 503 and `/health` `checks.weather.status = degraded`;
+   - `WEATHER_STATION_IDS`: comma-separated ECCC station ids in priority order; empty = most recent across stations.
+
+   Usage notes for existing names: `RISK_PROVIDER=winterpath_ml.inference:load_provider` enables the ML layer, and `API_ADMIN_TOKEN_HASH` = SHA-256 hex of the token (optional `sha256:` prefix).
 6. openapi (additive, new in cycle 5): `HazardFeature.properties.active: boolean | null` (closure activity at the evaluated time). Today "schedule unknown" reaches the map only through `title_en/fr` and `evidence.note`, so the frontend cannot badge it reliably.
 7. Confirm that both routes are returned when they are identical (the evidence-state part was resolved by v1.5).
 8. **Platform (FYI, not a contract change):** `tests/integration/log_scan.py` flags fractional seconds of microsecond ISO timestamps (e.g. `…:40.010135Z`) as latitudes. I avoided this by logging milliseconds, but other services may trip it.

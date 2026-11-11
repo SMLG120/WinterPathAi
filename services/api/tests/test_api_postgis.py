@@ -180,6 +180,8 @@ CLOSURE_CASES = {
     "TEST-RT-status": ("unknown", "2026-12-01", "2027-01-01", _sched(), None),
     "TEST-RT-weekday": ("permit_issued", "2026-12-01", "2027-01-01", _sched(only="sat"), False),
     "TEST-RT-ended": ("permit_issued", "2026-11-01", "2026-12-01", _sched(), False),
+    # valid_to is exclusive (data-model v1.4 `t < valid_to`, migration 0005): ends exactly at t
+    "TEST-RT-ends-at-t": ("permit_issued", "2026-12-01", AT_ISO, _sched(), False),
     "TEST-RT-cancel": ("cancelled", "2026-12-01", "2027-01-01", _sched(), False),
     "TEST-RT-evening": (
         "permit_issued",
@@ -226,8 +228,8 @@ def closures(db):
                         "lon": lonlat[0],
                         "lat": lonlat[1],
                         "blocks": blocks,
-                        "vf": vf + "T05:00:00Z",
-                        "vt": vt + "T05:00:00Z",
+                        "vf": vf if "T" in vf else vf + "T05:00:00Z",
+                        "vt": vt if "T" in vt else vt + "T05:00:00Z",
                         "st": status,
                         "attrs": "{}" if sched is None else '{"weekly_schedule": ' + sched + "}",
                     },
