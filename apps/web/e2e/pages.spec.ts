@@ -137,3 +137,22 @@ test('API-provided English model limitations are marked lang="en" and flagged on
   await page.goto('/en/winter');
   await expect(page.getByText('Provided by the API in English only.')).toHaveCount(0);
 });
+
+test('condition explainer: 3D stage loads near view with an illustrative caption; none under reduced motion', async ({ page, browser }) => {
+  await page.goto('/en/how-it-works');
+  const explainer = page.getByTestId('condition-explainer');
+  await explainer.scrollIntoViewIfNeeded();
+  await page.getByRole('tab', { name: 'Ice and fresh snow' }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('Model estimate');
+  const stage = page.getByTestId('explainer-stage');
+  await expect(stage.locator('canvas')).toHaveCount(1, { timeout: 15_000 });
+  await expect(stage.locator('[aria-hidden="true"]').first()).toBeAttached();
+  await expect(stage).toContainText('Illustrative scene');
+
+  const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+  const rm = await ctx.newPage();
+  await rm.goto('http://localhost:5174/fr/how-it-works');
+  await expect(rm.getByRole('tab', { name: 'Escaliers extérieurs' })).toBeVisible();
+  await expect(rm.getByTestId('explainer-stage')).toHaveCount(0);
+  await ctx.close();
+});

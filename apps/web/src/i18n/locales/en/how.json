@@ -33,6 +33,48 @@
     "title": "Evidence states",
     "intro": "Every condition, closure, report or estimate carries exactly one of these labels, always shown with an icon and text."
   },
+  "conditions": {
+    "title": "Winter conditions: what we can actually know",
+    "intro": "Pick a condition to see which data source covers it, how WinterPath uses it and which evidence label it gets.",
+    "tablist": "Winter conditions",
+    "source": "Data source",
+    "inWinterPath": "How WinterPath uses it",
+    "shownAs": "Shown as",
+    "illustrative": "Illustrative scene — not a real street or live conditions.",
+    "sceneDescription": "Illustrative 3D scene of one block: a triplex with an exterior staircase, a sidewalk, a snowbank, a roadwork barrier, a 311 report marker and an icy patch. The selected condition is highlighted.",
+    "lens": {
+      "steps": {
+        "label": "Exterior stairs",
+        "source": "Stairs and steps on the walking network come from OpenStreetMap (highway=steps).",
+        "use": "The step-free profile uses only segments that OpenStreetMap tags confirm as step-free. Steps, and segments whose status is unknown, are left out rather than guessed.",
+        "evidenceNote": "Step-free status of segments without such a tag."
+      },
+      "closure": {
+        "label": "Sidewalk work",
+        "source": "Ville de Montréal roadwork permits (Entraves et travaux en cours).",
+        "use": "A sidewalk is avoided only while the permit is active and its sidewalk_blockedtype field says pedestrian passage is blocked. Roadwork alone never means a closed sidewalk.",
+        "evidenceNote": "The permit record is official data; it says nothing about snow or ice."
+      },
+      "reports": {
+        "label": "311 reports",
+        "source": "Ville de Montréal 311 requests (for example about snow or ice), grouped by area.",
+        "use": "Shown as reports from residents, never as confirmed obstacles.",
+        "evidenceNote": "A report is not a verified condition."
+      },
+      "snowLoading": {
+        "label": "Snow removal",
+        "source": "The city's street snow-loading schedules (Planif-Neige). Optional source; it needs a city access token.",
+        "use": "A street loading schedule does not certify that a sidewalk has been cleared. WinterPath never uses it to describe a sidewalk as cleared.",
+        "evidenceNote": "No sidewalk condition is derived from it."
+      },
+      "weather": {
+        "label": "Ice and fresh snow",
+        "source": "Environment and Climate Change Canada (ECCC) weather observations and forecasts.",
+        "use": "Weather describes the area, not a specific sidewalk. A winter-risk model can turn it into a per-segment estimate; see the model section for whether one is enabled and how it was evaluated. Without a risk layer, segment risk is Unknown, never low.",
+        "evidenceNote": "Only when a risk model is enabled."
+      }
+    }
+  },
   "model": {
     "title": "Model card",
     "intro": "Our optional risk layer predicts reporting activity, not ice. It is only switched on after it beats a simple baseline on held-out data."

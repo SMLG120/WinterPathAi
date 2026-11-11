@@ -6,11 +6,12 @@ import { DemoBadge } from '@/components/evidence/DemoBadge';
 import { EvidenceBadge } from '@/components/evidence/EvidenceBadge';
 import { Freshness } from '@/components/evidence/Freshness';
 import { PageHeader, Section } from '@/components/layout/Section';
+import { ConditionExplainer } from '@/features/ConditionExplainer';
 import { ModelStatusCard } from '@/features/ModelStatusCard';
 import { formatDateTime } from '@/lib/format';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
-const SECTIONS = ['sources', 'attribution', 'evidence', 'model', 'coverage', 'privacy', 'limitations'] as const;
+const SECTIONS = ['sources', 'attribution', 'evidence', 'conditions', 'model', 'coverage', 'privacy', 'limitations'] as const;
 
 function SourcesTable({ rows }: { rows: DataSource[] }) {
   const { t } = useTranslation('how');
@@ -162,6 +163,10 @@ export default function HowItWorks() {
             </li>
           ))}
         </ul>
+      </Section>
+
+      <Section id="conditions" title={t('conditions.title')} intro={t('conditions.intro')} className="pt-0">
+        <ConditionExplainer />
       </Section>
 
       <Section id="model" title={t('model.title')} intro={t('model.intro')} className="pt-0">

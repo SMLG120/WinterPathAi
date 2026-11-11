@@ -2,7 +2,7 @@
 
 - **Status:** READY FOR REVIEW
 - **Branch / SHA:** agent/frontend (update 2 commit on top of 0f3d6d4; see `git log`)
-- **Date (UTC):** 2026-11-11 (update 5: contract v1.6.0, data ee5f1fc fixture check, visual QA fixes)
+- **Date (UTC):** 2026-11-11 (update 6: condition explainer; merged integration 6a712e9)
 - **Merged in:** `integration/winterpath` (contract OpenAPI 1.1.0, data-model 1.2.0, platform + data work) via `git merge --no-edit` at ce3013c — no conflicts. Contract **v1.3.0** (503s, `OFF_NETWORK`, canonical source ids) + routing/ML merged at 0f3d6d4 — no conflicts. Contract **v1.4.0/v1.5.0** + routing/data/platform merged after 249570b — no conflicts.
 
 ## Files changed (vs merge-base with integration/winterpath)
@@ -422,6 +422,31 @@ The heuristic-layer real-API run (update 4) was not repeated in this cycle.
 2. **Dark-mode map attribution was unreadable**: light text on maplibre's translucent white background, which loads later with the map chunk at equal specificity. Fixed with higher-specificity selectors; new e2e test checks the computed background.
 3. **The French Winter page showed English model limitations.** This text comes from `/models/status`, which has no locale. It is now marked `lang="en"`, and the French page says it is API text in English only, rather than showing an invented translation (e2e). → **CR-FE-3** below.
 
+## Update 6 — sidewalk condition explainer; merge of integration `6a712e9`
+**Condition explainer (ux-spec §3D, optional) — built.** New section "Winter conditions: what we can actually know" on How it works (`#conditions`, also in the page TOC).
+- Content is a keyboard tablist with 5 conditions (exterior stairs, sidewalk work, 311 reports, snow removal, ice and fresh snow). Each panel names the data source, how WinterPath uses it, and the evidence label it gets: untagged step-free status → Unknown; roadwork permits → Confirmed (the permit record only, said explicitly); 311 → Unverified report; snow-loading schedules → **no sidewalk state** ("does not certify that a sidewalk has been cleared"); weather → Model estimate only when a risk model is enabled, otherwise Unknown, never low. Wording checked against data-model.md (closures `confirmed`, `closure_active_at` + `blocks_passage`) and architecture.md §hard exclusions (step-free profile drops `step_free != true`).
+- Scene (`src/components/explainer/`): original procedural vignette, **508 triangles, 11 draw calls**, no GLB/textures; selected condition glows in its own colour, others fade. `aria-hidden`, sr-only description, visible "Illustrative scene — not a real street or live conditions." caption. Loads only when scrolled near **and** WebGL **and** no reduced motion **and** no Save-Data (`may3D()` in `src/lib/webgl.ts`, now shared with the hero); `frameloop="demand"` (one frame per lens change, nothing animates). Without 3D the text panel stands alone (no empty box).
+- Chunk: `ExplainerScene` 1.13 KB gz; shares the three/R3F chunks with the hero. Initial JS **145.4 KB gz** (was 143.9; +EN/FR copy in the How namespace).
+- Tests: `explainerModel.test.ts` (budget, every lens has an element, evidence mapping), `ConditionExplainer.test.tsx` (tablist keyboard, badges per lens, no badge + "does not certify" for snow removal, no stage without WebGL), e2e "condition explainer" (canvas loads near view, caption; FR reduced-motion → no stage). jsdom `getContext` now stubbed to `null` in `src/test/setup.ts` (removes "Not implemented" noise).
+- Screenshot: `apps/web/docs/screenshots/condition-explainer-desktop-en-light.png`.
+
+**Merge:** `git merge --no-edit integration/winterpath` (6a712e9) → `9ad54d5`, no conflicts. No contract change; `npm run gen:api` → no diff. pilot_mini regenerated (92 nodes / 200 edges, OSM snapshot 2026-11-08T21:21:00Z) — tests derive points/counts from the fixture, nothing to change. The ML fix for `MODEL_ARTIFACT_DIR` + `risk_artifacts_missing` warning landed, which resolves my earlier finding; the README now uses `MODEL_ARTIFACT_DIR` instead of a symlink.
+
+**Real-API e2e hardening:** the real-API axe test failed intermittently on `/` (`color-contrast: 6`, 2 of 6 runs; then 20/20 passes, not reproducible on demand). Unlike the mock spec, it ran axe without waiting for section fades to finish. It now waits for running animations to finish (same rule as `e2e/pages.spec.ts`) and prints failing targets. Mock e2e had a similar one-off on `en dark /pilot` (`color-contrast: 4`) in 1 of 21 runs before the merge (`--repeat-each=5` → 20/20 passed). Recorded as flaky, not fixed at the root.
+
+Literal results on `9ad54d5` + this commit:
+```
+npm run lint                     → eslint . --max-warnings 0 (exit 0)
+npx vitest run                   →  Test Files  13 passed (13) /  Tests  112 passed (112)
+npm run build && npm run size    → ✓ built in 6.53s / TOTAL initial JS: 145.4 KB gz (budget 250 KB, excludes map + 3D chunks)
+npx playwright test              →  104 passed (3.4m)
+real-API, RISK_PROVIDER=none     →  16 passed (48.3s); second run 16 passed (53.7s)
+real-API, RISK_PROVIDER=winterpath_ml.inference:load_provider, MODEL_ARTIFACT_DIR=<winterpath-ml>/models/artifacts
+                                 → /models/status {'enabled': False, 'model_id': 'winter311-hgb-v1', 'risk_layer': 'heuristic'}; compare risk_layer = heuristic
+                                 →  16 passed (53.3s)
+scripts/check-ownership.sh frontend → ownership OK for agent/frontend
+```
+
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
 |---|---|---|
@@ -434,11 +459,12 @@ The heuristic-layer real-API run (update 4) was not repeated in this cycle.
 | EN/FR key parity test | Yes | `src/i18n/parity.test.ts` (keys, interpolation vars, no empty or untranslated strings) |
 
 ## Not done / not measured (stated plainly)
-- Real-API e2e used a local API with the fixture graph, memory store and no risk provider. Not tested against Postgres/PostGIS or a real risk layer.
+- Real-API e2e used a local API with the fixture graph and memory store (risk provider none, and the ML heuristic layer in updates 4 and 6). Not tested against Postgres/PostGIS.
 - **LCP < 2.5 s not met** in local Lighthouse mobile runs (see Update 2). CLS and a11y targets met there. No field data.
 - **Screenshots + a visual pass done (update 5); no manual screen-reader QA.** Axe passing ≠ WCAG conformance; I'm not claiming compliance.
 - 3D frame rate (60 fps target) not measured on real hardware; e2e uses SwiftShader.
-- Optional "sidewalk condition explainer" 3D scene not built.
+- Condition explainer built (update 6); its frame rate is not measured either (it renders on demand only).
+- Intermittent axe `color-contrast` result in e2e (1 of 21 mock runs on `/pilot`; real-API `/` before the settle-wait fix). Root cause not proven.
 - `npm audit`: 7 moderate findings remain, all the same `minimatch` ReDoS in dev-only lint tooling (`typescript-eslint`). Critical `maplibre-gl` ≤6.4 and high `zod` <4.6.6 advisories were avoided by using maplibre-gl 6.17.0 / zod 4.6.7; vitest 4.1.12 avoids the critical tinypool/vitest advisories.
 
 ## Blockers

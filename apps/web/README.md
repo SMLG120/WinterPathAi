@@ -32,6 +32,6 @@ then `cd apps/web && E2E_ADMIN_TOKEN='<local test token>' npm run e2e:real`
 (`E2E_API_BASE_URL` overrides the default `http://localhost:8104/api/v1`).
 
 The compare tests read the `risk_layer` from the API response and assert the matching copy, so the
-suite also runs with the ML layer: `RISK_PROVIDER=winterpath_ml.inference:load_provider`. That
-provider needs the git-ignored artifacts under `models/artifacts/<run_id>/`; without them it falls
-back to `none` without logging anything (check `GET /models/status`).
+suite also runs with the ML layer: `RISK_PROVIDER=winterpath_ml.inference:load_provider` plus
+`MODEL_ARTIFACT_DIR=<path to models/artifacts>` (artifacts are git-ignored). Without them the provider
+falls back to `none` and logs `risk_artifacts_missing`; check `GET /models/status` (`risk_layer`).

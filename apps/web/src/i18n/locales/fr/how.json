@@ -33,6 +33,48 @@
     "title": "Niveaux de fiabilité",
     "intro": "Chaque état, fermeture, signalement ou estimation porte exactement une de ces étiquettes, toujours affichée avec une icône et du texte."
   },
+  "conditions": {
+    "title": "Conditions hivernales : ce que l'on peut vraiment savoir",
+    "intro": "Choisissez une condition pour voir quelle source de données la couvre, comment WinterPath l'utilise et quelle étiquette de fiabilité elle reçoit.",
+    "tablist": "Conditions hivernales",
+    "source": "Source de données",
+    "inWinterPath": "Utilisation dans WinterPath",
+    "shownAs": "Affiché comme",
+    "illustrative": "Scène illustrative — ni une vraie rue ni des conditions en direct.",
+    "sceneDescription": "Scène 3D illustrative d'un pâté de maisons : un triplex avec un escalier extérieur, un trottoir, un banc de neige, une barrière de chantier, un repère de requête 311 et une plaque de glace. La condition choisie est mise en évidence.",
+    "lens": {
+      "steps": {
+        "label": "Escaliers extérieurs",
+        "source": "Les escaliers et marches du réseau piéton proviennent d'OpenStreetMap (highway=steps).",
+        "use": "Le profil sans marches n'utilise que les segments confirmés sans marches par les étiquettes OpenStreetMap. Les marches et les segments au statut inconnu sont écartés plutôt que devinés.",
+        "evidenceNote": "Accessibilité sans marches des segments sans cette étiquette."
+      },
+      "closure": {
+        "label": "Travaux sur le trottoir",
+        "source": "Permis de travaux de la Ville de Montréal (Entraves et travaux en cours).",
+        "use": "Un trottoir n'est évité que pendant la période active du permis et si son champ sidewalk_blockedtype indique que le passage piéton est bloqué. Des travaux ne signifient jamais à eux seuls un trottoir fermé.",
+        "evidenceNote": "Le permis est une donnée officielle; il ne dit rien sur la neige ou la glace."
+      },
+      "reports": {
+        "label": "Requêtes 311",
+        "source": "Requêtes 311 de la Ville de Montréal (par exemple sur la neige ou la glace), regroupées par secteur.",
+        "use": "Affichées comme des signalements de résidents, jamais comme des obstacles confirmés.",
+        "evidenceNote": "Un signalement n'est pas une condition vérifiée."
+      },
+      "snowLoading": {
+        "label": "Déneigement",
+        "source": "Les horaires de chargement de la neige dans les rues (Planif-Neige). Source optionnelle qui exige un jeton d'accès de la Ville.",
+        "use": "Un horaire de chargement dans la rue ne certifie pas qu'un trottoir a été déneigé. WinterPath ne s'en sert jamais pour décrire un trottoir comme déneigé.",
+        "evidenceNote": "Aucune condition de trottoir n'en est déduite."
+      },
+      "weather": {
+        "label": "Glace et neige fraîche",
+        "source": "Observations et prévisions météo d'Environnement et Changement climatique Canada (ECCC).",
+        "use": "La météo décrit le secteur, pas un trottoir précis. Un modèle de risque hivernal peut en tirer une estimation par segment; voyez la section sur le modèle pour savoir s'il est activé et comment il a été évalué. Sans couche de risque, le risque d'un segment est Inconnu, jamais faible.",
+        "evidenceNote": "Seulement lorsqu'un modèle de risque est activé."
+      }
+    }
+  },
   "model": {
     "title": "Fiche du modèle",
     "intro": "Notre couche de risque facultative prédit l'activité de signalement, pas la glace. Elle n'est activée qu'après avoir surpassé une référence simple sur des données réservées."

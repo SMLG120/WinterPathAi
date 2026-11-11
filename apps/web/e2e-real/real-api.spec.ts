@@ -161,8 +161,10 @@ for (const path of ['', '/plan', '/winter', '/reports', '/how-it-works', '/pilot
         await new Promise((r) => setTimeout(r, 60));
       }
     });
+    // Same settle rule as e2e/pages.spec.ts: audit final content, not text mid-fade.
+    await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
     await page.waitForTimeout(800);
     const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).exclude('.maplibregl-canvas').analyze();
-    expect(res.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+    expect(res.violations.map((v) => `${v.id}: ${v.nodes.length} × ${v.nodes.map((n) => `${n.target.join(' ')} [${n.any[0]?.message ?? ''}]`).join(' | ')}`)).toEqual([]);
   });
 }
