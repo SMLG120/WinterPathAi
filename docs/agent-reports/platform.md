@@ -5,6 +5,30 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (b) — CI fix: CORS origin for the real-API contract step
+The coordinator reported the first GitHub run (private repo, run 43031068137, main = a292b63): 11/12 jobs passed. `contract + integration (schemathesis)` failed only in the step `tests against real API`. Literal lines from `gh run view 43031068137 --log-failed`:
+```text
+FAILED test_cors.py::test_preflight_allowed_origin - assert 405 in (200, 204)
+FAILED test_cors.py::test_simple_request_headers - AssertionError: assert None == 'http://localhost:5175'
+2 failed, 46 passed, 9 skipped, 5 xfailed, 2 xpassed in 7.34s
+```
+Cause: that step started uvicorn without `API_CORS_ORIGINS`. The API then installs no CORS middleware, so the preflight gets 405 and plain requests carry no ACAO header. The harness expects `http://localhost:5175`.
+
+Fix (`.github/workflows/ci.yml`, step env only): `API_CORS_ORIGINS: http://localhost:5175` and `CORS_ALLOWED_ORIGIN: http://localhost:5175`, so the server allow-list and the harness expectation are the same explicit origin (no wildcard). Nothing was pushed; the coordinator merges and pushes.
+```text
+$ actionlint --version && actionlint
+1.7.12
+[actionlint exit 0]
+
+$ (local reproduction of the CI step on port 8105; API started with only API_CORS_ORIGINS=http://localhost:5175)
+$ API_BASE_URL=http://127.0.0.1:8105/api/v1 API_LOG_FILE=<scratch>/api.log CORS_ALLOWED_ORIGIN=http://localhost:5175 uv run pytest -q test_cors.py
+3 passed in 0.06s
+[exit 0]
+```
+Not verified: the fix has not run on GitHub yet. That needs the coordinator's next push.
+
+Follow-up, not changed: the CI real-API step sets no `API_ADMIN_TOKEN` / `API_ADMIN_TOKEN_HASH`, so `test_admin_invalid_input_rejected_when_authorized` (4 cases) skips there. That accounts for 9 skipped = 5 + 4 in the log above. Positive admin contract cases only see 401. Covering authorized admin paths in CI would need a per-run throwaway token generated in the step (hash to the API, plaintext to pytest, masked with `::add-mask::`). I can add this if the coordinator wants it.
+
 ## Update 2026-11-11 — merged integration/winterpath; harness run against the real API
 Coordinator instruction: merge `integration/winterpath` (d04da54) at the next checkpoint, no rebase/force, and continue.
 
