@@ -5,8 +5,10 @@
   (data-model v1.4, three-valued): ``false`` rows are dropped, ``true`` → ``Hazard.active=True``,
   ``NULL`` → ``Hazard.active=None`` (unknown — flagged and penalised by routing, never clear).
   Databases without the function (pre-migration 0004) fall back to the validity window only.
-* 311 aggregates (``wp.report_311_cell``) → evidence ``unverified_report``; cells with n < 3 per
-  day are suppressed (k-anonymity floor, data-model.md).
+* 311 aggregates (``wp.report_311_cell``) → evidence ``unverified_report``. Data-model v1.5: rows
+  are per ``nature``; we ``SUM(n)`` over ``nature IN ('requete','plainte')`` per (cell, day,
+  category) and only then apply the k-anonymity floor (sums < 3 suppressed). Tables without the
+  ``nature`` column (pre-v1.5) are summed as they are.
 * approved community reports → evidence ``unverified_report``.
 """
 
@@ -79,6 +81,37 @@ class InMemoryHazardRepository:
         return {}
 
 
+REPORT_311_NATURES = ("requete", "plainte")
+#: data-model canonical categories (v1.5; alley categories v1.6, CR-ML-2) → (en, fr) titles;
+#: unknown names are shown verbatim.
+CATEGORY_311_TITLES = {
+    "sidewalk_slippery": ("311 reports: slippery sidewalk", "Requêtes 311 : trottoir glissant"),
+    "roadway_slippery": ("311 reports: slippery roadway", "Requêtes 311 : chaussée glissante"),
+    "snow_clearing": ("311 reports: snow clearing", "Requêtes 311 : déneigement"),
+    "snow_dumping": ("311 reports: snow dumping", "Requêtes 311 : dépôt de neige"),
+    "snow_clearing_alley": (
+        "311 reports: snow clearing (alley)",
+        "Requêtes 311 : déneigement (ruelle)",
+    ),
+    "snow_dumping_alley": (
+        "311 reports: snow dumping (alley)",
+        "Requêtes 311 : dépôt de neige (ruelle)",
+    ),
+}
+
+
+def report_311_sql(table: str, has_nature: bool) -> str:
+    """Per-day sums over the public natures, floor applied after summing, then the window sum."""
+    nature = " AND nature IN ('requete','plainte')" if has_nature else ""
+    return (
+        "SELECT h3, category, SUM(n) AS n, MIN(day) AS d0, MAX(day) AS d1 FROM ("  # noqa: S608
+        f" SELECT h3, day, category, SUM(n) AS n FROM {table}"
+        f" WHERE day > :d0 AND day <= :d1{nature}"
+        " GROUP BY h3, day, category HAVING SUM(n) >= :k"
+        ") per_day GROUP BY h3, category"
+    )
+
+
 CLOSURE_COLS = (
     "c.closure_id, ST_AsGeoJSON(c.geom) AS g, c.sidewalk_blockedtype, c.blocks_passage,"
     " c.valid_from, c.valid_to, c.status, c.source_id"
@@ -128,10 +161,14 @@ def closure_hazard(m) -> Hazard:
 
 
 class PostgisHazardRepository:
-    def __init__(self, engine, reports: ReportRepository) -> None:
+    def __init__(
+        self, engine, reports: ReportRepository, report_311_table: str = "wp.report_311_cell"
+    ) -> None:
         self.engine = engine
         self.reports = reports
+        self.report_311_table = report_311_table  # constant (tests may point it at a temp table)
         self._has_active_fn: bool | None = None
+        self._has_nature: bool | None = None
 
     def list(self, at: datetime) -> list[Hazard]:
 
@@ -145,15 +182,18 @@ class PostgisHazardRepository:
             sql = CLOSURE_SQL_V14 if self._has_active_fn else CLOSURE_SQL_LEGACY
             for m in conn.execute(text(sql), {"at": at}).mappings():
                 out.append(closure_hazard(m))
+            if self._has_nature is None:
+                cols = conn.execute(text(f"SELECT * FROM {self.report_311_table} LIMIT 0"))  # noqa: S608
+                self._has_nature = "nature" in cols.keys()
             rows = conn.execute(
-                text(
-                    "SELECT h3, category, SUM(n) AS n, MIN(day) AS d0, MAX(day) AS d1"
-                    " FROM wp.report_311_cell WHERE day > :d0 AND day <= :d1 AND n >= :k"
-                    " GROUP BY h3, category"
-                ),
+                text(report_311_sql(self.report_311_table, self._has_nature)),
                 {"d0": (at - REPORT_311_WINDOW).date(), "d1": at.date(), "k": K_ANONYMITY_FLOOR},
             ).mappings()
             for m in rows:
+                cat = m["category"]
+                titles = CATEGORY_311_TITLES.get(
+                    cat, (f"311 reports: {cat}", f"Requêtes 311 : {cat}")
+                )
                 ring = [[lng, lat] for lat, lng in h3.cell_to_boundary(m["h3"])]
                 ring.append(ring[0])
                 d0 = datetime.combine(m["d0"], datetime.min.time(), tzinfo=at.tzinfo)
@@ -172,8 +212,8 @@ class PostgisHazardRepository:
                         blocks_passage=None,
                         valid_from=d0,
                         valid_to=d1,
-                        title_en=f"311 reports: {m['category']}",
-                        title_fr=f"Requêtes 311 : {m['category']}",
+                        title_en=titles[0],
+                        title_fr=titles[1],
                         report_count=int(m["n"]),
                     )
                 )

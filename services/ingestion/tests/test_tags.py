@@ -1,6 +1,7 @@
 """Tag-mapping unit tests. Inputs are SYNTHETIC tag dicts (plainly labelled), not real data."""
 
 from winterpath_ingestion.osm.graph import (
+    admitted_by_foot_override,
     crossing_type,
     edge_kind,
     exclusion_reason,
@@ -21,6 +22,40 @@ def test_exclusions():
     # explicit foot permission overrides general access restriction
     assert exclusion_reason({"highway": "footway", "access": "private", "foot": "yes"}) is None
     assert exclusion_reason({"highway": "footway"}) is None
+
+
+def test_foot_permission_overrides_access_cr_data_7():
+    """Contract v1.6.0: explicit foot=yes|designated|permissive overrides access=private|no;
+    foot=no|use_sidepath always excludes; any other foot value does not override."""
+    for acc in ("private", "no"):
+        for f in ("yes", "designated", "permissive"):
+            for hw in ("footway", "service", "steps"):
+                t = {"highway": hw, "access": acc, "foot": f}
+                assert exclusion_reason(t) is None
+                assert admitted_by_foot_override(t)
+        for f in ("no", "use_sidepath", "private"):
+            assert exclusion_reason({"highway": "footway", "access": acc, "foot": f})
+        for f in ("customers", "destination", "unknown"):  # not an explicit permission
+            assert exclusion_reason({"highway": "footway", "access": acc, "foot": f})
+        assert exclusion_reason({"highway": "footway", "access": acc})
+    assert exclusion_reason({"highway": "footway", "access": "yes", "foot": "no"})
+    assert exclusion_reason({"highway": "footway", "access": "yes", "foot": "use_sidepath"})
+    assert not admitted_by_foot_override({"highway": "footway", "foot": "yes"})
+
+
+def test_service_cycleway_only_with_explicit_foot_permission():
+    """Contract v1.5.0 path policy (user decision 2026-11-10)."""
+    for hw in ("service", "cycleway"):
+        assert exclusion_reason({"highway": hw})  # untagged → excluded, never assumed walkable
+        assert exclusion_reason({"highway": hw, "foot": "no"})
+        assert exclusion_reason({"highway": hw, "foot": "use_sidepath"})
+        assert exclusion_reason({"highway": hw, "foot": "unknown"})
+        for f in ("yes", "designated", "permissive"):
+            assert exclusion_reason({"highway": hw, "foot": f}) is None
+    assert exclusion_reason({"highway": "service", "foot": "yes", "area": "yes"})
+    assert exclusion_reason({"highway": "corridor", "foot": "yes"})  # indoor stays excluded
+    assert edge_kind({"highway": "cycleway", "foot": "designated"}) == "path"
+    assert edge_kind({"highway": "service", "foot": "yes"}) == "other"
 
 
 def test_foot_access():

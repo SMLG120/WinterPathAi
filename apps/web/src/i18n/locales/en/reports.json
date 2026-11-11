@@ -1,0 +1,77 @@
+{
+  "title": "Report a winter issue",
+  "intro": "Tell us about snow, ice or an obstruction in the pilot area. Reports are reviewed by a moderator before anyone sees them, and they expire automatically.",
+  "form": {
+    "category": "What did you see?",
+    "categories": {
+      "snow": "Snow not cleared",
+      "ice": "Ice",
+      "obstructed_ramp": "Blocked curb ramp",
+      "construction": "Construction blocking the way",
+      "other": "Other"
+    },
+    "location": "Location",
+    "locationHelp": "Enter the coordinates of the issue, or use your current location.",
+    "lat": "Latitude",
+    "lon": "Longitude",
+    "useLocation": "Use my location",
+    "locating": "Locating…",
+    "geoDenied": "Location permission was denied. Enter coordinates instead.",
+    "geoUnavailable": "Your location isn't available. Enter coordinates instead.",
+    "consent": "I consent to sending this exact location with my report.",
+    "consentHelp": "Required. The location is stored only with your report and deleted when the report is deleted or expires.",
+    "description": "Description (optional)",
+    "counter": "{{count}} / 280 characters",
+    "submit": "Send report",
+    "submitting": "Sending…"
+  },
+  "validation": {
+    "category": "Choose a category.",
+    "coords": "Enter a valid latitude and longitude.",
+    "outside": "This location is outside the pilot area.",
+    "consent": "You need to consent to sending the location.",
+    "tooLong": "Keep the description to 280 characters or fewer."
+  },
+  "receipt": {
+    "title": "Report received",
+    "body": "Thank you. Your report is pending moderation and will not appear on the map until a moderator approves it.",
+    "id": "Report ID",
+    "status": "Status",
+    "expires": "Expires",
+    "token": "Deletion code",
+    "tokenWarn": "Save this code now. It is shown only once and is the only way to delete your report.",
+    "delete": "Delete my report",
+    "deleting": "Deleting…",
+    "deleted": "Your report has been deleted.",
+    "deleteFailed": "We couldn't delete the report. It may already have expired or been removed.",
+    "another": "Send another report"
+  },
+  "status": {
+    "title": "What happens to a report",
+    "pending": "Pending — waiting for a moderator. Not shown to anyone.",
+    "approved": "Approved — shown on the map as an unverified report, never as a confirmed condition.",
+    "rejected": "Rejected — not shown.",
+    "expired": "Expired — removed from the map.",
+    "deleted": "Deleted — removed by you or a moderator."
+  },
+  "expiry": "Reports expire 72 hours after submission. All report data is permanently deleted 30 days after a report is rejected, expired or deleted.",
+  "rateLimited": "You've sent several reports recently. Please wait {{minutes}} minutes before sending another.",
+  "rateLimitedNoTime": "You've sent several reports recently. Please wait a while before sending another.",
+  "admin": {
+    "title": "Moderation",
+    "intro": "Restricted area. The token is kept in memory for this tab only.",
+    "token": "Admin token",
+    "signIn": "Load reports",
+    "signOut": "Forget token",
+    "filter": "Status",
+    "all": "All",
+    "empty": "No reports with this status.",
+    "unauthorized": "The token was rejected.",
+    "created": "Created",
+    "note": "Moderation note (optional)",
+    "approve": "Approve",
+    "reject": "Reject",
+    "expire": "Expire",
+    "noDescription": "No description"
+  }
+}

@@ -28,11 +28,12 @@ URL_311_2022_PRESENT = (
 RAW_311_CSV = RAW_DIR / "requetes311.csv"
 
 # Winter categories: ACTI_NOM value -> normalised category. Only NATURE in REPORT_NATURES counts.
+# Names = canonical wp.report_311_cell categories (contract v1.5.0).
 WINTER_CATEGORIES: dict[str, str] = {
-    "Trottoir glissant": "slippery_sidewalk",
-    "Chaussée glissante": "slippery_roadway",
+    "Trottoir glissant": "sidewalk_slippery",
+    "Chaussée glissante": "roadway_slippery",
     "Opération déneigement": "snow_clearing",
-    "Dépôt Illégal - Neige": "illegal_snow_dump",
+    "Dépôt Illégal - Neige": "snow_dumping",
 }
 REPORT_NATURES = (
     "Requete",

@@ -30,7 +30,7 @@ Verification date: **2026-11-10**. Method: Données Québec CKAN API (`package_s
 - Voirie: polygons differentiated by category/type; "not necessarily up to date across the whole territory" (publisher warning).
 
 ## Winter 311 categories (Data agent, from 996 distinct `ACTI_NOM`, 2022→2026-11-09)
-`Trottoir glissant` → `sidewalk_slippery` (12 984) · `Chaussée glissante` → `roadway_slippery` (11 280) · `Opération déneigement` + `Déneigement ruelle` → `snow_clearing` (76 710) · `Dépôt Illégal - Neige` + `Dépôt neige-ruelle` → `snow_dumping` (7 375). Excluded: signage, towing, permits, cycle-path clearing, Info-Neige card, generic sidewalk repair.
+`Trottoir glissant` → `sidewalk_slippery` (12 984) · `Chaussée glissante` → `roadway_slippery` (11 280) · `Opération déneigement` → `snow_clearing`, `Déneigement ruelle` → `snow_clearing_alley` (together 76 710) · `Dépôt Illégal - Neige` → `snow_dumping`, `Dépôt neige-ruelle` → `snow_dumping_alley` (together 7 375). Alley categories split out in contract v1.6.0 (CR-ML-2); per-category counts to be re-reported by Data. Excluded: signage, towing, permits, cycle-path clearing, Info-Neige card, generic sidewalk repair.
 
 ## ECCC stations in use
 7025251 MONTREAL INTL A (hourly since 2013; **hourly PRECIP_AMOUNT null throughout**; daily SNOW_ON_GROUND/TOTAL_PRECIPITATION populated) and 702S006 MONTREAL/PIERRE ELLIOTT TRUDEAU INTL (hourly precip present; hourly ends 2026-10-01 per metadata). ~13.6 km from McGill; no downtown hourly station found. SWOB `snw_dpth=-1` is a sentinel → NULL.

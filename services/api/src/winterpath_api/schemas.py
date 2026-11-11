@@ -1,6 +1,8 @@
-"""Pydantic v2 models hand-written from docs/contracts/openapi.yaml (v1.0.0).
+"""Pydantic v2 models hand-written from docs/contracts/openapi.yaml (v1.0.0; v1.5.0 conformance).
 
-Request models forbid extra fields. Response models are serialised with ``exclude_unset`` so
+Request models forbid extra fields. Optional request fields are non-nullable in the contract: they
+may be omitted, but an explicit ``null`` is rejected (``NotNull`` → 422 ``VALIDATION_ERROR``;
+platform finding API-NULL-1). Response models are serialised with ``exclude_unset`` so
 optional, non-nullable contract fields are omitted rather than sent as ``null``; nullable required
 fields are always set explicitly. Conformance is enforced by tests that validate real responses
 against the contract file with jsonschema.
@@ -12,7 +14,8 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
+from pydantic_core import PydanticCustomError
 
 EvidenceStateT = Literal["confirmed", "unverified_report", "model_estimate", "unknown", "simulated"]
 ErrorCode = Literal[
@@ -29,6 +32,17 @@ ErrorCode = Literal[
 ]
 Locale = Literal["en", "fr"]
 Position = Annotated[list[float], Field(min_length=2, max_length=2)]
+
+
+def _reject_null(v: Any) -> Any:
+    # Runs only on values present in the request: an omitted field keeps its default (None).
+    if v is None:
+        raise PydanticCustomError("null_not_allowed", "null is not allowed; omit the field instead")
+    return v
+
+
+#: For optional, non-nullable request fields: ``x: Annotated[T | None, NotNull] = None``.
+NotNull = BeforeValidator(_reject_null)
 
 
 class _Req(BaseModel):
@@ -126,12 +140,12 @@ class DataSource(_Resp):
 
 class PilotRequest(_Req):
     organization: Annotated[str, Field(max_length=120)]
-    contact_name: Annotated[str, Field(max_length=120)] | None = None
+    contact_name: Annotated[Annotated[str, Field(max_length=120)] | None, NotNull] = None
     contact_email: EmailStr
     segment: Literal["university", "campus", "municipality", "property_manager", "other"]
-    message: Annotated[str, Field(max_length=1000)] | None = None
+    message: Annotated[Annotated[str, Field(max_length=1000)] | None, NotNull] = None
     consent: Literal[True]
-    locale: Locale | None = None
+    locale: Annotated[Locale | None, NotNull] = None
 
 
 # ----------------------------------------------------------------------------- weather
@@ -284,7 +298,7 @@ class RouteCompareRequest(_Req):
     origin: LonLat
     destination: LonLat
     profile: Literal["standard", "step_free", "reduced_mobility"] = "standard"
-    departure_time: datetime | None = None
+    departure_time: Annotated[datetime | None, NotNull] = None
     avoid_unverified_reports: bool = True
     locale: Locale = "en"
 
@@ -334,8 +348,8 @@ class ReportCreate(_Req):
     category: ReportCategory
     location: LonLat
     location_consent: Literal[True]
-    description: Annotated[str, Field(max_length=280)] | None = None
-    locale: Locale | None = None
+    description: Annotated[Annotated[str, Field(max_length=280)] | None, NotNull] = None
+    locale: Annotated[Locale | None, NotNull] = None
 
 
 class ReportReceipt(_Resp):
@@ -364,4 +378,4 @@ class ReportAdminList(_Resp):
 
 class ModerationDecision(_Req):
     decision: Literal["approve", "reject", "expire"]
-    note: Annotated[str, Field(max_length=500)] | None = None
+    note: Annotated[Annotated[str, Field(max_length=500)] | None, NotNull] = None

@@ -107,6 +107,15 @@ def _stage_and_merge(
     return n
 
 
+def _run_log(manifest: dict, counts: dict) -> dict:
+    """ingest_run.log: counts plus the source's provenance (URL, file date, checksums) when the
+    pipeline recorded it — e.g. Geofabrik for OSM (contract v1.5.0)."""
+    out = {"counts": counts}
+    if manifest.get("provenance"):
+        out["provenance"] = manifest["provenance"]
+    return out
+
+
 def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict:
     checksum = manifest["input_checksum"]
     if not force and _already_loaded(conn, source_id, checksum):
@@ -125,7 +134,7 @@ def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict
                 cur.execute(
                     "UPDATE wp.ingest_run SET status='succeeded', finished_at=now(), "
                     "record_count=%s, log=%s WHERE ingest_run_id=%s",
-                    (sum(counts.values()), Jsonb({"counts": counts}), run_id),
+                    (sum(counts.values()), Jsonb(_run_log(manifest, counts)), run_id),
                 )
                 cur.execute(
                     "UPDATE wp.source SET last_success_at=now(), status='active' "
@@ -425,7 +434,7 @@ def _r311(settings: Settings):
     m = read_manifest(d)
 
     def fn(cur, run_id):
-        cols = ["h3", "day", "category", "n", "source_id", "ingest_run_id"]
+        cols = ["h3", "day", "category", "nature", "n", "source_id", "ingest_run_id"]
         n = _stage_and_merge(
             cur,
             table="report_311_cell",
@@ -434,12 +443,13 @@ def _r311(settings: Settings):
                 "h3": "text",
                 "day": "date",
                 "category": "text",
+                "nature": "text",
                 "n": "integer",
                 "source_id": "text",
                 "ingest_run_id": "uuid",
             },
             rows=_csv_rows(d / "report_311_cell.csv", cols, run_id),
-            key=["h3", "day", "category"],
+            key=["h3", "day", "category", "nature"],
         )
         return {"report_311_cell": n}
 

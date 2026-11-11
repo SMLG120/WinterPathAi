@@ -204,7 +204,7 @@ def _pg_reason() -> str | None:
     try:
         from sqlalchemy import create_engine, text
 
-        with create_engine(url, connect_args={"connect_timeout": 2}).connect() as c:
+        with create_engine(url, connect_args={"connect_timeout": 10}).connect() as c:
             if not c.execute(text("SELECT to_regclass('wp.weather_obs') IS NOT NULL")).scalar():
                 return "wp.weather_obs absent (Data agent migrations not applied)"
     except Exception as exc:

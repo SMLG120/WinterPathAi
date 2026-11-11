@@ -1,0 +1,105 @@
+{
+  "hero": {
+    "eyebrow": "Projet pilote à Montréal · McGill / centre-ville",
+    "title": "Traversez l'hiver montréalais, un meilleur pas à la fois.",
+    "subtitle": "Comparez le trajet le plus court avec une option adaptée à l'hiver. Voyez les fermetures confirmées, les signalements non vérifiés et les lacunes de nos données — chacun clairement identifié.",
+    "cta": "Planifiez votre marche hivernale",
+    "secondary": "Fonctionnement"
+  },
+  "scene": {
+    "description": "Illustration : une rue hivernale stylisée bordée de triplex aux escaliers extérieurs, des bancs de neige le long du trottoir, des lampadaires, un piéton et un trajet mis en évidence sous la neige qui tombe.",
+    "illustrative": "Scène illustrative — ni une vraie rue ni des conditions en direct.",
+    "loading": "Chargement de la scène 3D…"
+  },
+  "value": {
+    "title": "De l'information honnête pour marcher l'hiver",
+    "items": [
+      {
+        "title": "Deux trajets côte à côte",
+        "body": "Voyez le trajet le plus court à côté d'une option adaptée à l'hiver, avec la distance, la durée et la part de chaque trajet sans données d'état."
+      },
+      {
+        "title": "Une fiabilité lisible",
+        "body": "Chaque donnée porte une étiquette : confirmé, signalement non vérifié, estimation du modèle, inconnu ou simulé. L'inconnu n'est jamais présenté comme sûr."
+      },
+      {
+        "title": "Accessible dès la conception",
+        "body": "Le profil sans marche exclut tout ce qui n'est pas vérifié comme tel. Chaque trajet est accompagné d'une liste d'instructions textuelles, pas seulement d'une carte."
+      }
+    ]
+  },
+  "preview": {
+    "title": "Ce qu'affiche le planificateur",
+    "body": "Une carte plein écran avec les fermetures et les signalements, une fiche comparative des deux trajets et des instructions étape par étape lisibles sans la carte.",
+    "label": "Aperçu du produit — illustration, pas de données en direct",
+    "shortest": "Le plus court",
+    "winterAware": "Adapté à l'hiver",
+    "unknownShare": "Conditions inconnues"
+  },
+  "how": {
+    "title": "Comment ça fonctionne",
+    "steps": [
+      {
+        "title": "Choisissez votre départ et votre arrivée",
+        "body": "Cliquez sur la carte, entrez des coordonnées ou partagez votre position — seulement si vous le souhaitez."
+      },
+      {
+        "title": "Comparez deux trajets",
+        "body": "Nous calculons un trajet le plus court et un trajet adapté à l'hiver à partir des données ouvertes de la Ville, d'OpenStreetMap et d'Environnement et Changement climatique Canada."
+      },
+      {
+        "title": "Comprenez pourquoi",
+        "body": "Chaque trajet explique ce qu'il évite et où les données manquent, pour que vous puissiez décider vous-même."
+      }
+    ]
+  },
+  "privacy": {
+    "title": "Vie privée et limites des données",
+    "points": [
+      "Votre position n'est utilisée que si vous l'autorisez, et seulement pour le trajet demandé. Nous ne vous suivons pas et ne conservons pas d'historique de trajets.",
+      "Les requêtes 311 sont des signalements, pas des obstacles confirmés. Les plans de chargement de la neige ne nous disent pas si un trottoir est déneigé.",
+      "La couverture se limite à la zone pilote McGill / centre-ville. À l'extérieur, nous n'affichons rien plutôt que de deviner."
+    ]
+  },
+  "partners": {
+    "title": "Pour qui nous concevons des projets pilotes",
+    "intro": "Voici les milieux pour lesquels nous concevons le produit. Ce ne sont pas des clients actuels.",
+    "items": [
+      { "title": "Universités", "body": "Aider la communauté étudiante et le personnel à circuler entre les pavillons l'hiver, avec une information transparente." },
+      { "title": "Campus et hôpitaux", "body": "Des options sans marche et une information claire sur les fermetures connues près des entrées." },
+      { "title": "Municipalités", "body": "Un portrait agrégé et respectueux de la vie privée des obstacles hivernaux que rencontrent les piétons." },
+      { "title": "Gestionnaires immobiliers", "body": "Comprendre les problèmes signalés autour de vos immeubles sans recueillir de données personnelles." }
+    ],
+    "cta": "Découvrir les projets pilotes"
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "items": [
+      {
+        "q": "WinterPath m'indique-t-il qu'un trottoir est déneigé ou sécuritaire ?",
+        "a": "Non. Nous n'affichons un état comme confirmé que lorsqu'une source officielle l'indique. Tout le reste est identifié comme un signalement, une estimation ou une donnée inconnue."
+      },
+      {
+        "q": "Où le service fonctionne-t-il ?",
+        "a": "Pour l'instant, seulement dans la zone pilote McGill / centre-ville de Montréal. Les demandes à l'extérieur reçoivent un message clair « hors de la zone pilote »."
+      },
+      {
+        "q": "Prédisez-vous la glace ?",
+        "a": "Pas directement. Un éventuel modèle de risque prédit la probabilité de requêtes 311 liées à l'hiver, ce qui reflète les signalements — pas la glace elle-même. Il reste désactivé tant qu'il n'a pas réussi une évaluation."
+      },
+      {
+        "q": "Ai-je besoin d'un compte ?",
+        "a": "Non. Il n'y a ni compte ni historique de trajets."
+      },
+      {
+        "q": "Le site est-il accessible ?",
+        "a": "Nous visons les WCAG 2.2 niveau AA et effectuons des tests automatisés, mais aucun audit formel n'a encore été réalisé ; nous ne prétendons donc pas à la conformité."
+      }
+    ]
+  },
+  "ctaBand": {
+    "title": "Prêt à essayer ?",
+    "body": "Planifiez une marche dans la zone pilote et comparez les deux trajets.",
+    "cta": "Planifiez votre marche hivernale"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "title": "Winter conditions",
+  "intro": "Weather and alerts from Environment and Climate Change Canada for the pilot area, and the status of our risk layer.",
+  "current": {
+    "title": "Current observation",
+    "temperature": "Temperature",
+    "precip": "Precipitation (1 h)",
+    "snowDepth": "Snow on ground",
+    "wind": "Wind",
+    "station": "Station",
+    "observed": "Observed {{time}}",
+    "noValue": "—"
+  },
+  "freezeThaw": {
+    "title": "Freeze–thaw in last 24 h",
+    "yes": "Yes — temperature crossed 0 °C",
+    "no": "No crossing of 0 °C",
+    "unknown": "Unknown",
+    "desc": "Derived from observations. Freeze–thaw cycles often make sidewalks slippery, but this does not tell us any specific sidewalk's condition."
+  },
+  "forecast": {
+    "title": "Forecast",
+    "pop": "Chance of precipitation {{pct}}%",
+    "issued": "Issued {{time}}",
+    "empty": "No forecast periods available."
+  },
+  "alerts": {
+    "title": "Weather alerts",
+    "none": "No active alerts in the data received.",
+    "unaltered": "Alerts are reproduced exactly as issued by Environment and Climate Change Canada, in the language they were published in.",
+    "issued": "Issued {{time}}",
+    "expires": "Expires {{time}}",
+    "severity": "Severity: {{value}}"
+  },
+  "history": {
+    "title": "311 winter-report history",
+    "unavailable": "Not available yet. The API (contract v1) has no endpoint for aggregated 311 history, so we show nothing rather than an invented chart. A change request has been filed."
+  },
+  "model": {
+    "title": "Risk model status",
+    "enabled": "Enabled",
+    "disabled": "Disabled — not yet validated",
+    "layer": {
+      "model": "Validated model",
+      "heuristic": "Labelled heuristic",
+      "none": "No risk layer"
+    },
+    "target": "What it predicts",
+    "targetNote": "This is a proxy for reporting activity, not the physical presence of ice.",
+    "trainedAt": "Trained",
+    "window": "Training window",
+    "evaluation": "Measured evaluation",
+    "noEvaluation": "No evaluation has been recorded.",
+    "metrics": {
+      "split": "Test split",
+      "pr_auc": "PR-AUC",
+      "baseline_pr_auc": "Baseline PR-AUC",
+      "brier": "Brier score",
+      "precision_at_k": "Precision@k",
+      "recall_at_k": "Recall@k",
+      "n_test": "Test samples"
+    },
+    "limitations": "Limitations"
+  },
+  "refresh": {
+    "title": "Last refresh"
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "hero": {
+    "eyebrow": "Montréal pilot · McGill / Downtown",
+    "title": "Navigate Montreal's winter, one better step at a time.",
+    "subtitle": "Compare the shortest walk with a winter-aware alternative. See confirmed closures, unverified reports and the gaps in our data — each one clearly labelled.",
+    "cta": "Plan your winter walk",
+    "secondary": "How it works"
+  },
+  "scene": {
+    "description": "Illustration: a low-poly winter street lined with triplexes and exterior staircases, snowbanks along the sidewalk, streetlights, a pedestrian, and a highlighted walking path under falling snow.",
+    "illustrative": "Illustrative scene — not a real street or live conditions.",
+    "loading": "Loading 3D scene…"
+  },
+  "value": {
+    "title": "Honest information for winter walking",
+    "items": [
+      {
+        "title": "Two routes, side by side",
+        "body": "See the shortest path next to a winter-aware alternative, with distance, time and how much of each route has no condition data."
+      },
+      {
+        "title": "Evidence you can read",
+        "body": "Every datum carries a label: confirmed, unverified report, model estimate, unknown, or simulated. Unknown is never shown as safe."
+      },
+      {
+        "title": "Accessible by design",
+        "body": "Step-free routing excludes anything not verified as step-free. Every route comes with a text list of directions, not just a map."
+      }
+    ]
+  },
+  "preview": {
+    "title": "What the planner shows",
+    "body": "A full-screen map with closure and report overlays, a comparison card for both routes, and step-by-step directions you can read without the map.",
+    "label": "Product preview — illustration, not live data",
+    "shortest": "Shortest",
+    "winterAware": "Winter-aware",
+    "unknownShare": "Unknown conditions"
+  },
+  "how": {
+    "title": "How it works",
+    "steps": [
+      {
+        "title": "Choose your start and end",
+        "body": "Click the map, type coordinates, or share your location — only if you choose to."
+      },
+      {
+        "title": "Compare two routes",
+        "body": "We compute a shortest route and a winter-aware route using open data from the city, OpenStreetMap and Environment and Climate Change Canada."
+      },
+      {
+        "title": "Read why",
+        "body": "Each route explains what it avoids and where data is missing, so you can decide for yourself."
+      }
+    ]
+  },
+  "privacy": {
+    "title": "Privacy and data limits",
+    "points": [
+      "Your location is used only if you allow it, and only for the route you ask for. We don't track you or store your route history.",
+      "311 requests are reports, not confirmed obstacles. Snow-loading plans don't tell us whether a sidewalk is cleared.",
+      "Coverage is limited to the McGill / Downtown pilot area. Outside it, we show nothing rather than guess."
+    ]
+  },
+  "partners": {
+    "title": "Who we're building pilots for",
+    "intro": "These are the settings we're designing for. They are not current customers.",
+    "items": [
+      { "title": "Universities", "body": "Help students and staff move between buildings in winter with transparent route information." },
+      { "title": "Campuses & hospitals", "body": "Step-free options and clear information about known closures near entrances." },
+      { "title": "Municipalities", "body": "Aggregated, privacy-preserving insight into where pedestrians run into winter barriers." },
+      { "title": "Property managers", "body": "Understand reported issues around your properties without collecting personal data." }
+    ],
+    "cta": "Learn about pilots"
+  },
+  "faq": {
+    "title": "Frequently asked questions",
+    "items": [
+      {
+        "q": "Does WinterPath tell me a sidewalk is cleared or safe?",
+        "a": "No. We only show a condition as confirmed when an official source says so. Everything else is labelled as a report, an estimate, or unknown."
+      },
+      {
+        "q": "Where does it work?",
+        "a": "Only in the McGill / Downtown Montréal pilot area for now. Requests outside it return a clear \"outside pilot area\" message."
+      },
+      {
+        "q": "Do you predict ice?",
+        "a": "Not directly. Any risk model predicts the chance of winter-related 311 reports, which is a reporting proxy — not physical ice. It stays disabled until it passes an evaluation."
+      },
+      {
+        "q": "Do I need an account?",
+        "a": "No. There are no accounts and no route history."
+      },
+      {
+        "q": "Is it accessible?",
+        "a": "We design for WCAG 2.2 AA and test with automated tools, but we haven't completed a formal audit, so we don't claim compliance."
+      }
+    ]
+  },
+  "ctaBand": {
+    "title": "Ready to try it?",
+    "body": "Plan a walk in the pilot area and compare both routes.",
+    "cta": "Plan your winter walk"
+  }
+}

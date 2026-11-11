@@ -6,8 +6,16 @@
     "mtl-voirie"
   ],
   "sidewalk_polygon_ids": "Voirie polygons matched by spatial overlap (enrichment only; never connectivity)",
-  "osm_snapshot": "2026-11-10T20:43:04Z",
-  "osm_raw_sha256": "a7ee9f8c1af78a1756c7500fdeac37ebc82b0afdd309dd18ac38a0e8e4f02e2a",
+  "osm_snapshot": "2026-11-08T21:21:00Z",
+  "osm_raw_sha256": "76f100e41397bbc3428ed357b2c1f91d3f8d3f2663b335c34dfb3321e9614768",
+  "osm_pipeline_checksum": "b1f22407cf7838e8fe320f0586a2095b72a11635fc01742981d9e8876722e0fb",
+  "osm_source": {
+    "provider": "geofabrik",
+    "url": "https://download.geofabrik.de/north-america/canada/quebec-261108.osm.pbf",
+    "last_modified": "Mon, 09 Nov 2026 00:37:54 GMT",
+    "osm_replication_timestamp": "2026-11-08T21:21:00Z",
+    "md5": "4aa2c6163b2c7121113238feec9e1328"
+  },
   "parent_bbox": [
     -73.588,
     45.496,
@@ -15,17 +23,17 @@
     45.513
   ],
   "bbox": [
-    -73.578035,
-    45.503034,
-    -73.573657,
-    45.505518
+    -73.578801,
+    45.503026,
+    -73.576318,
+    45.505218
   ],
   "anchor": [
     -73.5765,
     45.5045
   ],
   "edge_count": 200,
-  "node_count": 88,
+  "node_count": 92,
   "crs": "EPSG:4326",
   "length_crs": "EPSG:32188",
   "id_scheme": "docs/contracts/data-model.md#stable-ids",

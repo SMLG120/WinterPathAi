@@ -57,7 +57,8 @@ def test_real_fixture_metadata_and_integrity(graph) -> None:
     m = graph.metadata
     assert m.simulated is False
     assert m.osm_snapshot and m.source_freshness.get("osm") is not None
-    assert len(graph.edges) == 200 and len(graph.nodes) == 88
+    meta = __import__("json").loads((PILOT_MINI / "metadata.json").read_text())
+    assert (len(graph.edges), len(graph.nodes)) == (meta["edge_count"], meta["node_count"])
     assert all(e.foot_legal for e in graph.edges.values())
     assert graph.largest_component_share == 1.0 and graph.gaps() == []
     for e in graph.edges.values():

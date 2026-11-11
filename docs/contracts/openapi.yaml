@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: WinterPath AI API
-  version: 1.5.0
-  summary: Montréal pedestrian winter-routing API (contract v1.3.0; v1.0.0 frozen 2026-11-10; v1.1.0 declared 4xx per CR-PLAT-1; v1.3.0 adds 503 on data-backed endpoints and OFF_NETWORK per CR-ROUTING-2/3; v1.5.0 documents deletion-token semantics (CR-ROUTING-4) and the explanation-code evidence mapping (CR-ROUTING-9)).
+  version: 1.6.0
+  summary: Montréal pedestrian winter-routing API (contract v1.3.0; v1.0.0 frozen 2026-11-10; v1.1.0 declared 4xx per CR-PLAT-1; v1.3.0 adds 503 on data-backed endpoints and OFF_NETWORK per CR-ROUTING-2/3; v1.5.0 documents deletion-token semantics (CR-ROUTING-4) and the explanation-code evidence mapping (CR-ROUTING-9); v1.6.0 adds 311 alley categories (CR-ML-2) and the foot-over-access rule (CR-DATA-7), no schema shape change).
   description: |
     All geometries are GeoJSON in EPSG:4326 with [longitude, latitude] ordering.
     Every risk/condition datum carries an `evidence` object; `unknown` is never zero risk.
@@ -605,7 +605,7 @@ components:
         hazards_on_route: { type: array, items: { type: string } }
         explanation:
           type: array
-          description: "v1.5 (CR-ROUTING-9) evidence mapping: SHORTEST_DISTANCE, WINTER_AWARE_COST, IDENTICAL_TO_SHORTEST, RISK_LAYER_UNAVAILABLE → unknown; STEP_FREE_TAGGED_ONLY, INCLUDES_STEPS → unverified_report (community-mapped OSM tags); closures/confirmed disruptions → confirmed; 311/community reports → unverified_report; LOWER_MODELED_RISK → model_estimate; SIMULATED_DATA → simulated."
+          description: "v1.5 (CR-ROUTING-9) evidence mapping: SHORTEST_DISTANCE, WINTER_AWARE_COST, IDENTICAL_TO_SHORTEST, RISK_LAYER_UNAVAILABLE → unknown; STEP_FREE_TAGGED_ONLY, INCLUDES_STEPS → unverified_report (community-mapped OSM tags); closures/confirmed disruptions active at the requested time → confirmed; PASSES_POSSIBLE_CLOSURE, AVOIDS_POSSIBLE_CLOSURE (permit confirmed, activity unknown) → unknown; REDUCED_MOBILITY_SPEED (assumed speed, labelled heuristic) → model_estimate; RISK_UNKNOWN_SHARE → unknown; 311/community reports → unverified_report; LOWER_MODELED_RISK → model_estimate; SIMULATED_DATA → simulated."
           items:
             type: object
             required: [code, text, evidence_state]
