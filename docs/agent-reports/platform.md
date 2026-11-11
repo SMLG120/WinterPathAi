@@ -5,6 +5,24 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## Update 2026-11-11 (j) — CI: production build + safety scan (`build:pages`) on every web change
+Merged frontend's exact commit 4ed7c81 as merge commit 3d2685b; it changed no platform-owned paths. In `ci.yml`'s `web` job, after `npm run build`, a new step runs `npm run build:pages` with placeholder production values: `VITE_API_BASE_URL=https://example.invalid/api/v1` (a reserved TLD that never resolves) and `VITE_PUBLIC_WRITES=false`. `build:pages` = `pagesCheck.ts env` (refuses an unsafe env) → `npm run build` → `pagesCheck.ts dist` (scans for mock code, sourcemaps, secrets, headers). If the script is absent on a branch, the step emits a `::notice` SKIP. It builds only; nothing is published.
+```text
+$ actionlint   -> [actionlint exit 0]
+$ (apps/web, Node v24.13.0, after npm ci: "added 554 packages in 27s")
+$ VITE_API_BASE_URL=https://example.invalid/api/v1 VITE_PUBLIC_WRITES=false npm run build:pages   (VITE_USE_MOCKS unset)
+> @winterpath/web@0.1.0 build:pages
+> node build/pagesCheck.ts env && npm run build && node build/pagesCheck.ts dist
+pages-check env: OK
+pages-check dist: OK
+[build:pages exit 0]
+$ (negative control) VITE_PUBLIC_WRITES unset -> node build/pagesCheck.ts env
+pages-check env: FAILED
+  - VITE_PUBLIC_WRITES must be "false" (user decision: read-only public demo)
+[env-check exit 1]
+```
+The build also printed Rollup "annotation that Rollup cannot interpret" warnings from `node_modules/zod`. These are informational and belong to the frontend. `apps/web/dist` is git-ignored. Not verified: the step has not run on GitHub.
+
 ## Update 2026-11-11 (i) — deploy blocker: model registry in the API image
 The coordinator's trial image (`--memory=512m --cpus=0.1`, real DB at 0007 with today's scores) reported `risk: disabled` because the image had no `models/registry.json`. That was a known open item: I flagged it in update (f) but had not fixed it. Changes:
 - `infra/docker/api.Dockerfile`: `COPY --chown=root:root --chmod=0444` of `models/registry.json` → `/app/models/registry.json`, and of `models/artifacts/v2-8d19aa86/coverage_cells.parquet` → `/app/models/artifacts/v2-8d19aa86/`. Sets `ENV MODEL_REGISTRY_PATH=/app/models/registry.json MODEL_ARTIFACT_DIR=/app/models/artifacts`. `/app` is no longer chowned to the app user, so the app user cannot write there. CMD default port is now `${PORT:-10000}` (Render's default), with `EXPOSE 10000`.

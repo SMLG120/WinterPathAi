@@ -165,6 +165,20 @@ jobs:
         run: npm run --if-present test -- --run
       - if: steps.present.outputs.present == 'true'
         run: npm run build
+      - name: production build + safety scan (build:pages, placeholder production values)
+        if: steps.present.outputs.present == 'true'
+        # Placeholders only (example.invalid is reserved and never resolves); no real endpoints or
+        # secrets. pagesCheck refuses an unsafe env, then scans dist for mock code, sourcemaps,
+        # secrets and missing headers. Builds into dist; nothing is published.
+        env:
+          VITE_API_BASE_URL: https://example.invalid/api/v1
+          VITE_PUBLIC_WRITES: "false"
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.['build:pages'] ? 0 : 1)"; then
+            npm run build:pages
+          else
+            echo "::notice title=SKIP build:pages::apps/web has no build:pages script on this branch"
+          fi
       - name: npm audit (fail on high)
         if: steps.present.outputs.present == 'true'
         run: npm audit --audit-level=high --omit=dev
