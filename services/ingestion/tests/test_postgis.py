@@ -389,3 +389,61 @@ def test_loader_atomic_and_idempotent(test_url, tmp_path):
         assert c.execute("SELECT count(*) FROM wp.edge").fetchone()[0] == 200
         st = dict(c.execute("SELECT input_checksum, status FROM wp.ingest_run").fetchall())
         assert st["fixture-1"] == "succeeded" and st["fixture-2"] == "failed"
+
+
+def test_weather_since_bounds_and_prunes(test_url, tmp_path):
+    """`load --weather-since`: rows before local midnight (America/Montreal) are skipped and
+    pruned; the cutoff is part of the checksum, so bounded and full loads never no-op each other.
+    Synthetic station `TEST` in the throwaway DB only."""
+    import json
+    from datetime import date
+
+    from winterpath_ingestion import db_load
+    from winterpath_ingestion.config import Settings
+
+    alembic(test_url, "upgrade", "head")
+    d = tmp_path / "processed" / "weather_obs"
+    d.mkdir(parents=True)
+    hdr = "station_id,observed_at,temperature_c,precip_mm,snow_depth_cm,wind_kmh,source_collection"
+    times = [
+        "2025-12-31T04:59:00+00:00",  # 2025-12-30 23:59 local → before
+        "2026-01-01T04:59:00+00:00",  # 2025-12-31 23:59 local → before
+        "2026-01-01T05:00:00+00:00",  # 2026-01-01 00:00 local → kept (inclusive)
+        "2026-06-01T00:00:00+00:00",
+    ]
+    (d / "weather_obs.csv").write_text(
+        hdr + "\n" + "".join(f"TEST,{t},-5.0,,,,climate-hourly\n" for t in times)
+    )
+    (d / "manifest.json").write_text(
+        json.dumps(
+            {"input_checksum": "w-1", "ingest_run_id": "00000000-0000-0000-0000-0000000000a1"}
+        )
+    )
+    s = Settings(data_dir=tmp_path, user_agent="test")
+
+    def n_rows():
+        with psycopg.connect(test_url) as c:
+            return c.execute(
+                "SELECT count(*) FROM wp.weather_obs WHERE station_id='TEST'"
+            ).fetchone()[0]
+
+    assert db_load.load(s, ["eccc"], url=test_url)[0]["counts"]["weather_obs"] == 4
+    assert n_rows() == 4
+
+    r = db_load.load(s, ["eccc"], url=test_url, weather_since=date(2026, 1, 1))[0]
+    assert r["noop"] is False
+    assert r["counts"] == {
+        "weather_obs": 2,
+        "_weather_obs_skipped_before_since": 2,
+        "_weather_obs_pruned_before_since": 2,
+    }
+    assert n_rows() == 2
+    with psycopg.connect(test_url) as c:
+        rc = c.execute(
+            "SELECT record_count FROM wp.ingest_run WHERE input_checksum=%s",
+            ("w-1|weather_since=2026-01-01",),
+        ).fetchone()[0]
+    assert rc == 2
+    assert db_load.load(s, ["eccc"], url=test_url, weather_since=date(2026, 1, 1))[0]["noop"]
+    assert db_load.load(s, ["eccc"], url=test_url)[0]["noop"] is False  # full reload restores
+    assert n_rows() == 4

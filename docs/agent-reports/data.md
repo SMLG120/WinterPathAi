@@ -826,3 +826,54 @@ $ alembic current (wp_data)            → 0006_report_311_nature (head)
 $ git diff --stat ee5f1fc HEAD -- data/fixtures/   → (empty; pilot_mini unchanged)
 $ scripts/check-ownership.sh data      → ownership OK for agent/data
 ```
+
+## Hosted DB: `load --weather-since` + Supabase initial-load runbook (2026-11-11)
+
+- **`wp-ingest load --weather-since YYYY-MM-DD`** (`db_load._weather`, `cli.py`):
+  - Bounds `wp.weather_obs` to `observed_at >= date 00:00 America/Montreal`. Older CSV rows are
+    skipped, and older table rows are pruned in the same transaction.
+  - `weather_daily` is not bounded.
+  - The cutoff is part of the load checksum (`<checksum>|weather_since=<date>`), so bounded and
+    full loads never no-op each other.
+  - The diagnostic counts `_weather_obs_skipped_before_since` and `_weather_obs_pruned_before_since`
+    go into `ingest_run.log`. `record_count` excludes `_`-prefixed keys.
+  - The new test `test_weather_since_bounds_and_prunes` covers the local-midnight boundary, both
+    sides, pruning, `record_count`, the bounded no-op and the full reload restoring all rows.
+- **Size**, measured on fresh scratch DBs, each migrated to 0006 and loaded from the current
+  `data/processed`, followed by `VACUUM ANALYZE`. The scratch DBs were dropped afterwards and
+  `wp_data` was not touched.
+
+  | `--weather-since` | weather_obs rows | weather_obs | all `wp.*` | whole DB |
+  |---|---|---|---|---|
+  | none (2022-01-01 →) | 84,249 | 10 MB | 35 MB | 51 MB |
+  | 2025-11-01 | 17,160 | 2.2 MB | 27 MB | 43 MB |
+  | 2026-08-01 | 4,061 | 0.6 MB | 26 MB | 41 MB |
+
+  - An empty PostGIS DB is about 16 MB, of which `spatial_ref_sys` is 7 MB. Supabase's own
+    overhead was not measured.
+  - Local `wp_data` (79 MB) is inflated by dead tuples from repeated rebuilds. A fresh full load
+    is 51 MB.
+  - Pruning an existing DB does not shrink it without `VACUUM FULL`, so the hosted DB should be
+    loaded bounded from the start.
+  - Weather is only 10 MB of the 35 MB in `wp.*`; the rest is mostly `report_311_cell` and `edge`.
+- **Runbook** in `services/ingestion/README.md`:
+  - Bootstrap as the Supabase admin: group roles, `wp_migrate`/`wp_loader` login users, CREATE on
+    the database and `public`, PostGIS, and a search_path note if PostGIS lives in `extensions`.
+  - Migrate with `options=-c role=wp_migrator` over the direct connection.
+  - Load as `wp_writer` from `data/processed` with no network calls.
+  - Rehearsed on a local scratch DB without superuser rights: head reached, `wp_migrator` owns all
+    objects, 5/5 sources succeeded.
+  - **Not run against Supabase.** Login users and passwords are Platform's to create.
+
+```
+$ uv run pytest -q
+...................................................                      [100%]
+51 passed in 32.71s
+$ uv run ruff check . → All checks passed!
+# rehearsal (scratch DB wp_data_rolecheck, dropped afterwards)
+$ alembic -x url="…?options=-c%20role%3Dwp_migrator" current → 0006_report_311_nature (head)
+  owners: tables wp_migrator|12, schema wp_migrator, closure_active_at wp_migrator, alembic_version wp_migrator
+$ DATABASE_URL="…?options=-c%20role%3Dwp_writer" wp-ingest load --weather-since 2025-11-01
+{"source_id": "eccc-geomet", "noop": false, "counts": {"weather_obs": 17160, "_weather_obs_skipped_before_since": 67089, "_weather_obs_pruned_before_since": 0, "weather_daily": 3550}}
+  ingest_run: osm 23888, mtl-voirie 1495, mtl-entraves 167, mtl-311 70428, eccc-geomet 20710 — all succeeded
+```
