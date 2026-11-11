@@ -149,61 +149,158 @@ $ uv run python -m winterpath_ml.gate_logreg_2026 --check
 pins OK; coverage list OK
 ```
 
-### Open items
-- Nature-summing reader: waiting for Data's `report_311_cell.nature` migration (not in d04da54).
-- CR-ML-2 (above): coordinator decision.
-- After Data's v1.5 migration lands: add the nature-summing reader and compare it with the CSV labels. The difference must equal the 18 cell-days predicted above.
-- Routing/API: wire `api_provider` as described above.
-- **2027-05-08 or later:** run `uv run python -m winterpath_ml.gate_logreg_2026` once. If the decision is PASS, open a reviewed commit that promotes `winter311-logreg-v1` in the registry, as the gate document describes.
-- Daily `winterpath_ml.score` scheduling is still unassigned (Platform/coordinator).
+### 2026-11-11 — artifact-dir bug fix; nature-summing reader verified against wp_data
 
-## Summary (original delivery)
-- **Gate decision: FAIL.** The model is disabled (`layers.model.enabled = false`). The active layer is `heuristic`: baseline (b), historical frequency × a fixed weather multiplier. It reports levels only, with `probability = null`.
-- HistGradientBoosting did **not** beat the strongest baseline, logistic regression (c), on either holdout. The PR-AUC difference vs that baseline was −0.0033 (most recent winter) and −0.0011 (held-out areas), with 95% CIs spanning 0.
-- The target is P(≥1 winter-related 311 report in an H3 res-9 cell during local day D). It measures **reporting behaviour, not sidewalk safety**.
-
-## Files changed
+**Frontend bug fixed (4a88459).**
+- **Bug:** `inference._coverage()` and `score.py` built artifact paths from `REPO_ROOT` + the registry's repo-relative path, ignoring `MODEL_ARTIFACT_DIR`. When that variable pointed elsewhere, coverage wasn't found and the provider silently fell back to `NullRiskProvider`.
+- **Fix:** a new `inference.artifact_path()` resolves every registry entry under `config.ARTIFACT_DIR/<run_id>/…`.
+- **Warnings now logged:** `risk_registry_missing`, `risk_artifacts_missing` (names the expected path and `MODEL_ARTIFACT_DIR`), `risk_scores_missing`.
+- No gate-pinned file was touched.
+- **Regression tests:** `tests/test_artifact_dir.py` (4 tests).
+- **End-to-end check** in a fresh process:
 ```text
-$ git diff --stat $(git merge-base integration/winterpath HEAD) HEAD
- models/artifacts/.gitkeep                     |    0
- models/cards/winter311-hgb-v1.md              |  189 ++++
- models/evaluation/v1-8d19aa86.SUPERSEDED.json | 1148 +++++++++++++++++++++++++
- models/evaluation/v2-8d19aa86.json            |  914 ++++++++++++++++++++
- models/gate.md                                |   28 +
- models/label-audit.md                         |  158 ++++
- models/registry.json                          |  113 +++
- services/ml/.python-version                   |    1 +
- services/ml/README.md                         |   45 +
- services/ml/pyproject.toml                    |   24 +
- services/ml/src/winterpath_ml/__init__.py     |    2 +
- services/ml/src/winterpath_ml/audit.py        |  259 ++++++
- services/ml/src/winterpath_ml/config.py       |  113 +++
- services/ml/src/winterpath_ml/data_311.py     |  117 +++
- services/ml/src/winterpath_ml/evaluate.py     |  432 ++++++++++
- services/ml/src/winterpath_ml/features.py     |  222 +++++
- services/ml/src/winterpath_ml/inference.py    |  349 ++++++++
- services/ml/src/winterpath_ml/metrics.py      |   79 ++
- services/ml/src/winterpath_ml/models.py       |  166 ++++
- services/ml/src/winterpath_ml/py.typed        |    0
- services/ml/src/winterpath_ml/score.py        |   96 +++
- services/ml/src/winterpath_ml/splits.py       |   48 ++
- services/ml/src/winterpath_ml/weather.py      |  128 +++
- services/ml/tests/conftest.py                 |   63 ++
- services/ml/tests/test_card_consistency.py    |   43 +
- services/ml/tests/test_data_311.py            |   45 +
- services/ml/tests/test_features.py            |   71 ++
- services/ml/tests/test_inference.py           |  156 ++++
- services/ml/tests/test_leakage.py             |   82 ++
- services/ml/tests/test_metrics_models.py      |   34 +
- services/ml/tests/test_pilot_fixture.py       |   73 ++
- services/ml/tests/test_splits.py              |   36 +
- services/ml/uv.lock                           |  274 ++++++
- 33 files changed, 5508 insertions(+)
-$ scripts/check-ownership.sh ml
-ownership OK for agent/ml
+$ MODEL_ARTIFACT_DIR=<copy outside repo> uv run python -c "...load_provider()..."
+HeuristicRiskProvider
+$ MODEL_ARTIFACT_DIR=<X>/missing uv run python -c "...load_provider()..."
+WARNING:winterpath_ml.inference:risk_artifacts_missing: <X>/missing/v2-8d19aa86/coverage_cells.parquet not found (MODEL_ARTIFACT_DIR=<X>/missing); using NullRiskProvider (all unknown)
+NullRiskProvider
 ```
 
-## Commands run and literal results
+**Data migration 0006 merged** from the exact commit `agent/data` ee5f1fc, as authorised (cc94e2b). The merge was clean.
+
+**Reader:** `winterpath_ml.report_cells_db` (new module; `data_311.py` is untouched and still pinned).
+- `read_report_cells(conn)` runs `SUM(n) … WHERE nature = ANY(['requete','plainte']) GROUP BY h3, day, category`.
+- `psycopg` was added as the optional extra `db`.
+- `wp_data` state, read-only: alembic `0006_report_311_nature`; natures loaded `requete` 61,067 rows / n 70,574, `plainte` 2,631 / 2,714, `commentaire` 6,729 / 7,326 (no `information`: those rows have no coordinates). Latest mtl-311 ingest run 4ed17177…, succeeded 2026-11-11 03:54 UTC.
+
+**Verification** (`uv run --extra db python -m winterpath_ml.report_cells_db --compare --database-url <wp_data>`), literal output:
+```text
+db rows (h3, day, category) with nature in ('requete', 'plainte'): 63112, sum n = 73288
+{
+  "common_window_end": "2026-11-07",
+  "db_total_n": 73288,
+  "csv_label_total_n": 73264,
+  "csv_alley_rows": 24,
+  "db_vs_csv_label": {
+    "cell_days_count_differs": 24,
+    "abs_count_diff": 24,
+    "label_differs_cell_days": 18
+  },
+  "db_vs_csv_label_plus_alley": {
+    "cell_days_count_differs": 0,
+    "abs_count_diff": 0,
+    "label_differs_cell_days": 0
+  },
+  "v2_panel_rows": 2385020,
+  "v2_panel_label_flips": 18,
+  "v2_panel_flips_0_to_1": 18,
+  "v2_panel_flips_1_to_0": 0
+}
+```
+- **Result:** the prediction was confirmed exactly. The DB reader equals the CSV labels plus the two alley activities, with 0 differences. Against the label of record, the difference is the predicted 24 reports / 18 cell-days, all 0→1.
+- No other difference, so there is no snapshot drift up to 2026-11-07, the DB load's last day. The CSV file runs to 2026-11-09.
+- CR-ML-2 is not acted on: it awaits the user's decision. The CSV aggregation stays the label of record.
+
+**Checks:**
+```text
+$ uv run --with ruff ruff check . && uv run --with ruff ruff format --check .
+All checks passed!
+28 files already formatted
+$ uv run pytest -q
+43 passed, 1 skipped          (skip = live-DB test, opt-in via WP_ML_TEST_REPORT_DB_URL)
+$ WP_ML_TEST_REPORT_DB_URL=<wp_data> uv run --extra db pytest -q tests/test_report_cells_db.py
+3 passed
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+$ uv run --all-extras --with pip-audit pip-audit --skip-editable --progress-spinner off
+No known vulnerabilities found
+```
+- The first pip-audit attempt failed with "Request failed after 3 retries" (network); the retry above succeeded.
+
+### Merge of integration eb92007 (frontend, platform, v1.5.0 clarification) — 4c69b5b, clean
+- No ML-relevant contract change: the clarification covers explanation-code evidence only.
+- **Platform harness ran without artifacts** (risk layer `none`): the expected `NullRiskProvider` path. With 4a88459, artifacts mounted anywhere work through `MODEL_ARTIFACT_DIR`, and a missing directory now logs `risk_artifacts_missing` instead of failing silently.
+- `agent/data` ee5f1fc is still **not** in integration, so the ownership-check note above still applies.
+```text
+$ cd services/ml && uv run pytest -q
+43 passed, 1 skipped
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+
+### Contract v1.6.0 (CR-ML-2 approved) — merged a292b63, clean
+- **Reader updated:** `report_cells_db.read_report_cells` now filters on `nature = ANY(['requete','plainte']) AND category = ANY(LABEL_CATEGORIES)`.
+  - `LABEL_CATEGORIES` is derived from `config.WINTER_CATEGORIES`: `sidewalk_slippery`, `roadway_slippery`, `snow_clearing`, `snow_dumping`.
+  - So the v1.6 alley categories (`snow_clearing_alley`, `snow_dumping_alley`) are excluded.
+  - The `--compare` diagnostics now map the alley activities to their v1.6 category names.
+- **Expected after Data's v1.6 reload:** 0 cell-days differ from the CSV labels.
+- **Not yet verified, by instruction.** The coordinator will send Data's new SHA. `wp_data` still holds the ee5f1fc load, where alley rows sit inside `snow_clearing`/`snow_dumping`; a comparison now would still show the old 18 and prove nothing.
+- Migration 0006 will change in Data's next commit (v1.6 folds the alley categories into it). This branch has ee5f1fc's 0006 unmodified, so merging Data's new SHA will bring their version in cleanly.
+```text
+$ cd services/ml && uv run pytest -q
+43 passed, 1 skipped
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+
+### 2026-11-11 — v1.6 DB reader verified against Data f6eb3b2: 0 cell-days differ
+- Merged the exact commit `agent/data` f6eb3b2 into this branch (71e7c7a). The merge was clean; that commit's migration 0006 includes the alley categories.
+- **`wp_data` reload checked, read-only (no writes):**
+```text
+alembic_version: 0006_report_311_nature
+report_311_cell_category_check: CHECK ((category = ANY (ARRAY['sidewalk_slippery', 'roadway_slippery', 'snow_clearing', 'snow_dumping', 'snow_clearing_alley', 'snow_dumping_alley'])))
+snow_clearing_alley|commentaire|3|3
+snow_clearing_alley|plainte|3|3
+snow_clearing_alley|requete|1|1
+snow_dumping_alley|requete|20|20
+latest mtl-311 ingest_run: 18c1ca93-6448-4451-9605-a5ddbe9e8cfa | succeeded | 2026-11-11 13:38:57 UTC | record_count 70428
+```
+  The alley rows in `requete`+`plainte` total 1 + 3 + 20 = 24, the same 24 reports the CSV audit found.
+- **Comparison** (`uv run --extra db python -m winterpath_ml.report_cells_db --compare --database-url <wp_data>`), literal output:
+```text
+db rows (h3, day, category) with nature in ('requete', 'plainte'), category in ('sidewalk_slippery', 'roadway_slippery', 'snow_clearing', 'snow_dumping'): 63091, sum n = 73264
+{
+  "common_window_end": "2026-11-07",
+  "db_total_n": 73264,
+  "csv_label_total_n": 73264,
+  "csv_alley_rows": 24,
+  "db_vs_csv_label": {
+    "cell_days_count_differs": 0,
+    "abs_count_diff": 0,
+    "label_differs_cell_days": 0
+  },
+  "db_vs_csv_label_plus_alley": {
+    "cell_days_count_differs": 24,
+    "abs_count_diff": 24,
+    "label_differs_cell_days": 18
+  },
+  "v2_panel_rows": 2385020,
+  "v2_panel_label_flips": 0,
+  "v2_panel_flips_0_to_1": 0,
+  "v2_panel_flips_1_to_0": 0
+}
+```
+- **Result: verified, 0 cell-days differ.** The DB reader reproduces the CSV label of record exactly over the common window (through 2026-11-07, the DB load's last day).
+  - 0 label flips across all 2,385,020 v2 panel rows.
+  - DB row count (63,091) equals ML's interim aggregate row count.
+  - The reverse diagnostic (`plus_alley`) is now 24 / 18, so the alley categories are correctly separated.
+- **Implication:** `report_cells_db.read_report_cells` can serve as the label source going forward. The v2 results, registry and logistic-regression gate are unchanged; the gate's label definition is identical by construction.
+```text
+$ WP_ML_TEST_REPORT_DB_URL=<wp_data> uv run --extra db pytest -q tests/test_report_cells_db.py
+3 passed
+$ uv run pytest -q
+43 passed, 1 skipped
+$ uv run python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+- **Ownership check:** f6eb3b2 is not yet in integration, so `scripts/check-ownership.sh ml` still flags Data's files. Every non-ML file in this branch is byte-identical to f6eb3b2:
+```text
+$ git diff --name-only f6eb3b2 HEAD | grep -v -E '^(services/ml/|models/|docs/agent-reports/ml.md)'
+(no output)
+```
+
+### Open items
+- None blocking. The logistic-regression gate runs on or after 2027-05-08. The daily `winterpath_ml.score` job is still unscheduled (Platform/coordinator).
 
 ### Evaluation (`cd services/ml && uv run python -m winterpath_ml.evaluate`), final run
 ```text

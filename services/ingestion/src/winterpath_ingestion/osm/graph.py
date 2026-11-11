@@ -1,4 +1,5 @@
-"""Build the pilot pedestrian graph from an Overpass JSON response.
+"""Build the pilot pedestrian graph from OSM JSON (the Overpass JSON shape; since contract v1.5.0
+produced by clipping the Geofabrik Quebec PBF, see geofabrik.py).
 
 Topology rule (the only one): two edges are connected iff they share an OSM node. No snapping,
 no inferred edges. Near-misses (dangling endpoints close to another edge) are *reported* as gaps.
@@ -45,6 +46,11 @@ INCLUDED_HIGHWAYS = frozenset(
         "primary",
     }
 )
+# Contract v1.5.0 (user decision 2026-11-10): service and cycleway are included ONLY when foot
+# permission is explicitly tagged. corridor / indoor (RÉSO) stay excluded until opening hours and
+# public access are verified from a cited source.
+CONDITIONAL_HIGHWAYS = frozenset({"service", "cycleway"})
+FOOT_PERMITTED = frozenset({"yes", "designated", "permissive"})
 # Explicit "not legal for pedestrians" values.
 FOOT_PROHIBITED = frozenset({"no", "private", "use_sidepath"})
 ACCESS_PROHIBITED = frozenset({"no", "private"})
@@ -71,15 +77,25 @@ def foot_access(tags: dict[str, str]) -> str:
 
 def exclusion_reason(tags: dict[str, str]) -> str | None:
     hw = tags.get("highway")
-    if hw not in INCLUDED_HIGHWAYS:
+    if hw in CONDITIONAL_HIGHWAYS:
+        if tags.get("foot") not in FOOT_PERMITTED:
+            return f"highway={hw} without explicit foot=yes|designated|permissive"
+    elif hw not in INCLUDED_HIGHWAYS:
         return f"highway={hw}"
     if tags.get("area") == "yes":
         return "area=yes (polygon, not a linear walkway)"
     if tags.get("foot") in FOOT_PROHIBITED:
         return f"foot={tags['foot']}"
-    if "foot" not in tags and tags.get("access") in ACCESS_PROHIBITED:
+    # v1.6.0 (CR-DATA-7): only an explicit foot=yes|designated|permissive overrides
+    # access=private|no; any other foot value (or none) leaves the access restriction in force.
+    if tags.get("access") in ACCESS_PROHIBITED and tags.get("foot") not in FOOT_PERMITTED:
         return f"access={tags['access']}"
     return None
+
+
+def admitted_by_foot_override(tags: dict[str, str]) -> bool:
+    """True when a way is included only because foot permission overrides access=private|no."""
+    return tags.get("access") in ACCESS_PROHIBITED and exclusion_reason(tags) is None
 
 
 def edge_kind(tags: dict[str, str]) -> str:
@@ -94,6 +110,7 @@ def edge_kind(tags: dict[str, str]) -> str:
     return {
         "footway": "footway",
         "path": "path",
+        "cycleway": "path",  # only reached with explicit foot permission: a shared-use path
         "pedestrian": "pedestrian_street",
         "steps": "steps",
         "living_street": "shared_street",
@@ -187,7 +204,7 @@ def node_id(osm_id: int) -> str:
     return f"osm:n{osm_id}"
 
 
-def load_overpass(path: Path) -> dict:
+def load_osm_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -204,12 +221,15 @@ def build_graph(
     ways_raw = sorted((e for e in elements if e["type"] == "way"), key=lambda e: e["id"])
 
     excluded: Counter[str] = Counter()
+    foot_override: Counter[str] = Counter()  # CR-DATA-7 admissions, by highway
     ways: list[dict] = []
     for w in ways_raw:
         reason = exclusion_reason(w.get("tags", {}))
         if reason:
             excluded[reason] += 1
             continue
+        if admitted_by_foot_override(w.get("tags", {})):
+            foot_override[w["tags"].get("highway")] += 1
         refs = [r for i, r in enumerate(w["nodes"]) if i == 0 or r != w["nodes"][i - 1]]
         missing = [r for r in refs if r not in nodes_raw]
         if missing:
@@ -349,6 +369,7 @@ def build_graph(
         "osm_snapshot": snapshot,
         "ways_downloaded": len(ways_raw),
         "ways_included": len(ways),
+        "ways_admitted_by_foot_over_access": dict(sorted(foot_override.items())),
         "ways_excluded_by_reason": dict(sorted(excluded.items())),
         "segments": len(segments),
         "zero_length_segments_dropped": dropped_zero,

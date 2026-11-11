@@ -133,7 +133,7 @@ def _db_ready(url: str | None) -> str | None:
     except ImportError:
         return "postgis extra not installed (sqlalchemy/psycopg)"
     try:
-        eng = create_engine(url, connect_args={"connect_timeout": 2})
+        eng = create_engine(url, connect_args={"connect_timeout": 10})
         with eng.connect() as c:
             ok = c.execute(text("SELECT to_regclass('wp.edge') IS NOT NULL")).scalar()
         return None if ok else "wp.edge table absent (Data agent migrations not applied)"

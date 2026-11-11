@@ -8,7 +8,7 @@ import networkx as nx
 from pyproj import Transformer
 from shapely.geometry import LineString
 
-from winterpath_ingestion.osm.graph import INCLUDED_HIGHWAYS, build_graph
+from winterpath_ingestion.osm.graph import CONDITIONAL_HIGHWAYS, INCLUDED_HIGHWAYS, build_graph
 
 EDGE_ID = re.compile(r"^(osm:n\d+|syn:[0-9a-f]{16})>(osm:n\d+|syn:[0-9a-f]{16}):\d+$")
 
@@ -42,7 +42,9 @@ def test_extract_actually_contained_prohibited_ways(overpass_small, built):
 
 
 def test_only_included_highway_types(built):
-    assert set(built.edges["highway"]) <= INCLUDED_HIGHWAYS
+    assert set(built.edges["highway"]) <= INCLUDED_HIGHWAYS | CONDITIONAL_HIGHWAYS
+    cond = built.edges[built.edges["highway"].isin(CONDITIONAL_HIGHWAYS)]
+    assert cond["foot_access"].isin(["yes", "designated", "permissive"]).all()
 
 
 def test_lengths_positive_and_match_32188(built):

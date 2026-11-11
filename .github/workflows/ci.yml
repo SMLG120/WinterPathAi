@@ -240,6 +240,9 @@ jobs:
         working-directory: .
         env:
           API_APP: winterpath_api.main:app
+          # Server allow-list and the origin test_cors.py expects must match (explicit, never "*").
+          API_CORS_ORIGINS: http://localhost:5175
+          CORS_ALLOWED_ORIGIN: http://localhost:5175
         run: |
           if [ ! -f services/api/pyproject.toml ]; then
             echo "::notice title=SKIP real-API contract::services/api not on this branch — ran against stub only"
