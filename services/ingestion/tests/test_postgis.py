@@ -618,3 +618,90 @@ def test_load_source_cli_loads_only_that_source(test_url, tmp_path, monkeypatch)
             == 1
         )
     assert runs() == [("src-w", "succeeded")]  # osm still not loaded
+
+
+def _r311_processed(tmp_path, checksum, run_id, n=5):
+    import json
+
+    d = tmp_path / "processed" / "report_311"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "report_311_cell.csv").write_text(
+        "h3,day,category,nature,n,source_id\n"
+        f"892b8b0a2b3ffff,2026-11-01,sidewalk_slippery,requete,{n},mtl-311\n"
+    )
+    (d / "manifest.json").write_text(
+        json.dumps({"input_checksum": checksum, "ingest_run_id": run_id})
+    )
+
+
+def test_etl_locks_try_skip_wait_and_migration_gate(test_url, tmp_path, monkeypatch, capsys):
+    """infra/ETL-LOCKS.md: a held source lock or schema gate makes a load skip cleanly (exit 0,
+    notice, nothing written, no failed run); --wait blocks and times out as an error; Alembic
+    takes the schema gate exclusively and fails rather than migrate under a load.
+    Synthetic h3 cell in the throwaway DB only."""
+    from winterpath_ingestion import cli, db_load, locks
+    from winterpath_ingestion.config import Settings
+
+    alembic(test_url, "upgrade", "head")
+    _r311_processed(tmp_path, "lock-1", "00000000-0000-0000-0000-0000000000c1")
+    s = Settings(data_dir=tmp_path, user_agent="test")
+
+    def n_runs(chk):
+        with psycopg.connect(test_url) as c:
+            return c.execute(
+                "SELECT count(*) FROM wp.ingest_run WHERE input_checksum=%s", (chk,)
+            ).fetchone()[0]
+
+    holder = psycopg.connect(test_url)
+    try:
+        # 1. resource lock held by another run → skipped, nothing written
+        holder.execute("SELECT pg_advisory_xact_lock(%s, %s)", (locks.WPET, 4))
+        r = db_load.load(s, ["311"], url=test_url)
+        assert r == [{"source_id": "mtl-311", "skipped": "locked", "lock": [locks.WPET, 4]}]
+        assert (
+            "::notice::lock (1464878420,4) held by another run — skipping"
+            in capsys.readouterr().out
+        )
+        assert n_runs("lock-1") == 0
+        # other sources are not blocked by lock 4 (eccc has no processed output here)
+        assert db_load.load(s, ["eccc"], url=test_url)[0].get("skipped") == "no processed output"
+        # CLI exits 0 on contention
+        monkeypatch.setenv("DATA_DIR", str(tmp_path))
+        monkeypatch.setenv("DATABASE_URL", test_url)
+        assert cli.main(["load", "--source", "mtl-311"]) == 0
+        assert "skipping" in capsys.readouterr().out
+        # 2. --wait: blocks, then times out as an error (recorded as a failed run)
+        monkeypatch.setattr(locks, "DEFAULT_WAIT_TIMEOUT", "300ms")
+        with pytest.raises(psycopg.errors.LockNotAvailable):
+            db_load.load(s, ["311"], url=test_url, wait=True)
+        holder.rollback()  # release lock 4
+        # 3. migration holds the schema gate → every source skips, even the registry upsert
+        holder.execute("SELECT pg_advisory_xact_lock(%s, %s)", (locks.WPET, 0))
+        r = db_load.load(s, ["311", "eccc"], url=test_url)
+        assert {x["source_id"] for x in r} == {"mtl-311", "eccc-geomet"}
+        assert all(x["skipped"] == "locked" and x["lock"] == [locks.WPET, 0] for x in r)
+        holder.rollback()
+        # 4. free → loads; and the re-check under the lock keeps it idempotent
+        r = db_load.load(s, ["311"], url=test_url)[0]
+        assert r["noop"] is False and r["counts"] == {"report_311_cell": 1}
+        assert db_load.load(s, ["311"], url=test_url)[0]["noop"] is True
+        # 5. Alembic: a load holding the shared gate makes the migration fail (lock_timeout)
+        holder.execute("SELECT pg_advisory_xact_lock_shared(%s, %s)", (locks.WPET, 0))
+        monkeypatch.setenv("WP_MIGRATION_LOCK_TIMEOUT", "500ms")
+        with pytest.raises(subprocess.CalledProcessError) as e:
+            alembic(test_url, "downgrade", "0006_report_311_nature")
+        assert "lock timeout" in e.value.stderr.lower() or "LockNotAvailable" in e.value.stderr
+        holder.rollback()
+        assert "risk_cell_score" in wp_tables(test_url)  # nothing migrated
+        alembic(test_url, "downgrade", "0006_report_311_nature")
+        alembic(test_url, "upgrade", "head")
+        with psycopg.connect(test_url) as c:  # gate released after the run
+            assert (
+                c.execute(
+                    "SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND classid=%s",
+                    (locks.WPET,),
+                ).fetchone()[0]
+                == 0
+            )
+    finally:
+        holder.close()

@@ -1236,3 +1236,49 @@ $ uv run pytest -q
 69 passed in 157.18s (0:02:37)
 $ uv run ruff check . → All checks passed!   $ ruff format --check → 31 files already formatted
 ```
+
+## Wave 2b (1) — ETL advisory locks (2026-11-12)
+
+I merged integration `5f084bf` and implemented `infra/ETL-LOCKS.md` as specified.
+- **New `locks.py`:**
+  - `WPET=1464878420`, schema gate 0, sources `osm` 1, `mtl-voirie` 2, `mtl-entraves` 3,
+    `mtl-311` 4, `eccc-geomet` 5; the island graph load is 1001 (1000–1999 is reserved for island
+    builds).
+  - Order is fixed: shared gate first, then one exclusive resource lock. There is never a second
+    resource lock in a transaction.
+- **`db_load._load`:** the locks are taken transaction-scoped as the first statements of the
+  existing single staging + swap transaction.
+  - Idempotency is re-checked under the lock, so a run that waited after another loaded the same
+    input is a no-op.
+  - Contention raises `Locked` → rollback before anything is written → a `{"skipped": "locked",
+    "lock": [1464878420, objid]}` result plus the `::notice::…skipping` line → **exit 0**.
+  - **Only one shared-gate path sits outside a source lock:** the `wp.source` registry upsert at
+    the start of `load`. If a migration holds the gate, every requested source skips.
+- **`--wait`** (load only): blocking `pg_advisory_xact_lock*` under `lock_timeout` (`5min`). A
+  timeout raises `LockNotAvailable` and is recorded as a failed run; it is not a silent skip.
+- **Migrations** (`db/migrations/env.py`): exclusive schema gate, blocking, with
+  `WP_MIGRATION_LOCK_TIMEOUT` (default `5min`). Alembic commits one transaction per migration, so
+  the gate is a **session lock on a dedicated connection** (`application_name=alembic-schema-gate`)
+  held for the whole run and unlocked in `finally`. This is the scheme's documented exception.
+- **Answers to Platform's open questions:**
+  1. Every loader's staging + swap is one transaction, so the transaction lock fits. Only the
+     migration runner needs the session-lock exception.
+  2. `skipped_locked` is not recorded in `wp.ingest_run`: its status CHECK
+     (`running|succeeded|failed`) is contract-fixed. Contention is visible in the job log notice
+     and the JSON result line. Adding a status would need a change request.
+  3. That question is for ML.
+- **Test** `test_etl_locks_try_skip_wait_and_migration_gate` covers:
+  - a held lock 4 skips 311 (notice, no row, CLI exit 0) without blocking other sources;
+  - `--wait` times out with `LockNotAvailable`;
+  - a held exclusive gate skips all sources;
+  - a free gate loads, and a rerun is a no-op;
+  - a load holding the shared gate makes `alembic downgrade` fail on lock timeout, with nothing
+    migrated, and no WPET locks remain afterwards.
+
+```
+$ git merge --no-edit integration/winterpath → 5f084bf (fast-forward)
+$ uv run pytest -q
+......................................................................   [100%]
+70 passed in 50.92s
+$ uv run ruff check src tests → All checks passed!
+```

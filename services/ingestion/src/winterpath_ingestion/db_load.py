@@ -19,6 +19,7 @@ from pathlib import Path
 import psycopg
 from psycopg.types.json import Jsonb
 
+from . import locks
 from .config import Settings
 from .osm.pipeline import read_geojson
 from .runs import read_manifest
@@ -122,14 +123,32 @@ def _run_log(manifest: dict, counts: dict) -> dict:
     return out
 
 
-def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict:
+def _load(
+    conn,
+    source_id: str,
+    manifest: dict,
+    fn,
+    force: bool = False,
+    *,
+    lock_objid: int | None = None,
+    wait: bool = False,
+) -> dict:
+    """One transaction: ETL locks (infra/ETL-LOCKS.md) → ingest_run 'running' → load → succeeded.
+    Lock contention (try-lock) rolls back before anything is written and returns `skipped`; it
+    is not a failure and records no ingest_run row (the run-status vocabulary is contract-fixed).
+    """
     checksum = manifest["input_checksum"]
     if not force and _already_loaded(conn, source_id, checksum):
         return {"source_id": source_id, "noop": True}
     run_id = manifest["ingest_run_id"]
+    objid = locks.objid_for(source_id) if lock_objid is None else lock_objid
     try:
         with conn.transaction():
             with conn.cursor() as cur:
+                locks.acquire(cur, objid, wait=wait)
+                # re-check under the lock: a run that held it may have just loaded this input
+                if not force and _already_loaded(conn, source_id, checksum):
+                    return {"source_id": source_id, "noop": True}
                 cur.execute(
                     "INSERT INTO wp.ingest_run (ingest_run_id, source_id, status, input_checksum)"
                     " VALUES (%s, %s, 'running', %s) ON CONFLICT (ingest_run_id) DO UPDATE SET "
@@ -148,6 +167,9 @@ def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict
                     (source_id,),
                 )
         return {"source_id": source_id, "noop": False, "counts": counts}
+    except locks.Locked as e:
+        print(e.notice, flush=True)
+        return {"source_id": source_id, "skipped": "locked", "lock": [locks.WPET, e.objid]}
     except Exception as e:
         with conn.transaction():
             conn.execute(
@@ -576,20 +598,44 @@ def load(
     force: bool = False,
     weather_since: date | None = None,
     osm_graph: str = "pilot",
+    wait: bool = False,
 ) -> list[dict]:
     results = []
     with connect(url) as conn:
-        with conn.transaction():
-            upsert_sources(conn)
+        try:
+            with conn.transaction():
+                with conn.cursor() as cur:
+                    locks.acquire(cur, None, wait=wait)  # schema gate (shared) for the registry
+                upsert_sources(conn)
+        except locks.Locked as e:  # a migration holds the schema gate: skip everything
+            print(e.notice, flush=True)
+            return [
+                {"source_id": sid, "skipped": "locked", "lock": [locks.WPET, e.objid]}
+                for sid, key in SOURCE_LOADERS.items()
+                if key in which
+            ]
         for name in which:
             if name == "eccc":
                 source_id, manifest, fn = _weather(settings, weather_since)
             elif name == "osm":
                 source_id, manifest, fn = _osm(settings, osm_graph)
+                if osm_graph == "island" and manifest is not None:
+                    results.append(
+                        _load(
+                            conn,
+                            source_id,
+                            manifest,
+                            fn,
+                            force=force,
+                            lock_objid=locks.objid_for("osm", island=True),
+                            wait=wait,
+                        )
+                    )
+                    continue
             else:
                 source_id, manifest, fn = LOADERS[name](settings)
             if manifest is None:
                 results.append({"source_id": source_id, "skipped": "no processed output"})
                 continue
-            results.append(_load(conn, source_id, manifest, fn, force=force))
+            results.append(_load(conn, source_id, manifest, fn, force=force, wait=wait))
     return results
