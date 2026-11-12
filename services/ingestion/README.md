@@ -196,3 +196,28 @@ Behaviour:
   a session lock on a dedicated connection, because migrations commit per migration. It waits up
   to `WP_MIGRATION_LOCK_TIMEOUT` (default `5min`) and then fails: it never migrates under a load.
 - Advisory locks are per database, so `wp_data` and `wp_island` never contend.
+
+## Daily 311 refresh (rolling window)
+
+```bash
+uv run wp-ingest 311 --recent-days 14                 # DataStore query → data/processed/report_311_recent
+uv run wp-ingest load --source mtl-311 --recent       # upsert the window under lock (WPET,4)
+```
+
+- **Fetch:** the portal's CKAN DataStore (`datastore_search_sql`, POST JSON) on the same resource
+  as the full file, filtered to the winter categories and to `DDS_DATE_CREATION >= start`.
+  - Only the 6 columns the classifier reads are fetched, in pages of 5,000 ordered by `_id`.
+  - The page sum must equal a `COUNT(*)` of the same filter, or the run fails.
+  - Raw rows go to the git-ignored `data/raw/311/recent_window.jsonl`.
+- **Window:** `[today − N + 1, today]`, with today in America/Montreal.
+- **Aggregation:** the same `classify` / `aggregate_rows` as the full build, so categories, natures,
+  H3 r9 and the n<3 rule are unchanged. Counts are stored as-is, and consumers apply k ≥ 3 after
+  summing.
+- **Load:** upserts the window and prunes only `mtl-311` rows whose day lies **inside** the window.
+  Older days are never touched. It is idempotent: the same content is a no-op. `wp_writer`
+  privileges suffice (DELETE/INSERT/UPDATE on `wp.report_311_cell`, plus TEMP).
+- **Freshness:** each run prints `fetch.source_data_through`, the latest `DDS_DATE_CREATION` in the
+  whole resource, and `latest_winter_row`, so "no winter report since X" is distinguishable from a
+  stale pipeline.
+- **Limit:** reports changed upstream for days **before** the window are only picked up by a full
+  rebuild (`wp-ingest 311 && wp-ingest load --source mtl-311`, which downloads about 850 MB).

@@ -705,3 +705,59 @@ def test_etl_locks_try_skip_wait_and_migration_gate(test_url, tmp_path, monkeypa
             )
     finally:
         holder.close()
+
+
+def test_r311_recent_window_load_replaces_only_the_window(test_url, tmp_path):
+    """`load --source mtl-311 --recent`: upsert the window, prune only inside it, never touch
+    older days; idempotent; runs as wp_writer (the scheduled job's privileges)."""
+    import json
+
+    from winterpath_ingestion import db_load
+    from winterpath_ingestion.config import Settings
+
+    alembic(test_url, "upgrade", "head")
+    s = Settings(data_dir=tmp_path, user_agent="test")
+    full = tmp_path / "processed" / "report_311"
+    full.mkdir(parents=True)
+    (full / "report_311_cell.csv").write_text(
+        "h3,day,category,nature,n,source_id\n"
+        "892b8b0a2b3ffff,2026-10-01,sidewalk_slippery,requete,4,mtl-311\n"  # outside window
+        "892b8b0a2b3ffff,2026-11-05,sidewalk_slippery,requete,1,mtl-311\n"  # in window, gone
+        "892b8b0a2b3ffff,2026-11-06,snow_clearing,plainte,2,mtl-311\n"  # in window, updated
+    )
+    (full / "manifest.json").write_text(
+        json.dumps(
+            {"input_checksum": "full-1", "ingest_run_id": "00000000-0000-0000-0000-0000000000d1"}
+        )
+    )
+    assert db_load.load(s, ["311"], url=test_url)[0]["counts"] == {"report_311_cell": 3}
+
+    rec = tmp_path / "processed" / "report_311_recent"
+    rec.mkdir()
+    (rec / "report_311_cell.csv").write_text(
+        "h3,day,category,nature,n,source_id\n"
+        "892b8b0a2b3ffff,2026-11-06,snow_clearing,plainte,3,mtl-311\n"
+        "892b8b0a2b3ffff,2026-11-11,sidewalk_slippery,requete,1,mtl-311\n"
+    )
+    (rec / "manifest.json").write_text(
+        json.dumps(
+            {
+                "input_checksum": "recent-1",
+                "ingest_run_id": "00000000-0000-0000-0000-0000000000d2",
+                "window": ["2026-10-30", "2026-11-12"],
+            }
+        )
+    )
+    writer = test_url + "?options=-c%20role%3Dwp_writer"
+    r = db_load.load(s, ["311"], url=writer, r311_recent=True)[0]
+    assert r["noop"] is False and r["counts"] == {"report_311_cell": 2}
+    with psycopg.connect(test_url) as c:
+        got = c.execute(
+            "SELECT day::text, category, nature, n FROM wp.report_311_cell ORDER BY day"
+        ).fetchall()
+    assert got == [
+        ("2026-10-01", "sidewalk_slippery", "requete", 4),  # outside: untouched
+        ("2026-11-06", "snow_clearing", "plainte", 3),  # updated
+        ("2026-11-11", "sidewalk_slippery", "requete", 1),  # new
+    ]  # 2026-11-05 (in window, no longer reported) pruned
+    assert db_load.load(s, ["311"], url=writer, r311_recent=True)[0]["noop"] is True

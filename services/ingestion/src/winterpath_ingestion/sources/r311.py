@@ -175,3 +175,146 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
         }
 
     return run_atomic("report_311", settings.processed_dir, checksum, build, force=force)
+
+
+# ------------------------------------------------------------------ incremental (rolling window)
+# Daily refresh (v2 Wave 2b): instead of re-downloading the ~850 MB file, query the portal's CKAN
+# DataStore for the same resource, restricted to the winter categories, the last N days and only
+# the columns `classify` / `aggregate_rows` read. Same classification, same H3 resolution, same
+# (h3, day, category, nature) counts → the n<3 rule is unchanged (consumers apply it after SUM).
+RESOURCE_ID = "2cfa0e06-9be4-49a6-b7f1-ee9f2363a872"  # "Requêtes 3-1-1 (2022 à ce jour)"
+DATASTORE_SQL = "https://donnees.montreal.ca/api/3/action/datastore_search_sql"
+RECENT_FIELDS = ("NATURE", "ACTI_NOM", "LOC_ERREUR_GDT", "LOC_LAT", "LOC_LONG", "DDS_DATE_CREATION")
+PAGE = 5000
+LOCAL_TZ = "America/Montreal"
+
+
+def window(days: int, today=None) -> tuple[str, str]:
+    """[start, end] calendar days, end = today in America/Montreal (inclusive)."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    if days < 1:
+        raise ValueError("days must be ≥ 1")
+    end = today or datetime.now(ZoneInfo(LOCAL_TZ)).date()
+    return (end - timedelta(days=days - 1)).isoformat(), end.isoformat()
+
+
+def _sql_window(start: str, select: str, tail: str = "") -> str:
+    cats = ",".join("'" + c.replace("'", "''") + "'" for c in sorted(WINTER_CATEGORIES))
+    return (
+        f'SELECT {select} FROM "{RESOURCE_ID}" WHERE "DDS_DATE_CREATION" >= \'{start}\' '
+        f'AND "ACTI_NOM" IN ({cats}){tail}'
+    )
+
+
+def fetch_recent(settings: Settings, start: str, *, post=None) -> tuple[list[dict], dict]:
+    """All winter-category rows created on/after `start` (ISO date; validated). Pages ordered by
+    `_id`; the page sum must equal a COUNT(*) of the same filter or the fetch fails."""
+    import json
+    import time
+    from datetime import date
+
+    import requests
+
+    date.fromisoformat(start)  # refuses anything but a plain date (it is inlined into SQL)
+    headers = {"User-Agent": settings.user_agent}
+
+    def call(sql: str) -> tuple[list[dict], int]:
+        last = None
+        for attempt in range(3):
+            try:
+                r = (post or requests.post)(
+                    DATASTORE_SQL, json={"sql": sql}, headers=headers, timeout=120
+                )
+                r.raise_for_status()
+                body = r.json()
+                if not body.get("success"):
+                    raise RuntimeError(f"datastore error: {body.get('error')}")
+                return body["result"]["records"], len(r.content)
+            except Exception as e:  # noqa: BLE001 — retried, then re-raised
+                last = e
+                time.sleep(2**attempt)
+        raise RuntimeError(f"311 DataStore query failed after 3 attempts: {last}")
+
+    t0 = time.perf_counter()
+    (cnt,), nbytes = call(_sql_window(start, "count(*) AS n"))
+    expected = int(cnt["n"])
+    cols = ", ".join(f'"{c}"' for c in RECENT_FIELDS)
+    rows: list[dict] = []
+    offset = 0
+    while True:
+        page, b = call(_sql_window(start, cols, f' ORDER BY "_id" LIMIT {PAGE} OFFSET {offset}'))
+        nbytes += b
+        rows.extend(page)
+        if len(page) < PAGE:
+            break
+        offset += PAGE
+    if len(rows) != expected:
+        raise RuntimeError(f"311 window fetch inconsistent: {len(rows)} rows vs COUNT {expected}")
+    # freshness of the SOURCE (all categories), so "no winter report since X" is not mistaken for
+    # a stale pipeline
+    (mx,), b = call(f'SELECT max("DDS_DATE_CREATION") AS mx FROM "{RESOURCE_ID}"')
+    nbytes += b
+    raw = settings.raw_dir / "311" / "recent_window.jsonl"  # git-ignored; overwritten each run
+    raw.parent.mkdir(parents=True, exist_ok=True)
+    raw.write_text("".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in rows))
+    info = {
+        "resource_id": RESOURCE_ID,
+        "endpoint": DATASTORE_SQL,
+        "rows": len(rows),
+        "response_bytes": nbytes,
+        "fetch_s": round(time.perf_counter() - t0, 2),
+        "source_data_through": mx.get("mx"),
+        "latest_winter_row": max((r.get("DDS_DATE_CREATION") or "" for r in rows), default=None),
+    }
+    return rows, info
+
+
+def run_recent(
+    settings: Settings, *, days: int = 14, force: bool = False, today=None, post=None
+) -> RunResult:
+    import json
+    from datetime import UTC, datetime
+
+    start, end = window(days, today)
+    rows, info = fetch_recent(settings, start, post=post)
+    rows = [r for r in rows if (r.get("DDS_DATE_CREATION") or "")[:10] <= end]
+    cats = "|".join(f"{k}={v}" for k, v in sorted(WINTER_CATEGORIES.items()))
+    nat = "|".join(f"{k}={v}" for k, v in sorted(NATURES.items()))
+    canon = json.dumps(sorted(json.dumps(r, sort_keys=True) for r in rows))
+    checksum = hashlib.sha256(
+        f"recent|{start}|{end}|{canon}|h3={H3_RES}|{cats}|nature:{nat}".encode()
+    ).hexdigest()
+
+    def build(staging: Path, run_id: str) -> dict:
+        counts, reasons = aggregate_rows(rows)
+        with (staging / "report_311_cell.csv").open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["h3", "day", "category", "nature", "n", "source_id", "ingest_run_id"])
+            for (cell, day, cat, nature), n in sorted(counts.items()):
+                w.writerow([cell, day, cat, nature, n, SOURCE_ID, run_id])
+        per_cat: Counter = Counter()
+        for (_, _, cat, _), n in counts.items():
+            per_cat[cat] += n
+        return {
+            "source_id": SOURCE_ID,
+            "mode": "recent_window",
+            "window": [start, end],
+            "window_days": days,
+            "fetched_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "fetch": info,
+            "h3_resolution": H3_RES,
+            "winter_categories": WINTER_CATEGORIES,
+            "natures": NATURES,
+            "day_basis": "calendar date of DDS_DATE_CREATION as published (no timezone stated)",
+            "stats": {
+                "rows_by_reason": dict(sorted(reasons.items())),
+                "reports_aggregated_by_category": dict(sorted(per_cat.items())),
+                "cells_rows": len(counts),
+            },
+        }
+
+    r = run_atomic("report_311_recent", settings.processed_dir, checksum, build, force=force)
+    # this run's fetch (freshness) is reported even when the content is unchanged (noop)
+    return RunResult(r.name, r.out_dir, r.noop, {**r.manifest, "fetch_this_run": info})

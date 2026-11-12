@@ -460,9 +460,16 @@ def _csv_rows(path: Path, cols: list[str], run_id: str):
             yield tuple((r[c] if r[c] != "" else None) for c in cols)
 
 
-def _r311(settings: Settings):
-    d = settings.processed_dir / "report_311"
+def _r311(settings: Settings, recent: bool = False):
+    """recent=True: the rolling-window product (`wp-ingest 311 --recent-days N`). It upserts the
+    window and prunes ONLY mtl-311 rows whose day lies inside the window (reports withdrawn or
+    re-categorised upstream); rows outside the window are never touched."""
+    d = settings.processed_dir / ("report_311_recent" if recent else "report_311")
     m = read_manifest(d)
+    prune = None
+    if recent and m is not None:
+        start, end = (date.fromisoformat(x).isoformat() for x in m["window"])
+        prune = f"t.source_id='mtl-311' AND t.day BETWEEN DATE '{start}' AND DATE '{end}'"
 
     def fn(cur, run_id):
         cols = ["h3", "day", "category", "nature", "n", "source_id", "ingest_run_id"]
@@ -481,6 +488,7 @@ def _r311(settings: Settings):
             },
             rows=_csv_rows(d / "report_311_cell.csv", cols, run_id),
             key=["h3", "day", "category", "nature"],
+            prune_where=prune,
         )
         return {"report_311_cell": n}
 
@@ -599,6 +607,7 @@ def load(
     weather_since: date | None = None,
     osm_graph: str = "pilot",
     wait: bool = False,
+    r311_recent: bool = False,
 ) -> list[dict]:
     results = []
     with connect(url) as conn:
@@ -617,6 +626,8 @@ def load(
         for name in which:
             if name == "eccc":
                 source_id, manifest, fn = _weather(settings, weather_since)
+            elif name == "311":
+                source_id, manifest, fn = _r311(settings, recent=r311_recent)
             elif name == "osm":
                 source_id, manifest, fn = _osm(settings, osm_graph)
                 if osm_graph == "island" and manifest is not None:
