@@ -78,6 +78,11 @@ class Settings:
     risk_score_source: str = "file"
     #: v1.7: false → POST /reports and POST /pilot-requests return 503 WRITES_DISABLED
     public_writes: bool = True
+    #: Wave 1 prototypes, OFF by default (production behaviour unchanged):
+    #: ROUTING_COMPACT_GRAPH → array-backed CompactGraph + CompactRoutingEngine (same routes);
+    #: ROUTING_STEPS_V2 → merged, named steps (same Step shape, contract unchanged).
+    routing_compact_graph: bool = False
+    routing_steps_v2: bool = False
     #: v1.7: SQLAlchemy pool, sized for Supabase's session pooler on a free-tier host. One engine
     #: is shared by every repository and the weather store; the graph load uses its own
     #: short-lived connection at startup and releases it.
@@ -109,6 +114,8 @@ class Settings:
             weather_max_age_minutes=int(e.get("WEATHER_MAX_AGE_MINUTES") or 180),
             weather_station_ids=_csv(e.get("WEATHER_STATION_IDS")),
             public_writes=_bool(e.get("API_PUBLIC_WRITES"), True),
+            routing_compact_graph=_bool(e.get("ROUTING_COMPACT_GRAPH"), False),
+            routing_steps_v2=_bool(e.get("ROUTING_STEPS_V2"), False),
             risk_score_source=_choice(e.get("RISK_SCORE_SOURCE"), "file", ("file", "postgis")),
             db_pool_size=_int(e.get("DATABASE_POOL_SIZE"), 3, minimum=1),
             db_max_overflow=_int(e.get("DATABASE_MAX_OVERFLOW"), 2),

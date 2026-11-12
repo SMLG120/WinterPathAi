@@ -80,7 +80,14 @@ def _load_graph(
         else:
             provider = FixtureGraphProvider(settings.fixture_dir)
     try:
-        graph = PedestrianGraph(provider.load())
+        data = provider.load()
+        if settings.routing_compact_graph:
+            from winterpath_routing.compact import CompactGraph
+
+            graph = CompactGraph.from_graph_data(data)
+        else:
+            graph = PedestrianGraph(data)
+        del data
     except (GraphUnavailableError, ValueError) as exc:
         log.warning("graph_unavailable", reason=str(exc))
         return None, str(exc)
@@ -89,8 +96,14 @@ def _load_graph(
         nodes=len(graph.nodes),
         edges=len(graph.edges),
         simulated=graph.metadata.simulated,
+        compact=settings.routing_compact_graph,
+        steps_v2=settings.routing_steps_v2,
     )
-    return RoutingEngine(graph), None
+    if settings.routing_compact_graph:
+        from winterpath_routing.compact_engine import CompactRoutingEngine
+
+        return CompactRoutingEngine(graph, steps_v2=settings.routing_steps_v2), None
+    return RoutingEngine(graph, steps_v2=settings.routing_steps_v2), None
 
 
 def build_state(

@@ -37,7 +37,7 @@ from .models import (
 )
 from .risk import NullRiskProvider, RiskProvider
 from .search import NoPathError, SearchResult
-from .steps import Piece, Step, build_steps
+from .steps import Piece, Step, build_steps, build_steps_v2
 
 Weight = Literal["distance", "time", "generalized"]
 START: Hashable = ("__start__",)
@@ -189,9 +189,17 @@ class _LazyWeights(dict):
 
 
 class RoutingEngine:
-    def __init__(self, graph: PedestrianGraph, config: CostConfig | None = None) -> None:
+    def __init__(
+        self,
+        graph: PedestrianGraph,
+        config: CostConfig | None = None,
+        *,
+        steps_v2: bool = False,
+    ) -> None:
         self.graph = graph
         self.config = config or CostConfig()
+        #: ``ROUTING_STEPS_V2`` (off by default): merged, named steps (steps.build_steps_v2)
+        self.steps_v2 = steps_v2
         g = graph.g
         # Same order as ``g.out_edges(n, keys=True)`` at search time (the graph is never mutated
         # after load), so arcs are relaxed in the same order as before.
@@ -231,9 +239,12 @@ class RoutingEngine:
         )
 
     # ------------------------------------------------------------------ context
-    def _context(
-        self, req: RouteRequest, risk_provider: RiskProvider, hazards: Iterable[Hazard]
-    ) -> _Context:
+    def _match_hazards(
+        self, req: RouteRequest, hazards: Iterable[Hazard]
+    ) -> tuple[
+        dict[str, list[str]], dict[str, list[str]], dict[str, list[str]], dict[str, list[str]]
+    ]:
+        """(closures, disruptions, possible closures, reports) for hazards active at req.at."""
         g, cfg = self.graph, self.config
         closures: dict[str, list[str]] = {}
         disruptions: dict[str, list[str]] = {}
@@ -257,7 +268,13 @@ class RoutingEngine:
                 for eid in g.edges_near_metric(geom, cfg.report_match_tolerance_m):
                     reports.setdefault(eid, []).append(hz.hazard_id)
             # other evidence states (unknown/model/simulated hazards) do not affect routing
+        return closures, disruptions, possible, reports
 
+    def _context(
+        self, req: RouteRequest, risk_provider: RiskProvider, hazards: Iterable[Hazard]
+    ) -> _Context:
+        closures, disruptions, possible, reports = self._match_hazards(req, hazards)
+        cfg = self.config
         closed_ids = {eid for eids in closures.values() for eid in eids}
         # Static exclusions (foot access, step-free rule, main component) are precomputed per
         # profile; confirmed closures active at this time are removed on top.
@@ -606,7 +623,7 @@ class RoutingEngine:
             hazards_on_route=hz_on,
             hazards_avoided=[],
             explanation=[],
-            steps=build_steps(pieces, ctx.req.locale),
+            steps=(build_steps_v2 if self.steps_v2 else build_steps)(pieces, ctx.req.locale),
             data_freshness=freshness,
             risk_cost_s=risk_s,
             labels=[lab for lab in res.labels if lab[2] - lab[1] > 0],

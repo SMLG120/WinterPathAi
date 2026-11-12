@@ -1,8 +1,8 @@
 # Agent report — routing
 
-- **Status:** READY FOR REVIEW. Cycle 16 (URGENT): with writes off, report/pilot stores stay in memory so hazards work as `wp_reader` on PostGIS; 328 passed. Cycle 15: report reads work under a read-only DB role (effective status in SQL, expiry write skipped/tolerated), 325 passed. Cycle 14: `/routes/compare` under 0.1 CPU p95 4692→602 ms (memory store), byte-identical results, golden regression test; 324 passed. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
+- **Status:** READY FOR REVIEW. **Wave 1 (2.0): island feasibility.** Compact graph prototype (`ROUTING_COMPACT_GRAPH`, off) with byte-identical routes; steps v2 (`ROUTING_STEPS_V2`, off); measurements in "Island feasibility" (`wp_island` absent; pilot REAL + SYNTHETIC island-scale). Verdict: the current loader needs ~1.7 GiB at ~1M edges (no); compact fits 512 MB only as a prebuilt artifact; cross-island search on 0.1 CPU is p50 47 s (no). 352 passed. Cycle 16 (URGENT): with writes off, report/pilot stores stay in memory so hazards work as `wp_reader` on PostGIS; 328 passed. Cycle 15: report reads work under a read-only DB role (effective status in SQL, expiry write skipped/tolerated), 325 passed. Cycle 14: `/routes/compare` under 0.1 CPU p95 4692→602 ms (memory store), byte-identical results, golden regression test; 324 passed. Cycle 13: v1.7 risk wiring (shared engine + `RISK_SCORE_SOURCE` passed to ML's provider; data `360fdd4` + ml `79a0ee6` merged; `wp_routing` at 0007), 323 passed. Cycle 12: contract v1.7.0 (read-only `API_PUBLIC_WRITES`, Supabase session-pooler engine, clean SIGTERM), 317 passed. Cycle 9: **`agent/data` `f6eb3b2` merged by coordinator instruction** (v1.6 migration 0006 with alley categories, CR-DATA-7, Geofabrik pilot_mini); `wp_routing` was downgraded to 0005 and re-upgraded to head; **303 passed, 0 skipped**; re-merge of `integration/winterpath` (`a292b63`, no change) re-run: 303 passed. Earlier: cycle 8 contract v1.6.0, cycle 7 API-NULL-1, cycle 6 v1.5.0, cycle 5 v1.4.0 closure activity, cycle 4 v1.3.0 + ML risk.
 - **Branch / SHA:** `agent/routing` @ `f776a3a` = merge of `agent/data` `f6eb3b2` (by coordinator instruction) onto `b62a2e8`. Code is unchanged since `31651e5` (contract v1.6.0). This report is committed on top.
-- **Date (UTC):** 2026-11-10
+- **Date (UTC):** 2026-11-12
 
 ## Files changed
 `git diff --stat $(git merge-base integration/winterpath HEAD) HEAD -- services docs/agent-reports/routing.md`. Only owned paths are touched; `scripts/check-ownership.sh routing` → `ownership OK for agent/routing`.
@@ -21,6 +21,167 @@ services/api/       winterpath_api — FastAPI
   tests/  test_api_{contract,adapters,pilot_mini,postgis,weather,ml_risk}.py, api_testlib.py
   pyproject.toml / uv.lock: path dependency on ../ml (winterpath-ml), cycle 4
 docs/agent-reports/routing.md
+```
+
+## Island feasibility (WinterPath 2.0, Wave 1) — current
+
+**Scope and honesty labels.**
+- **`wp_island` does not exist yet.** The local cluster has `wp_data`, `wp_deploytest`, `wp_integration`, `wp_ml`, `wp_platform`, `wp_routing` and `wp_trial`. So nothing below was measured on the real island graph.
+- **REAL** numbers come from the pilot graph `wp_data`: 16,296 directed edges, 6,807 nodes, downtown bbox.
+- **SYNTHETIC** numbers come from a generated grid (`scratchpad/perf/synth.py`, NOT real streets), sized to the island estimate in `v2-plan.md`. It is 500 × 500 nodes at about 40 m spacing, which gives **998,000 directed edges, 250,000 nodes, ~20 × 18 km**. It has 3 vertices per edge, OSM-like id lengths, and an attribute mix taken from the `wp_data` frequencies.
+- **Re-measure on `wp_island`** once Data loads it. Real street graphs are irregular, so search effort per km may differ from the grid's.
+- Production behaviour is unchanged: both new flags default to OFF.
+
+### 1. Memory of the current loader (networkx + Edge objects + shapely + 2 STRtrees)
+Fresh process per run, RSS from `ps`. "Over imports" = RSS after the build minus RSS after the imports.
+
+| graph | edges | steady RSS over imports | B/edge | peak RSS (whole process) | build (graph + engine), full CPU |
+|---|---|---|---|---|---|
+| REAL `wp_data` (2 runs) | 16,296 | 43.0 / 46.5 MiB | 2,764 / 2,989 | 97.6 / 107.0 MiB | 5.1 / 3.7 s |
+| SYNTHETIC 250 × 250 | 249,000 | 443 MiB | 1,865 | 520 MiB | 15.0 + 3.9 s |
+| SYNTHETIC 500 × 500 | 998,000 | 1,574 MiB | 1,654 | **1,765 MiB** | 172 + 19 s |
+
+- At island scale, the current loader needs about **1.6–1.8 GiB, about 3.4× Render Free's 512 MB**, before uvicorn, FastAPI and the ML risk provider are loaded.
+- A full-CPU build takes about 3 minutes. At 0.1 CPU that would be tens of minutes.
+- **Verdict: the current representation cannot serve the island on the free tier.**
+
+Where the pilot's ~2.8 KB/edge goes, staged in one process:
+- The provider's `GraphData` (`Edge`/`Node` dataclasses, coordinate tuples, datetimes) is about 2.5 KB/edge on its own.
+- The networkx adjacency, metric `LineString`s, the two STRtrees and the per-profile static costs add the rest. The engine's static data alone is about 430 B/edge.
+- Freed memory is not returned to the OS (allocator arenas), so later stages show noisy deltas.
+
+### 2. Compact graph prototype (`ROUTING_COMPACT_GRAPH`, default off)
+**Files:** `services/routing/src/winterpath_routing/compact.py` and `compact_engine.py`.
+
+**Design:**
+- CSR adjacency in networkx's exact out-edge order.
+- WGS84 + EPSG:32188 vertex arrays.
+- Dictionary-encoded attribute columns.
+- Ids as sorted fixed-width UTF-8 byte arrays with binary search.
+- A 100 m uniform grid over float32 edge bboxes, rounded outward. It only selects candidates; the final predicate and distance are the same GEOS calls, on the same coordinates.
+- Per-profile static data is 1 byte (allowed) + 8 bytes (default cost) per edge, computed with vectorised arithmetic that performs the same IEEE operations in the same order as `edge_cost`.
+- The search runs on integer indices with the same pushes, heap keys and arithmetic as before.
+
+`Edge`, `Node` and shapely lines are built on access, never stored. **Array footprint: 255–264 B/edge** (`CompactGraph.nbytes()`), against 1.65–2.99 KB/edge today.
+
+**Equivalence (no contract change, same cost function):**
+- `test_routing_golden.py` is now parametrised (`networkx`, `compact`). Both reproduce the pre-change golden file: 96 cases, edge sequences exact.
+- New `test_routing_compact.py` (13 tests) checks:
+  - graph surface equality: edges, nodes, metric coordinates, components, gaps, adjacency order;
+  - `nearest_edges`, `edges_near_metric` and `edges_in_bbox` equality on 150 random points per graph;
+  - static cost == `edge_cost(...).total_s` **bit for bit**, for every edge and every profile;
+  - the **unrounded** `compare()` output (every field, plus raw floats and labels) equal on all golden cases;
+  - the time-weight search equal for Dijkstra and A*;
+  - identical integrity-error messages, and component tie ordering.
+- On REAL `wp_data`, a scratch check (`perf/check_compact.py`) found every edge, node, metric line, adjacency list and the main component equal, and 300 random snaps and spatial queries equal.
+- Off-by-default flags, tested in `services/api/tests/test_api_compact_flags.py`. With the compact graph ON, `/health`, `/coverage`, `/map/segments` and `/routes/compare` answer identically to OFF on pilot_mini (volatile `request_id` and `computed_at` excluded).
+
+**Memory and latency at island scale, Docker `--cpus=0.1 --memory=512m`** (image `wp-api:wave1` built from this tree with Platform's `infra/docker/api.Dockerfile`):
+- These runs load a prebuilt SYNTHETIC compact graph (244 MiB pickle) and route **in-process**: no HTTP, no FastAPI, no ML provider. Profiles were standard and reduced_mobility; cross-island was standard only.
+- Origin and destination classes use straight-line distance: short 200 m–1 km, medium 2–5 km, cross-island 15–40 km (the grid's diagonal is ~27 km).
+
+| measure | value |
+|---|---|
+| load prebuilt artifact | 12.8 s (22.2 s in a second run) |
+| engine static data (3 profiles) | 18.4 s / 19.7 s |
+| RSS after boot | 368 MiB |
+| peak RSS | 398 MiB (short + medium run); 441 MiB (cross-island run) |
+| short, n = 30 | p50 **301 ms**, p95 1,700 ms, max 2,389 ms |
+| medium, n = 30 | p50 **1,955 ms**, p95 5,603 ms, max 6,296 ms |
+| cross-island, n = 20 | p50 **46.8 s**, p95 113.0 s, max 206.9 s |
+
+**Full-CPU breakdown of cross-island compare** (host, SYNTHETIC; 5 routes, 15.4–20.9 km straight-line):
+- compare takes 0.95–1.57 s.
+- The shortest-distance **Dijkstra** settles 183k–249k nodes.
+- The winter-aware A* settles 59k–156k nodes.
+- A* on distance alone would settle 51k–142k nodes, with an identical cost.
+- So at 0.1 CPU, cross-island time is **search work, not memory**. Wall time grows more than 10× under the 0.1-CPU quota, because the quota is applied in throttled periods.
+
+**What the numbers say:**
+1. **Memory: the compact graph fits 512 MB at island scale**, but with little headroom. The 368–441 MiB above has no FastAPI app or ML provider, and the current API boots at about 100 MiB of imports. It fits **only if the graph is built offline and loaded as an artifact**.
+   - Building it in-process from `Edge` objects peaked at 703–773 MiB on the host (allocator retention), so it would not fit.
+   - So Wave 3 needs either a streaming PostGIS → array loader or an offline-built artifact. A streaming provider is **not implemented** yet; `CompactGraphBuilder` is ready for it.
+2. **Latency: on 0.1 CPU, short routes are acceptable (p50 0.3 s). Medium routes are slow (p50 2 s, p95 5.6 s). Cross-island is not usable (p50 47 s, p95 113 s).**
+   - Representation is not the fix. It needs less search work:
+     - A* or bidirectional search for the shortest variant;
+     - a corridor-bounded search;
+     - a contraction-hierarchy-style preprocessing whose per-request hazard/risk overrides would need care;
+   - or more CPU. Even at full CPU, cross-island compare is about 1–1.6 s.
+3. **Another O(edges) cost per request:**
+   - With a non-null risk provider, `RoutingEngine._context` passes **every allowed edge id** to `edge_risk()` on each request. That is the case in production (`CoordinateRiskAdapter`).
+   - At 1M edges, that is a 1M-element list per request, plus the provider's own work.
+   - The compact engine keeps this behaviour for equivalence. Not measured here, because the benchmark used `NullRiskProvider`. It needs a bbox- or corridor-scoped risk lookup before island launch.
+4. **Owner decision input (not asked yet):**
+   - Memory alone does not force a hosting upgrade if the graph ships as a prebuilt compact artifact.
+   - **Cross-island routing on 0.1 CPU does** force one, unless the product limits route length or the search is replaced.
+   - I have not compared prices or plans.
+
+### 3. Steps (`ROUTING_STEPS_V2`, default off; contract shape unchanged)
+`steps.build_steps_v2`:
+- **Merging:** consecutive pieces merge when they continue the same way: the same OSM `name`, or the same footway class when unnamed. Split crossings merge, and consecutive flights of steps merge.
+- **Turns:** a turn of 35° or more still starts a new step. Turn angles use 10 m chord bearings, so a 1 m kink is not a turn.
+- **Short legs:** walking legs under 5 m are **folded** into a neighbouring step. Their distance is kept: the sum of step distances still equals the route distance.
+- **Crossings and stairs are never folded**, at any length (safety and accessibility).
+- **Crossing type:** if a merged crossing mixes types, the step uses the generic "Cross the street" and never the strongest type, because part of it could be unmarked.
+- **`street_name`:** the OSM `name`, else an EN/FR descriptor of the mapped way type:
+  - sidewalk / trottoir, footpath / sentier piétonnier, path / sentier, stairs / escalier;
+  - pedestrian street / rue piétonne, shared street / rue partagée;
+  - crossing / traversée.
+- **Crossings always get the descriptor:** OSM `name` on crossing ways was seen to be the street walked along, not the one crossed.
+- **"crossing", not "crosswalk":** an unmarked crossing is not a crosswalk.
+- Descriptors never state condition, clearing or accessibility.
+
+Before/after on the same routes (`perf/step_stats_v2.py`; walking legs <5 m exclude crossings and steps; "street_name" counts names and descriptors):
+
+| route set | variant | routes | km | steps | per km | legs <5 m | walking legs <5 m | legs <2 m | with street_name | max/route |
+|---|---|---|---|---|---|---|---|---|---|---|
+| REAL `wp_data`, 100 seeded ODs | v1 (current) | 132 | 186.9 | 7,487 | 40.1 | 3,166 | 1,591 | 961 | 3,973 | 134 |
+| | **v2** | 132 | 186.9 | **4,189** | **22.4** | 238 | **0** | 5 | 4,128 | 69 |
+| golden cases (REAL pilot_mini + SYNTHETIC grid) | v1 | 144 | 65.7 | 891 | 13.6 | 124 | 84 | 20 | 64 | 17 |
+| | **v2** | 144 | 65.7 | **787** | **12.0** | 4 | **0** | 0 | 735 | 16 |
+
+- The remaining sub-5 m legs in v2 are crossings and stairs, kept on purpose.
+- Example: a REAL 1.22 km route has 21 steps in v2. Many are short "Cross the street" steps for side streets along one avenue, which is real navigation information.
+- Tests: `services/routing/tests/test_routing_steps_v2.py` (7 tests).
+- The golden test's `n_steps` is v1 by design (flag off).
+
+### 4. Pilot HTTP benchmark (REAL `wp_data` graph, memory store, `RISK_PROVIDER=none`, Docker 0.1 CPU / 512 MB, 60 requests per class)
+Image `wp-api:wave1b` (this tree), `API_STORE_BACKEND=memory`, `API_PUBLIC_WRITES=false`, `ROUTING_WORKERS=1`, `wp_data` opened read-only, sequential requests. Origin and destination are random points in the pilot bbox, by straight-line class: short 100 m–1 km, medium 2–5 km. The pilot bbox diagonal is ~3.2 km, so medium tops out there. Statuses are identical with the flag on and off; 404/422 are off-network or no-route answers. **Response bodies are byte-identical (`cmp`, after removing `request_id` and `computed_at`).**
+
+```
+[cache_false] boot_to_health_s=119.1 mem_after_boot=184.9MiB / 512MiB
+short n=60 p50=100ms p95=402ms max=587ms statuses={200: 40, 404: 2, 422: 18}
+medium n=60 p50=651ms p95=1188ms max=4089ms statuses={200: 37, 404: 1, 422: 22}
+[cache_false] mem_after_load=188.1MiB / 512MiB
+[cache_true] boot_to_health_s=50.6 mem_after_boot=125MiB / 512MiB
+short n=60 p50=100ms p95=424ms max=873ms statuses={200: 40, 404: 2, 422: 18}
+medium n=60 p50=489ms p95=796ms max=2390ms statuses={200: 37, 404: 1, 422: 22}
+[cache_true] mem_after_load=128.5MiB / 512MiB
+BODIES_IDENTICAL
+```
+(`cache_true` = `ROUTING_COMPACT_GRAPH=true`.)
+
+**Variance.** The host was loaded by unrelated containers, so wall times vary between runs:
+- A first run, before the object cache, measured boot at 149 s (off) vs 56 s (on).
+- In that run, compact medium p50 was 802 ms vs 494 ms with the flag off.
+
+Profiling showed each route edge rebuilt about 5 times (cost, assembly, explanation, steps). I added a bounded cache of 8,192 materialised `Edge`/`LineString` objects, cleared when full. After that, CPU time on `wp_data` (100 seeded ODs, 5 interleaved rounds, `time.process_time`) was **median 17.9 ms/request with the flag off vs 13.8 ms with compact**.
+
+The SYNTHETIC container numbers in §2 were measured before this cache. Search work dominates those numbers.
+
+### 5. Commands and results
+```
+$ uv run --project services/api pytest services/routing services/api -q -rs -p no:logging
+352 passed, 1 warning in 29.21s
+$ (cd services/routing && uv run ruff check . && uv run ruff format --check .)
+All checks passed!
+25 files already formatted
+$ (cd services/api && uv run ruff check . && uv run ruff format --check . && uv lock --check)
+All checks passed!
+34 files already formatted
+Resolved 61 packages in 3ms
+$ scripts/check-ownership.sh routing
+ownership OK for agent/routing
 ```
 
 ## Commands run and literal results
