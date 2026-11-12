@@ -35,7 +35,14 @@ def test_load_source_selects_only_that_loader(monkeypatch, capsys):
     seen = {}
 
     def fake_load(
-        settings, which, url=None, force=False, weather_since=None, osm_graph="pilot", wait=False
+        settings,
+        which,
+        url=None,
+        force=False,
+        weather_since=None,
+        osm_graph="pilot",
+        wait=False,
+        r311_recent=False,
     ):
         seen.update(which=which, force=force, weather_since=weather_since, osm_graph=osm_graph)
         return [{"source_id": "eccc-geomet", "noop": True}]
@@ -59,6 +66,9 @@ def test_load_source_selects_only_that_loader(monkeypatch, capsys):
         ["eccc", "--source", "eccc-geomet"],  # --source only applies to load
         ["osm", "--osm-graph", "island"],  # --osm-graph only applies to load
         ["load", "--osm-graph", "laval"],
+        ["load", "--recent"],  # --recent needs --source mtl-311
+        ["load", "--source", "eccc-geomet", "--recent"],
+        ["eccc", "--recent-days", "14"],  # --recent-days only for 311
     ],
 )
 def test_load_source_rejects(argv):

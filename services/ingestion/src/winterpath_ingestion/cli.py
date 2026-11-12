@@ -62,11 +62,28 @@ def main(argv: list[str] | None = None) -> int:
         help="load only: block on ETL advisory locks (lock_timeout 5min) instead of skipping "
         "when another run holds them (infra/ETL-LOCKS.md); default try-lock + exit 0",
     )
+    ap.add_argument(
+        "--recent-days",
+        type=int,
+        metavar="N",
+        help="311 only: incremental refresh — fetch just the last N days (America/Montreal) of "
+        "winter-category requests from the portal DataStore → data/processed/report_311_recent",
+    )
+    ap.add_argument(
+        "--recent",
+        action="store_true",
+        help="load only, with --source mtl-311: load the rolling-window product (upsert the "
+        "window; prune only inside it)",
+    )
     args = ap.parse_args(argv)
     if args.weather_since is not None and args.pipeline != "load":
         ap.error("--weather-since only applies to `load`")
     if args.source and args.pipeline != "load":
         ap.error("--source only applies to `load`")
+    if args.recent_days is not None and args.pipeline != "311":
+        ap.error("--recent-days only applies to `311`")
+    if args.recent and (args.pipeline != "load" or args.source != ["mtl-311"]):
+        ap.error("--recent requires `load --source mtl-311`")
     if args.wait and args.pipeline != "load":
         ap.error("--wait only applies to `load`")
     if args.osm_graph != "pilot" and args.pipeline != "load":
@@ -88,8 +105,30 @@ def main(argv: list[str] | None = None) -> int:
             weather_since=args.weather_since,
             osm_graph=args.osm_graph,
             wait=args.wait,
+            r311_recent=args.recent,
         ):
             print(json.dumps(r, default=str))
+        return 0
+
+    if args.pipeline == "311" and args.recent_days is not None:
+        from .sources.r311 import run_recent
+
+        r = run_recent(s, days=args.recent_days, force=args.force)
+        m = r.manifest
+        print(
+            json.dumps(
+                {
+                    "pipeline": "311-recent",
+                    "noop": r.noop,
+                    "out": str(r.out_dir),
+                    "window": m.get("window"),
+                    "fetch": m.get("fetch_this_run"),
+                    "stats": m.get("stats"),
+                },
+                indent=2,
+                default=str,
+            )
+        )
         return 0
 
     steps = (

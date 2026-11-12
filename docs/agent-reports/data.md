@@ -1282,3 +1282,68 @@ $ uv run pytest -q
 70 passed in 50.92s
 $ uv run ruff check src tests → All checks passed!
 ```
+
+## Wave 2b (2) — incremental daily 311 refresh (2026-11-12)
+
+- **Commands:**
+  - Build: `wp-ingest 311 --recent-days 14`.
+  - Load: `wp-ingest load --source mtl-311 --recent` (under ETL lock `(1464878420, 4)`, so a
+    scheduled run that loses the lock exits 0).
+  - For Platform's scheduled job (as `wp_etl`, a member of `wp_writer`):
+    `uv run --locked wp-ingest 311 --recent-days 14 && uv run --locked wp-ingest load --source mtl-311 --recent`.
+- **How it fetches:**
+  - Instead of the 850 MB file, it queries the portal's CKAN DataStore for the same resource
+    (`2cfa0e06…`, "Requêtes 3-1-1 (2022 à ce jour)", `datastore_active`, updated daily).
+  - `datastore_search_sql` must be called by POST with a JSON body; GET returns "Valeur manquante".
+  - Filter: winter categories and `DDS_DATE_CREATION >= window start`. Only 6 columns; pages of
+    5,000 ordered by `_id`; the page sum is cross-checked against `COUNT(*)`.
+  - The window start is validated as an ISO date before it is inlined.
+- **Unchanged rules:** the same `classify` / `aggregate_rows` code, categories, natures and H3 r9,
+  and **the n<3 rule is unchanged**. Counts are stored as-is, and consumers apply k ≥ 3 after
+  summing over natures.
+- **Load semantics:** upsert the window, and prune only `mtl-311` rows with a day **inside** the
+  window. Older days are never touched. Idempotent through the checksum of the fetched rows,
+  window, category map and natures.
+- **Measured** (local, against the live portal; load into local `wp_data` as `role=wp_writer`):
+
+  | Run | Rows | Download | Runtime |
+  |---|---|---|---|
+  | Current 14-day window, 2026-10-29 → 11-11 | 20 | **5.1 KB** (5,424 B with the freshness query) | build **3.2 s** (fetch 2.8 s), load **2.9 s** |
+  | Peak-winter 14-day window, 2026-01-05 → 01-18, same query shape | 5,128 (2 pages) | **0.99 MB** | **4.4 s** |
+  | Rerun with unchanged content | — | — | `noop: true` for build and load |
+
+  The full rebuild it replaces downloads 850 MB.
+- **⚠ Why production 311 "ends 2026-11-07":** the pipeline is not stale. **As of this run the source
+  has no located winter-category report after 2026-11-07.**
+  - The window's 20 winter rows: 9 aggregated; 9 have no location (all `Information` requests, which
+    are not geolocated); 2 were located at the borough office.
+  - The only later rows (11-09 and 11-10) are `Information` without a location.
+  - The source's latest row in any category is 2026-11-10T21:57:12. Each run now prints this as
+    `fetch.source_data_through`, together with `latest_winter_row`, so "no winter report since X"
+    is distinguishable from staleness.
+  - Local `wp_data` after the window load: max located day still 2026-11-07, 70,428 rows,
+    80,614 reports. That is correct, not a gap.
+- **Limit:** upstream edits to days **before** the window need a periodic full rebuild (850 MB).
+  Weekly or monthly is enough; that is Platform's schedule decision.
+- **Tests:**
+  - `tests/test_r311_recent.py` (offline, fake DataStore): window bounds, paging, COUNT mismatch →
+    failure, SQL-injection-shaped start refused, same classification as the full build (n<3 kept as
+    counts), no-op with freshness still reported.
+  - `test_r311_recent_window_load_replaces_only_the_window` (PostGIS, as `wp_writer`): an outside
+    row untouched, an in-window row updated, a vanished in-window row pruned, a new row inserted,
+    and a rerun is a no-op.
+
+```
+$ /usr/bin/time -p uv run wp-ingest 311 --recent-days 14
+  "window": ["2026-10-29", "2026-11-11"], "fetch": {"rows": 20, "response_bytes": 5125, "fetch_s": 2.77},
+  "rows_by_reason": {"located_at_borough_office": 2, "no_location": 9, "ok": 9}, "cells_rows": 8
+real 3.22
+$ /usr/bin/time -p env DATABASE_URL="…/wp_data?options=-c%20role%3Dwp_writer" uv run wp-ingest load --source mtl-311 --recent
+{"source_id": "mtl-311", "noop": false, "counts": {"report_311_cell": 8}}
+real 2.91
+$ (rerun) "noop": true, "rows": 20, "response_bytes": 5424, "source_data_through": "2026-11-10T21:57:12", "latest_winter_row": "2026-11-10T17:15:58"  real 4.33
+$ peak-winter window 2026-01-05..01-18: {'count': 5128, 'rows': 5128, 'pages': 2, 'response_bytes': 994405, 'seconds': 4.4}
+$ uv run pytest -q
+.....                                                                    [100%]
+77 passed in 61.69s (0:01:01)
+```
