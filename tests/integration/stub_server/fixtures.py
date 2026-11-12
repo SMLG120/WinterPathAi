@@ -205,7 +205,11 @@ def data_status() -> dict[str, Any]:
         "products": [
             {
                 "id": pid,
-                "freshness": {"state": "unavailable", "reason": f"{STUB_LABEL}: no data source connected", "evaluated_at": t},
+                "freshness": {
+                    "state": "unavailable",
+                    "reason": f"{STUB_LABEL}: no data source connected",
+                    "evaluated_at": t,
+                },
                 "last_success_at": None,
                 "expected_cadence": None,
                 "mechanism": mech,
