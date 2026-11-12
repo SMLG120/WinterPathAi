@@ -17,7 +17,10 @@
 # never runs twice at once and never kills a load mid-transaction (at most one run in progress plus
 # one pending; a newer pending run replaces an older pending one). Exclusion ACROSS jobs and
 # workflows that write the same tables is the database's job: ETL advisory locks
-# (infra/ETL-LOCKS.md, proposal for Data/ML).
+# (infra/ETL-LOCKS.md; implemented by Data in wp-ingest load). On contention a load prints
+# "::notice::lock (1464878420,<objid>) held by another run — skipping", writes nothing and exits 0,
+# so the job succeeds. Example: the daily and weekly 311 jobs have separate groups but share
+# lock (WPET,4); whichever comes second skips.
 name: scheduled
 
 on:
@@ -30,12 +33,19 @@ on:
     # may be delayed or dropped (v2 Wave 1 cron diagnosis, docs/agent-reports/platform.md).
     - cron: "7 12 * * *"
     - cron: "7 18 * * *"
+    # 311 (Data c6c0b79). Daily incremental refresh of the last 14 days through the portal's
+    # DataStore (~5 KB per run, ~1 MB at peak winter), at 11:27 so it lands before the 12:07 scoring.
+    - cron: "27 11 * * *"
+    # Weekly FULL 311 rebuild (~850 MB download), Sunday 10:47 UTC, before that day's 11:27
+    # incremental run. Needed because upstream edits to days older than the 14-day window are only
+    # picked up by a full rebuild (services/ingestion/README.md, "Daily 311 refresh").
+    - cron: "47 10 * * 0"
   workflow_dispatch:
     inputs:
       job:
-        description: which job to run
+        description: which job to run ('both' = weather + scoring, as before)
         type: choice
-        options: [weather, scoring, both]
+        options: [weather, scoring, both, "311", 311-full]
         default: both
 
 permissions: {}
@@ -49,7 +59,7 @@ jobs:
     name: weather ingest (ECCC -> wp.weather_obs/daily)
     if: >-
       (github.event_name == 'schedule' && github.event.schedule == '17 */3 * * *') ||
-      (github.event_name == 'workflow_dispatch' && inputs.job != 'scoring')
+      (github.event_name == 'workflow_dispatch' && (inputs.job == 'weather' || inputs.job == 'both'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -99,7 +109,7 @@ jobs:
     name: daily risk scoring (-> wp.risk_cell_score)
     if: >-
       (github.event_name == 'schedule' && (github.event.schedule == '7 12 * * *' || github.event.schedule == '7 18 * * *')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.job != 'weather')
+      (github.event_name == 'workflow_dispatch' && (inputs.job == 'scoring' || inputs.job == 'both'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -163,3 +173,100 @@ jobs:
           #   purpose: the 18:00 run exists to pick up 311 rows missing at 12:00).
           # --write-db: write wp.risk_cell_score (without it, parquet lands on the ephemeral runner).
           uv run --locked python -m "$SCORING_MODULE" --start "$day" --fetch-311 --write-db
+
+  report-311-daily:
+    name: 311 daily refresh (14-day window -> wp.report_311_cell)
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '27 11 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.job == '311')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    concurrency:
+      group: scheduled-311-daily
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: services/ingestion
+    steps:
+      - name: gate on WP_ETL_DATABASE_URL
+        id: gate
+        working-directory: .
+        env:
+          WP_ETL_DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
+        run: |
+          if [ -z "$WP_ETL_DATABASE_URL" ]; then
+            echo "::notice title=SKIP 311 daily refresh::repository secret WP_ETL_DATABASE_URL is not set — nothing ran"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.gate.outputs.configured == 'true'
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: steps.gate.outputs.configured == 'true'
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: install (locked)
+        if: steps.gate.outputs.configured == 'true'
+        run: uv sync --locked --no-dev
+      - name: fetch the last 14 days and load the window (lock WPET,4; contention -> skip, exit 0)
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
+        # The fetch prints fetch.source_data_through / latest_winter_row, so the run log shows
+        # whether "no new rows" is source reality or a stale pipeline.
+        run: uv run --locked wp-ingest 311 --recent-days 14 && uv run --locked wp-ingest load --source mtl-311 --recent
+
+  report-311-weekly-full:
+    name: 311 weekly full rebuild (-> wp.report_311_cell)
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '47 10 * * 0') ||
+      (github.event_name == 'workflow_dispatch' && inputs.job == '311-full')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    concurrency:
+      group: scheduled-311-weekly-full
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: services/ingestion
+    steps:
+      - name: gate on WP_ETL_DATABASE_URL
+        id: gate
+        working-directory: .
+        env:
+          WP_ETL_DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
+        run: |
+          if [ -z "$WP_ETL_DATABASE_URL" ]; then
+            echo "::notice title=SKIP 311 weekly full rebuild::repository secret WP_ETL_DATABASE_URL is not set — nothing ran"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.gate.outputs.configured == 'true'
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: steps.gate.outputs.configured == 'true'
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: install (locked)
+        if: steps.gate.outputs.configured == 'true'
+        run: uv sync --locked --no-dev
+      - name: download the full 311 file (~850 MB) and rebuild the aggregate (no database access)
+        if: steps.gate.outputs.configured == 'true'
+        run: uv run --locked wp-ingest 311 --refresh
+      - name: load the full 311 aggregate (lock WPET,4; contention -> skip, exit 0)
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
+        run: uv run --locked wp-ingest load --source mtl-311
