@@ -14,6 +14,9 @@ uv run wp-ingest eccc       # → data/processed/weather_obs
 uv run wp-ingest load       # processed → PostGIS wp.* (DATABASE_URL), one txn per source
 uv run wp-ingest load --weather-since 2025-11-01   # same, wp.weather_obs bounded (hosted DB)
 uv run wp-ingest load --source eccc-geomet        # one source only (repeatable; canonical source_id)
+uv run wp-ingest boundaries # limadmin + archipel (CC BY 4.0) → data/processed/boundaries (main island, units, islands)
+uv run wp-ingest osm-island # island graph (same PBF + rules as the pilot) → data/processed/osm_island (local only)
+DATABASE_URL=…/wp_island uv run wp-ingest load --source osm --osm-graph island   # local wp_island DB
 uv run alembic -c ../../db/alembic.ini upgrade head   # migrations (db/migrations)
 uv run pytest               # unit + PostGIS tests (PostGIS tests skip if unreachable)
 ```
@@ -157,3 +160,19 @@ current rows. Re-running is a no-op per source. Re-running with a different cuto
 SELECT source_id, status, record_count, finished_at FROM wp.ingest_run ORDER BY finished_at;
 SELECT pg_size_pretty(pg_database_size(current_database()));
 ```
+
+## Island graph (WinterPath 2.0 Wave 1, local only)
+
+`wp-ingest osm-island` builds the pedestrian graph for the Island of Montréal from the same
+Geofabrik PBF as the pilot, pinned through `osm_pilot`'s manifest provenance URL, and with the
+same `graph.build_graph` rules. The area rule is documented in `osm/island.py`:
+- Clip to agglomeration land, i.e. every archipel island, keeping complete ways.
+- Keep a connected network only if it has a node on the main island. Other islands are included
+  only through mapped pedestrian links.
+- Label every node `main_island`, `other_island` or `outside_agglomeration_land` (bridge decks,
+  the Laval or Longueuil end of a bridge). Nothing outside the agglomeration is labelled island.
+
+Load it into the separate local database `wp_island` with `load --source osm --osm-graph island`.
+Never load it into `wp_data` or a hosted DB without a decision; see
+`docs/agent-reports/data.md` → "Island feasibility" for sizes. The QA summary is
+`data/qa/island_feasibility.json`.

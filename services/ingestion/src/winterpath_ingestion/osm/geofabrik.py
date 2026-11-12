@@ -139,6 +139,31 @@ def way_intersects_bbox(coords: list[tuple[float, float]], bbox) -> bool:
 
 def clip(pbf_path: Path, bbox, snapshot: str | None) -> dict:
     """Two streaming passes over the PBF → Overpass-shaped dict for the bbox."""
+    return _clip(pbf_path, lambda coords: way_intersects_bbox(coords, bbox), snapshot)
+
+
+def area_predicate(geom):
+    """Way-keep predicate for an arbitrary (multi)polygon, EPSG:4326: bbox prefilter, then any
+    part of the way's line (or its single point) intersects the area. Same "segment intersects"
+    semantics as the bbox clip; complete ways are kept."""
+    shapely.prepare(geom)
+    bounds = geom.bounds
+
+    def keep(coords) -> bool:
+        if not way_intersects_bbox(coords, bounds):
+            return False
+        g = LineString(coords) if len(coords) >= 2 else shapely.Point(coords[0])
+        return geom.intersects(g)
+
+    return keep
+
+
+def clip_area(pbf_path: Path, geom, snapshot: str | None) -> dict:
+    """Two streaming passes over the PBF → Overpass-shaped dict for ways touching `geom`."""
+    return _clip(pbf_path, area_predicate(geom), snapshot)
+
+
+def _clip(pbf_path: Path, keep, snapshot: str | None) -> dict:
     import osmium
     from osmium.filter import EntityFilter, IdFilter, KeyFilter
 
@@ -160,7 +185,7 @@ def clip(pbf_path: Path, bbox, snapshot: str | None) -> dict:
                 coords.append((nr.location.lon, nr.location.lat))
             except osmium.InvalidLocationError:
                 missing_loc += 1
-        if not coords or not way_intersects_bbox(coords, bbox):
+        if not coords or not keep(coords):
             continue
         ids = [nr.ref for nr in w.nodes]
         ways.append({"type": "way", "id": w.id, "nodes": ids, "tags": dict(w.tags)})

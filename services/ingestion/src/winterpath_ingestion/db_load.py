@@ -159,13 +159,16 @@ def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict
 
 
 # ------------------------------------------------------------------------------ per source
-def _osm(settings: Settings):
-    d = settings.processed_dir / "osm_pilot"
+OSM_GRAPHS = {"pilot": "osm_pilot", "island": "osm_island"}  # `load --osm-graph`
+
+
+def _osm(settings: Settings, graph: str = "pilot"):
+    d = settings.processed_dir / OSM_GRAPHS[graph]
     m = read_manifest(d)
     voirie = settings.processed_dir / "voirie"
     vm = read_manifest(voirie)
     mapping = {}
-    if vm and vm.get("osm_input_checksum") == m["input_checksum"]:
+    if m is not None and vm and vm.get("osm_input_checksum") == m["input_checksum"]:
         mapping = json.loads((voirie / "edge_sidewalk_polygons.json").read_text())
         m = {**m, "input_checksum": m["input_checksum"] + "+" + vm["input_checksum"]}
 
@@ -572,6 +575,7 @@ def load(
     url: str | None = None,
     force: bool = False,
     weather_since: date | None = None,
+    osm_graph: str = "pilot",
 ) -> list[dict]:
     results = []
     with connect(url) as conn:
@@ -580,6 +584,8 @@ def load(
         for name in which:
             if name == "eccc":
                 source_id, manifest, fn = _weather(settings, weather_since)
+            elif name == "osm":
+                source_id, manifest, fn = _osm(settings, osm_graph)
             else:
                 source_id, manifest, fn = LOADERS[name](settings)
             if manifest is None:
