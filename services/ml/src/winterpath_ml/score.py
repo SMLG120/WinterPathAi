@@ -30,7 +30,8 @@ Policy
   `unknown`).
 
 Exit status
-- 0: written, or nothing ready yet (notice), or out of season.
+- 0: written, or nothing ready yet (notice), or out of season, or (`--write-db`) another run
+  holds the ETL lock (WPET, 100) or a migration holds the schema gate (notice; nothing written).
 - 1: validation failed (nothing written).
 - 2: artifact or registry error (missing, sha256 mismatch, model disabled).
 - 3: download failed (311 or ECCC).
@@ -356,6 +357,11 @@ def main(argv: list[str] | None = None, now: datetime | None = None) -> int:
                 if plan["tables"] or not plan["out_of_season"]:
                     db_summary = score_db.write_scores(conn, plan)
                 newest = score_db.newest_day(conn, model_id)
+        except score_db.locks.Locked as e:
+            _annotate(
+                "notice", e.notice
+            )  # another run holds the lock: it does this work
+            return 0
         except Exception as e:  # noqa: BLE001 - any DB failure is a loud failure
             _annotate(
                 "error",

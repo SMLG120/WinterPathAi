@@ -885,6 +885,106 @@ Missing a run is safe for up to about 30 days, which is the Datamart retention. 
 
 **Checks:** no extras `95 passed, 7 skipped`. `--all-extras` + `WP_ML_TEST_DB_URL=<wp_ml>` `101 passed, 1 skipped`. `uvx ruff check/format`: clean. `gate_logreg_2026 --check`: `pins OK; coverage list OK`. `check-ownership.sh ml`: OK.
 
+## Phase 5 EXPLORATORY model comparison (2026-11-12) — hypothesis-generating, NOT a validation claim
+Winter 2025-26 was already seen (it was the v2 test). Nothing here validates any model, changes the registry or the gates, or reaches the API. The shipped layer remains the heuristic, with probability null.
+
+**What ran.** `services/ml/src/winterpath_ml/phase5_explore.py` is a new module that imports `models`, `metrics` and `features` read-only.
+- Data: the v2 panel `models/artifacts/v2-8d19aa86/features.parquet` (sha256 `ad63e3f0…` = registry) and the v2 interim 311 aggregates (snapshot `8d19aa86`). Every frame is filtered to `day < 2026-11-01` and asserted; `max_day_read = 2026-10-31`. **No rows from 2026-11-01 onwards were read.**
+- Splits are exactly v2's: fit on train (2022-02-01..2024-04-30, 929,764 rows / 20,675 positives); isotonic on valid (2024-25, 372,317 / 10,608); report on test_chrono (2025-26, 372,317 / 11,356) and test_spatial (158,013 / 3,607).
+- Candidates, with hyper-parameters fixed before the first run (no search):
+  - hist freq and freq×weather (gating baselines);
+  - Logistic (v2 pipeline);
+  - Poisson count regression (same preprocessing, `PoissonRegressor(alpha=1e-4)`, target = daily report count; `count>0` reproduces the v2 label exactly, asserted);
+  - RandomForest (300 trees, min_samples_leaf 100, sqrt features, max_samples 0.5);
+  - XGBoost 3.4.1 (hist, 400 trees, depth 6, lr 0.05, subsample/colsample 0.8, min_child_weight 50);
+  - v2 HGB (reference).
+- Sanity check: Logistic and HGB reproduce `models/evaluation/v2-8d19aa86.json` to every printed digit (test_chrono 0.164858 / 0.161579; test_spatial 0.134491 / 0.133353).
+- Command: `uv run --extra phase5 python -m winterpath_ml.phase5_explore` (wall 937 s, peak RSS 1.24 GB). Fit seconds: logistic 12.0, poisson 12.0, RF 120.9, XGB 55.6, HGB 391.6.
+
+**Results (literal, from `results.json`).**
+- PR-AUC is on uncalibrated scores. Brier is isotonic-calibrated on 2024-25.
+- Δ is the difference against the best gating baseline (freq×weather on both splits), with a 95 % day-block bootstrap CI (200 resamples, seed 0).
+- P/R@x% means the top ceil(x % × cells) flagged each day, pooled. @50 is `metrics.precision_recall_at_k` (k = 50/day ≈ 1.7 %).
+
+test_chrono (2025-26):
+```
+method                      PR-AUC   dBest              CI95    Brier   P@1%   R@1%   P@5%   R@5%   P@50   R@50
+baseline_hist_freq          0.0752 -0.0178 [-0.0346,-0.0048]  0.02888  0.134  0.045  0.099  0.162  0.111  0.088
+baseline_freq_x_weather     0.0930 +0.0000                    0.02875  0.134  0.045  0.099  0.162  0.111  0.088
+baseline_logistic           0.1649 +0.0718 [+0.0406,+0.1064]  0.02736  0.146  0.049  0.108  0.178  0.124  0.098
+poisson_count               0.1626 +0.0696 [+0.0378,+0.1042]  0.02741  0.144  0.048  0.109  0.178  0.123  0.098
+random_forest               0.1556 +0.0625 [+0.0354,+0.0989]  0.02758  0.139  0.046  0.110  0.180  0.122  0.097
+xgboost                     0.1600 +0.0669 [+0.0383,+0.1032]  0.02753  0.141  0.047  0.106  0.174  0.125  0.099
+hgb                         0.1616 +0.0686 [+0.0387,+0.1015]  0.02750  0.140  0.047  0.108  0.178  0.121  0.096
+```
+test_spatial (2025-26, holdout blocks):
+```
+method                      PR-AUC   dBest              CI95    Brier   P@1%   R@1%   P@5%   R@5%   P@50   R@50
+baseline_hist_freq          0.0563 -0.0172 [-0.0330,-0.0051]  0.02192  0.101  0.045  0.074  0.163  0.072  0.182
+baseline_freq_x_weather     0.0736 +0.0000                    0.02175  0.101  0.045  0.074  0.163  0.072  0.182
+baseline_logistic           0.1345 +0.0609 [+0.0375,+0.0874]  0.02099  0.113  0.051  0.082  0.181  0.079  0.199
+poisson_count               0.1313 +0.0578 [+0.0347,+0.0838]  0.02104  0.114  0.052  0.080  0.177  0.079  0.199
+random_forest               0.1301 +0.0566 [+0.0352,+0.0857]  0.02103  0.115  0.052  0.081  0.179  0.080  0.200
+xgboost                     0.1319 +0.0584 [+0.0377,+0.0849]  0.02100  0.112  0.050  0.082  0.182  0.080  0.201
+hgb                         0.1334 +0.0598 [+0.0388,+0.0843]  0.02097  0.106  0.048  0.082  0.180  0.080  0.200
+```
+Per-borough calibration, test_chrono. Boroughs with ≥ 100 positives (15 of them); `mean_pred / obs_rate` min–max:
+- hist 0.73–1.46;
+- freq×weather 0.85–1.51;
+- logistic 0.90–1.80;
+- poisson 0.88–1.89;
+- RF 0.86–1.40;
+- XGB 0.91–1.47;
+- HGB 0.91–1.43.
+
+The worst is Saint-Laurent: obs 0.0104, logistic mean_pred 0.0188, ratio 1.80.
+
+**Hypotheses, not conclusions.**
+1. All five learned models beat both baselines by a similar, CI-separated margin, about +0.06 to +0.07 PR-AUC. Among them the spread is ≤ 0.009 PR-AUC, smaller than any CI width. The data does not separate logistic, Poisson, RF, XGB and HGB. More model complexity shows no visible gain, so the simplest candidate (logistic) remains the natural primary for the island pre-registration.
+2. At a fixed alert rate the gain is small: P@1 % is 0.134 → 0.146 (chrono); R@5 % is 0.162 → 0.178. Most of the PR-AUC gain is in ordering *across* days, i.e. which days are bad. The within-day ranking comes mostly from history.
+3. Hist freq and freq×weather give identical P/R at every alert rate. That is expected, because the weather multiplier is constant within a day, so it cannot change which cells are flagged on that day.
+4. At a 5 % citywide alert rate, recall is concentrated in the central boroughs. In logistic, test_chrono: Plateau 0.60, Outremont 0.46, Ville-Marie 0.45. Pierrefonds-Roxboro and RDP-PAT are 0.00, Saint-Laurent 0.005. A citywide top-k under-serves outer boroughs. Per-borough or rate-normalised alerting is a question for the island protocol, not a result.
+5. Calibrated per-borough ratios stay within [0.5, 2.0] for every method, but Saint-Laurent is over-predicted by 1.4–1.9×.
+
+**Artifacts.** These are in `models/artifacts/phase5-explore-8d19aa86/` (git-ignored directory, committed with `git add -f` as instructed; no model pickles):
+
+| file | bytes | sha256 |
+|---|---|---|
+| results.json | 14,108 | `96c86deb4beffa38ce0d4e2adc6e9f4bd51753bdbf1e32acfdd45bcbfd6632b0` |
+| reliability.csv | 11,057 | `f46a289bd9a4bb7a51cd455847fdcdd3eac73fb1b4afcdfffca20c791b90328d` |
+| borough.csv | 37,445 | `a25ac472fc280801355b242f9bda6e9b1b79f6d2211f8ed979c378129d8293b8` |
+| manifest.json | 987 | lists the three above, input shas, the embargo check |
+
+Tests: `tests/test_phase5_explore.py` (SYNTHETIC; alert-rate counting, embargo constant, method names) → `3 passed in 15.24s`.
+
+## ETL advisory lock 100 for `wp.risk_cell_score` (2026-11-12)
+This implements `infra/ETL-LOCKS.md` on integration `11ad5a2`, merged with `--no-edit`.
+- **Constants.** `services/ml/src/winterpath_ml/locks.py` holds `WPET = 1464878420`, `SCHEMA_GATE = 0` and `RISK_CELL_SCORE = 100`. They are copied from Data's `winterpath_ingestion/locks.py`, not imported. `test_constants_match_data_copy` fails if Data's values ever drift.
+- **`score_db.write_scores`.**
+  - The first statement inside the existing single transaction is `pg_try_advisory_xact_lock_shared(WPET, 0)`, then `pg_try_advisory_xact_lock(WPET, 100)`.
+  - If either lock is held elsewhere, `locks.Locked` is raised and the transaction rolls back. Nothing is written and **no** `ingest_run` row is recorded, because the other run is doing this work.
+  - The best-effort `failed` ingest_run record also takes the shared schema gate first; if the gate is held, it skips recording.
+  - Both locks are transaction-scoped and released on COMMIT, ROLLBACK or connection loss.
+- **`score.main --write-db`.** On `Locked` it prints `NOTICE: lock (1464878420,<objid>) held by another run — skipping` (plus a `::notice` annotation under Actions) and **exits 0**. The staleness check is skipped on that run.
+- **Fix found while wiring.** A local dict named `log` in `write_scores` shadowed the module logger. The failure-record fallback's `log.warning(...)` would therefore have raised AttributeError and masked the original error. The dict is renamed `prov`; behaviour is otherwise unchanged.
+- **Tests** in `tests/test_locks.py`:
+  - DB-free: constant match, acquisition order (gate shared → 100 exclusive), `Locked` on the gate or on 100, writer writes and records nothing when locked, CLI exits 0 with the notice;
+  - live, two real connections on `wp_ml`: a holder of exclusive 100 → skip; a holder of the exclusive gate (as in a migration) → skip, with 0 score rows and 0 ingest_run rows; after the holder commits, the next write succeeds; a holder of the *shared* gate (another ETL load) does not block scoring.
+
+```
+$ WP_ML_TEST_DB_URL=$DATABASE_URL uv run --no-sync pytest -q tests/test_locks.py tests/test_risk_cell_score_db.py
+18 passed in 4.34s
+$ uv run --isolated --no-dev --with pytest pytest -q -p no:cacheprovider      # no extras
+104 passed, 10 skipped in 86.29s (0:01:26)
+$ WP_ML_TEST_DB_URL=$DATABASE_URL uv run --no-sync pytest -q                  # all extras + live DB
+113 passed, 1 skipped in 24.43s
+$ uv run --no-sync python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+After the run, `wp_ml` holds 0 rows in `wp.risk_cell_score` and in `wp.ingest_run`, and 0 WPET advisory locks.
+
+Answer to ETL-LOCKS open question 3: yes. `write_scores` replaces every (day, model_id) partition, applies retention and marks the ingest_run row in **one** transaction, so lock 100 lives inside it. No session-lock exception is needed.
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|
