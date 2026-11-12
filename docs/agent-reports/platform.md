@@ -5,6 +5,41 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## v2 Wave 2a (b) — 2026-11-12: 311 jobs in scheduled.yml
+Merged `integration/winterpath` e7fc370 (Data c6c0b79: incremental 311 refresh, ETL locks implemented) as 1ee4813; no platform-owned paths changed. Nothing pushed, so nothing in this section is live: scheduled runs fire only from main.
+
+- **`report-311-daily`**, cron `27 11 * * *` (before the 12:07 scoring):
+  - runs `uv run --locked wp-ingest 311 --recent-days 14 && uv run --locked wp-ingest load --source mtl-311 --recent` in `services/ingestion`, with `DATABASE_URL` from `WP_ETL_DATABASE_URL`;
+  - concurrency group `scheduled-311-daily`, timeout 15 min;
+  - dispatch `job=311`.
+- **`report-311-weekly-full`**, cron `47 10 * * 0` (Sunday 10:47 UTC, 40 min before that day's incremental run):
+  - `wp-ingest 311 --refresh` (about 850 MB download, no DB access), then `wp-ingest load --source mtl-311`;
+  - group `scheduled-311-weekly-full`, timeout 45 min;
+  - dispatch `job=311-full`.
+- **Both jobs:**
+  - Same opt-in gate as the other jobs: they skip with a `::notice` when the secret is missing.
+  - Pinned checkout and setup-uv, `permissions: contents: read`, `uv sync --locked --no-dev`.
+  - They share lock (WPET,4) but not a concurrency group. On contention the second load prints Data's `::notice::… skipping`, writes nothing, and exits 0.
+- **Dispatch semantics fixed:** weather and scoring guards were `inputs.job != 'scoring'` / `!= 'weather'`, which would have started weather and scoring on a `311` dispatch. They are now explicit: `weather|both` and `scoring|both`. `both` still means weather + scoring.
+- 311 is no longer "not scheduled". The MONITORING.md F4/F5 thresholds should change to daily cadence once this is on main (tracked; MONITORING.md is not edited in this commit).
+
+```
+$ make lint-infra
+../../.github/workflows/scheduled.yml: 5 cron(s), every one guarded, no dangling guards
+compose config OK
+$ actionlint .github/workflows/scheduled.yml && echo actionlint-ok
+actionlint-ok
+$ (services/ingestion) uv lock --check
+Resolved 34 packages in 9ms
+$ (services/ingestion) uv run --locked wp-ingest load --source mtl-311 --recent-days 3   # flag validation reachable
+wp-ingest: error: --recent-days only applies to `311`
+# negative control: weekly guard changed to '47 10 * * 6' in a temp copy
+ERROR …/s.yml: cron '47 10 * * 0' is not referenced by any job if: (jobs skip silently)
+ERROR …/s.yml: job(s) ['report-311-weekly-full'] guard on '47 10 * * 6', which is not in on.schedule
+exit=1
+```
+Not run: the jobs themselves. Running them locally would download from the portal and write to a DB, and on GitHub they need a push.
+
 ## v2 Wave 2a — 2026-11-12: contract v1.8 tests, `/data-status` in the integrity proposal
 Base: merge commit 8d64022 (`integration/winterpath` 2e3d4b2 contract v1.8.0 + 47615b4 briefs; no platform-owned paths changed). Brief: `docs/agents/v2-plan.md` Wave 2a → "platform". `integration/winterpath` has since moved to 5c7b5aa (ML merge). I was not told to merge it, so I did not. No contract edits, no deploys, and no API requests to Render.
 
@@ -66,6 +101,14 @@ compose config OK
     - **Whether the 03:17 slot fires.** As of 03:41Z it had not.
   - Either way, the slots are delayed or merged rather than on time. That supports the F1 WARN at 4 h / FAIL at 6 h thresholds and the off-GitHub dead-man's switch in MONITORING.md B5.
   - Not yet observed: a scoring run on schedule (next: 12:00 UTC on main).
+  - **Recorded delay (coordinator's reading, 2026-11-12):** run 43140456539 is the **00:17 slot, started 02:18:16Z, about 2 h 01 min late**. GitHub could also have released it from a backlog; it does not expose the slot.
+
+### Slot observation log (read-only, `gh api …/workflows/415056056/runs?event=schedule`)
+Delay = `run_started_at` minus the nominal slot. Main's crons at 03:44Z (main head 4af5262): weather `17 */3 * * *`; scoring `0 12 * * *` and `0 18 * * *`. Scoring at `7 12` / `7 18` exists only on agent/platform and integration until main is updated. The scoring slot observed is whichever cron main carries.
+
+| Slot (UTC, nominal) | Run id | run_started_at | Delay | Jobs |
+|---|---|---|---|---|
+| weather 00:17 | 43140456539 | 02:18:16Z | +2 h 01 min (attribution per coordinator) | weather success; scoring skipped |
 
 ## v2 Wave 1 — 2026-11-11/12: cron diagnosis, concurrency, lock scheme, monitoring proposals, benchmark harness
 Merged `integration/winterpath` eaac440 (fast-forward; no platform-owned paths changed). Brief: `docs/agents/v2-plan.md` → "platform (Agent 5)". This wave makes no Supabase writes, no deploys and no contract edits.
