@@ -934,8 +934,10 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "scipy", specifier = ">=1.13" },
     { name = "sqlalchemy", marker = "extra == 'db'", specifier = ">=2.0" },
+    { name = "xgboost", marker = "sys_platform != 'linux' and extra == 'phase5'", specifier = "==3.4.1" },
+    { name = "xgboost-cpu", marker = "sys_platform == 'linux' and extra == 'phase5'", specifier = "==3.4.1" },
 ]
-provides-extras = ["db"]
+provides-extras = ["db", "phase5"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]
