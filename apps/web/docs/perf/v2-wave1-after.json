@@ -1,0 +1,174 @@
+{
+  "summary": {
+    "base": "http://localhost:5174",
+    "runs": 9,
+    "load_average_1m_before_after": [
+      11.66,
+      14.37
+    ],
+    "cpus": 10,
+    "conditions": "390x844 @3x, isMobile, 4x CPU throttling (CDP), no network throttling, SwiftShader WebGL, cold context per run",
+    "landing": {
+      "lcp_ms": 828,
+      "tbt_ms": 195,
+      "lcp_elements": [
+        "h1"
+      ]
+    },
+    "plan": {
+      "lcp_ms": 612,
+      "lcp_elements": [
+        "p"
+      ],
+      "tbt_ms": 1206,
+      "usable_ms": 578,
+      "map_ready_ms": 1333,
+      "compare_to_cards_ms": 451,
+      "compare_to_fit_ms": 1129,
+      "zoom_after_fit": [
+        17
+      ]
+    }
+  },
+  "samples": {
+    "landing": [
+      {
+        "lcp": 812,
+        "el": "h1",
+        "tbt": 197
+      },
+      {
+        "lcp": 796,
+        "el": "h1",
+        "tbt": 159
+      },
+      {
+        "lcp": 828,
+        "el": "h1",
+        "tbt": 129
+      },
+      {
+        "lcp": 928,
+        "el": "h1",
+        "tbt": 257
+      },
+      {
+        "lcp": 808,
+        "el": "h1",
+        "tbt": 168
+      },
+      {
+        "lcp": 836,
+        "el": "h1",
+        "tbt": 195
+      },
+      {
+        "lcp": 904,
+        "el": "h1",
+        "tbt": 223
+      },
+      {
+        "lcp": 1144,
+        "el": "h1",
+        "tbt": 202
+      },
+      {
+        "lcp": 780,
+        "el": "h1",
+        "tbt": 128
+      }
+    ],
+    "plan": [
+      {
+        "lcp": 564,
+        "el": "p",
+        "tbt": 1298,
+        "usable": 535.7999997138977,
+        "mapReady": 1316,
+        "cards": 303.7999997138977,
+        "fit": 1291.0999999046326,
+        "zoom": 17
+      },
+      {
+        "lcp": 556,
+        "el": "p",
+        "tbt": 1206,
+        "usable": 530.1999998092651,
+        "mapReady": 1333.3000001907349,
+        "cards": 305.59999990463257,
+        "fit": 1128.8000001907349,
+        "zoom": 17
+      },
+      {
+        "lcp": 616,
+        "el": "p",
+        "tbt": 866,
+        "usable": 582.6999998092651,
+        "mapReady": 1290.5,
+        "cards": 482.90000009536743,
+        "fit": 1846.4000000953674,
+        "zoom": 17
+      },
+      {
+        "lcp": 588,
+        "el": "p",
+        "tbt": 933,
+        "usable": 577.7999997138977,
+        "mapReady": 1377.6999998092651,
+        "cards": 451,
+        "fit": 1322,
+        "zoom": 17
+      },
+      {
+        "lcp": 612,
+        "el": "p",
+        "tbt": 1243,
+        "usable": 569.5,
+        "mapReady": 1268.2000002861023,
+        "cards": 903.5999999046326,
+        "fit": 954.0999999046326,
+        "zoom": 17
+      },
+      {
+        "lcp": 784,
+        "el": "p",
+        "tbt": 1100,
+        "usable": 638,
+        "mapReady": 1391.5,
+        "cards": 805.6000003814697,
+        "fit": 875.6000003814697,
+        "zoom": 17
+      },
+      {
+        "lcp": 604,
+        "el": "p",
+        "tbt": 1193,
+        "usable": 564.0999999046326,
+        "mapReady": 1345,
+        "cards": 378.59999990463257,
+        "fit": 1129.1999998092651,
+        "zoom": 17
+      },
+      {
+        "lcp": 620,
+        "el": "p",
+        "tbt": 1231,
+        "usable": 613.2000002861023,
+        "mapReady": 1354.3000001907349,
+        "cards": 343.8999996185303,
+        "fit": 1087.3999996185303,
+        "zoom": 17
+      },
+      {
+        "lcp": 628,
+        "el": "p",
+        "tbt": 1256,
+        "usable": 595.7000002861023,
+        "mapReady": 1314,
+        "cards": 1212.8000001907349,
+        "fit": 1251,
+        "zoom": 17
+      }
+    ]
+  }
+}

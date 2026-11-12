@@ -19,6 +19,7 @@ import type { Bbox } from '@/lib/geo';
 import type { PointKey } from '@/stores/planner';
 import type { RouteVariant } from '@/stores/planner-types';
 import { HAZARD_STYLE, RISK_COLORS, ROUTE_STYLE } from './mapStyle';
+import { clampPadding, fitTarget, type Padding } from './mapFit';
 
 export type PlannerMapProps = {
   origin: LonLat | null;
@@ -33,7 +34,13 @@ export type PlannerMapProps = {
   onPick: (p: LonLat) => void;
   onViewport: (b: Bbox) => void;
   onStatus?: (s: 'ok' | 'no-webgl' | 'style-error') => void;
+  /** Map area hidden by UI on top of it (mobile bottom sheet), in px; the fit keeps the route out of it. */
+  fitPadding?: Padding;
+  /** Bump to re-fit (recenter button, sheet snap, panel toggle). New routes / selection re-fit by themselves. */
+  fitRequest?: number;
 };
+
+const DEFAULT_PADDING: Padding = { top: 60, right: 60, bottom: 60, left: 60 };
 
 setWorkerUrl(maplibreWorkerUrl);
 
@@ -237,6 +244,7 @@ export default function PlannerMap(props: PlannerMapProps) {
       });
 
       setReady(true);
+      container.current?.setAttribute('data-map-ready', 'true');
       cb.current.onStatus?.('ok');
       emitViewport();
     });
@@ -311,21 +319,56 @@ export default function PlannerMap(props: PlannerMapProps) {
     }
   }, [ready, props.routes, props.selected]);
 
-  // Fit to routes when a new comparison arrives.
+  // Fit to the selected route: on a new comparison, a new selection, or an explicit request.
+  const fitCount = useRef(0);
+  const pendingFit = useRef<(() => void) | null>(null);
   useEffect(() => {
     const map = mapRef.current;
-    if (!ready || !map || props.routes.length === 0) return;
-    const coords = props.routes.flatMap((r) => r.geometry.coordinates as [number, number][]);
-    const xs = coords.map((c) => c[0]);
-    const ys = coords.map((c) => c[1]);
-    map.fitBounds(
-      [
-        [Math.min(...xs), Math.min(...ys)],
-        [Math.max(...xs), Math.max(...ys)],
-      ],
-      { padding: 60, maxZoom: 17, duration: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 600 },
-    );
-  }, [ready, props.routes]);
+    const el = container.current;
+    if (!ready || !map || !el) return;
+    // Also runs once when the map is ready: the initial pilot-area view must respect the sheet too.
+    map.resize();
+    const pad = clampPadding({ ...DEFAULT_PADDING, ...cb.current.fitPadding }, el.clientWidth, el.clientHeight);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const mark = () => {
+      el.dataset.mapFit = String(++fitCount.current);
+      el.dataset.mapZoom = map.getZoom().toFixed(2);
+    };
+    const target = fitTarget(props.routes, props.selected);
+    const cam = map.cameraForBounds(target, { padding: pad, maxZoom: 17 });
+    const c = map.getCenter();
+    // Already there (e.g. recenter without having panned): MapLibre fires no moveend for a no-op move.
+    if (cam?.center && cam.zoom !== undefined && Math.abs(cam.zoom - map.getZoom()) < 0.01 && map.project(cam.center).dist(map.project(c)) < 1) {
+      if (pendingFit.current) map.off('moveend', pendingFit.current);
+      pendingFit.current = null;
+      mark();
+      return;
+    }
+    // A new fit interrupts a running one, which fires its own moveend: drop the old listener and attach
+    // the new one only after starting, so an interrupted animation is never recorded as this fit.
+    if (pendingFit.current) map.off('moveend', pendingFit.current);
+    map.fitBounds(target, { padding: pad, maxZoom: 17, duration: reduce ? 0 : 600 });
+    if (reduce || !map.isMoving()) {
+      pendingFit.current = null;
+      mark();
+      return;
+    }
+    const done = () => {
+      pendingFit.current = null;
+      mark();
+    };
+    pendingFit.current = done;
+    map.once('moveend', done);
+  }, [ready, props.routes, props.selected, props.fitRequest]);
+
+  // Keep the canvas in step with its box (sheet drag, panel collapse); MapLibre only tracks window resizes reliably.
+  useEffect(() => {
+    const el = container.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => mapRef.current?.resize());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Origin / destination markers.
   useEffect(() => {

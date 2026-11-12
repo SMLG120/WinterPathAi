@@ -1,0 +1,174 @@
+{
+  "summary": {
+    "base": "http://localhost:5174",
+    "runs": 9,
+    "load_average_1m_before_after": [
+      22,
+      15.38
+    ],
+    "cpus": 10,
+    "conditions": "390x844 @3x, isMobile, 4x CPU throttling (CDP), no network throttling, SwiftShader WebGL, cold context per run",
+    "landing": {
+      "lcp_ms": 1016,
+      "tbt_ms": 284,
+      "lcp_elements": [
+        "h1"
+      ]
+    },
+    "plan": {
+      "lcp_ms": 732,
+      "lcp_elements": [
+        "p"
+      ],
+      "tbt_ms": 1098,
+      "usable_ms": 663,
+      "map_ready_ms": 1368,
+      "compare_to_cards_ms": 856,
+      "compare_to_fit_ms": null,
+      "zoom_after_fit": [
+        null
+      ]
+    }
+  },
+  "samples": {
+    "landing": [
+      {
+        "lcp": 912,
+        "el": "h1",
+        "tbt": 215
+      },
+      {
+        "lcp": 732,
+        "el": "h1",
+        "tbt": 156
+      },
+      {
+        "lcp": 1780,
+        "el": "h1",
+        "tbt": 284
+      },
+      {
+        "lcp": 1016,
+        "el": "h1",
+        "tbt": 297
+      },
+      {
+        "lcp": 1420,
+        "el": "h1",
+        "tbt": 292
+      },
+      {
+        "lcp": 1432,
+        "el": "h1",
+        "tbt": 561
+      },
+      {
+        "lcp": 988,
+        "el": "h1",
+        "tbt": 278
+      },
+      {
+        "lcp": 1320,
+        "el": "h1",
+        "tbt": 430
+      },
+      {
+        "lcp": 824,
+        "el": "h1",
+        "tbt": 208
+      }
+    ],
+    "plan": [
+      {
+        "lcp": 764,
+        "el": "p",
+        "tbt": 890,
+        "usable": 708,
+        "mapReady": 1368.0999999046326,
+        "cards": 943.4000000953674,
+        "fit": null,
+        "zoom": null
+      },
+      {
+        "lcp": 732,
+        "el": "p",
+        "tbt": 1134,
+        "usable": 663.3999996185303,
+        "mapReady": 1508.6999998092651,
+        "cards": 478.40000009536743,
+        "fit": null,
+        "zoom": null
+      },
+      {
+        "lcp": 1052,
+        "el": "p",
+        "tbt": 4006,
+        "usable": 907,
+        "mapReady": 2181.7000002861023,
+        "cards": 1390.7999997138977,
+        "fit": null,
+        "zoom": null
+      },
+      {
+        "lcp": 708,
+        "el": "p",
+        "tbt": 1115,
+        "usable": 665.5,
+        "mapReady": 1597.2000002861023,
+        "cards": 1083.1999998092651,
+        "fit": null,
+        "zoom": null
+      },
+      {
+        "lcp": 776,
+        "el": "p",
+        "tbt": 768,
+        "usable": 638.9000000953674,
+        "mapReady": 1368.4000000953674,
+        "cards": 645,
+        "fit": null,
+        "zoom": null
+      },
+      {
+        "lcp": 656,
+        "el": "p",
+        "tbt": 1098,
+        "usable": 599.3000001907349,
+        "mapReady": 1348,
+        "cards": 1347.4000000953674,
+        "fit": null,
+        "zoom": null
+      },
+      {
+        "lcp": 1236,
+        "el": "p",
+        "tbt": 1980,
+        "usable": 959.8000001907349,
+        "mapReady": 2566.699999809265,
+        "cards": 581.7000002861023,
+        "fit": null,
+        "zoom": null
+      },
+      {
+        "lcp": 720,
+        "el": "p",
+        "tbt": 787,
+        "usable": 604.3000001907349,
+        "mapReady": 1308.7000002861023,
+        "cards": 856.1999998092651,
+        "fit": null,
+        "zoom": null
+      },
+      {
+        "lcp": 628,
+        "el": "p",
+        "tbt": 994,
+        "usable": 571.4000000953674,
+        "mapReady": 1244.2000002861023,
+        "cards": 538.9000000953674,
+        "fit": null,
+        "zoom": null
+      }
+    ]
+  }
+}

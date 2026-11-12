@@ -1,9 +1,9 @@
 {
   "hero": {
     "eyebrow": "Projet pilote à Montréal · McGill / centre-ville",
-    "title": "Traversez l'hiver montréalais, un meilleur pas à la fois.",
+    "title": "Marchez plus malin dans l'hiver montréalais.",
     "subtitle": "Comparez le trajet le plus court avec une option adaptée à l'hiver. Voyez les fermetures confirmées, les signalements non vérifiés et les lacunes de nos données — chacun clairement identifié.",
-    "cta": "Planifiez votre marche hivernale",
+    "cta": "Planifier une marche",
     "secondary": "Fonctionnement"
   },
   "scene": {
@@ -65,10 +65,22 @@
     "title": "Pour qui nous concevons des projets pilotes",
     "intro": "Voici les milieux pour lesquels nous concevons le produit. Ce ne sont pas des clients actuels.",
     "items": [
-      { "title": "Universités", "body": "Aider la communauté étudiante et le personnel à circuler entre les pavillons l'hiver, avec une information transparente." },
-      { "title": "Campus et hôpitaux", "body": "Des options sans marche et une information claire sur les fermetures connues près des entrées." },
-      { "title": "Municipalités", "body": "Un portrait agrégé et respectueux de la vie privée des obstacles hivernaux que rencontrent les piétons." },
-      { "title": "Gestionnaires immobiliers", "body": "Comprendre les problèmes signalés autour de vos immeubles sans recueillir de données personnelles." }
+      {
+        "title": "Universités",
+        "body": "Aider la communauté étudiante et le personnel à circuler entre les pavillons l'hiver, avec une information transparente."
+      },
+      {
+        "title": "Campus et hôpitaux",
+        "body": "Des options sans marche et une information claire sur les fermetures connues près des entrées."
+      },
+      {
+        "title": "Municipalités",
+        "body": "Un portrait agrégé et respectueux de la vie privée des obstacles hivernaux que rencontrent les piétons."
+      },
+      {
+        "title": "Gestionnaires immobiliers",
+        "body": "Comprendre les problèmes signalés autour de vos immeubles sans recueillir de données personnelles."
+      }
     ],
     "cta": "Découvrir les projets pilotes"
   },
@@ -101,5 +113,11 @@
     "title": "Prêt à essayer ?",
     "body": "Planifiez une marche dans la zone pilote et comparez les deux trajets.",
     "cta": "Planifiez votre marche hivernale"
+  },
+  "weather": {
+    "title": "Montréal maintenant",
+    "loading": "Chargement de la météo actuelle…",
+    "unavailable": "La météo actuelle n'est pas disponible pour le moment. Aucune valeur n'est affichée plutôt que d'en deviner.",
+    "observed": "Observé à {{station}}, {{time}}"
   }
 }

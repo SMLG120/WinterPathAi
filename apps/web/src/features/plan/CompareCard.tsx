@@ -11,6 +11,7 @@ import { formatDateTime, formatDistance, formatDuration, formatPercent } from '@
 import { cn } from '@/lib/utils';
 import type { RouteVariant } from '@/stores/planner-types';
 import { ROUTE_STYLE } from './mapStyle';
+import { RouteCards } from './RouteCards';
 
 function RouteSwatch({ variant }: { variant: RouteVariant }) {
   const s = ROUTE_STYLE[variant];
@@ -123,6 +124,7 @@ export const CompareCard = forwardRef<
         <DemoBadge />
       </div>
       {simulated && <SimulatedBanner />}
+      <RouteCards routes={data.routes} selected={selected} onSelect={onSelect} />
       <p className="text-sm text-muted-foreground">
         {t('results.riskLayer.label')}: <span className="font-medium text-foreground">{t(`results.riskLayer.${data.risk_layer}`)}</span>
         {' · '}
@@ -148,6 +150,7 @@ export const CompareCard = forwardRef<
         </Alert>
       )}
       {notice}
+      <h3 className="pt-2 text-base font-semibold">{t('results.details')}</h3>
       {ordered.map((r) => (
         <RouteDetails key={r.variant} route={r} selected={r.variant === selected} onSelect={() => onSelect(r.variant)} />
       ))}

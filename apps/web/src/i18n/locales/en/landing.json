@@ -1,9 +1,9 @@
 {
   "hero": {
     "eyebrow": "Montréal pilot · McGill / Downtown",
-    "title": "Navigate Montreal's winter, one better step at a time.",
+    "title": "Walk smarter through Montreal's winter.",
     "subtitle": "Compare the shortest walk with a winter-aware alternative. See confirmed closures, unverified reports and the gaps in our data — each one clearly labelled.",
-    "cta": "Plan your winter walk",
+    "cta": "Plan a walk",
     "secondary": "How it works"
   },
   "scene": {
@@ -65,10 +65,22 @@
     "title": "Who we're building pilots for",
     "intro": "These are the settings we're designing for. They are not current customers.",
     "items": [
-      { "title": "Universities", "body": "Help students and staff move between buildings in winter with transparent route information." },
-      { "title": "Campuses & hospitals", "body": "Step-free options and clear information about known closures near entrances." },
-      { "title": "Municipalities", "body": "Aggregated, privacy-preserving insight into where pedestrians run into winter barriers." },
-      { "title": "Property managers", "body": "Understand reported issues around your properties without collecting personal data." }
+      {
+        "title": "Universities",
+        "body": "Help students and staff move between buildings in winter with transparent route information."
+      },
+      {
+        "title": "Campuses & hospitals",
+        "body": "Step-free options and clear information about known closures near entrances."
+      },
+      {
+        "title": "Municipalities",
+        "body": "Aggregated, privacy-preserving insight into where pedestrians run into winter barriers."
+      },
+      {
+        "title": "Property managers",
+        "body": "Understand reported issues around your properties without collecting personal data."
+      }
     ],
     "cta": "Learn about pilots"
   },
@@ -101,5 +113,11 @@
     "title": "Ready to try it?",
     "body": "Plan a walk in the pilot area and compare both routes.",
     "cta": "Plan your winter walk"
+  },
+  "weather": {
+    "title": "Montréal now",
+    "loading": "Loading current weather…",
+    "unavailable": "Current weather is unavailable right now. No values are shown rather than guessed ones.",
+    "observed": "Observed at {{station}}, {{time}}"
   }
 }
