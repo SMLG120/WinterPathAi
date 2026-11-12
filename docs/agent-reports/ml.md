@@ -957,6 +957,34 @@ The worst is Saint-Laurent: obs 0.0104, logistic mean_pred 0.0188, ratio 1.80.
 
 Tests: `tests/test_phase5_explore.py` (SYNTHETIC; alert-rate counting, embargo constant, method names) → `3 passed in 15.24s`.
 
+## ETL advisory lock 100 for `wp.risk_cell_score` (2026-11-12)
+This implements `infra/ETL-LOCKS.md` on integration `11ad5a2`, merged with `--no-edit`.
+- **Constants.** `services/ml/src/winterpath_ml/locks.py` holds `WPET = 1464878420`, `SCHEMA_GATE = 0` and `RISK_CELL_SCORE = 100`. They are copied from Data's `winterpath_ingestion/locks.py`, not imported. `test_constants_match_data_copy` fails if Data's values ever drift.
+- **`score_db.write_scores`.**
+  - The first statement inside the existing single transaction is `pg_try_advisory_xact_lock_shared(WPET, 0)`, then `pg_try_advisory_xact_lock(WPET, 100)`.
+  - If either lock is held elsewhere, `locks.Locked` is raised and the transaction rolls back. Nothing is written and **no** `ingest_run` row is recorded, because the other run is doing this work.
+  - The best-effort `failed` ingest_run record also takes the shared schema gate first; if the gate is held, it skips recording.
+  - Both locks are transaction-scoped and released on COMMIT, ROLLBACK or connection loss.
+- **`score.main --write-db`.** On `Locked` it prints `NOTICE: lock (1464878420,<objid>) held by another run — skipping` (plus a `::notice` annotation under Actions) and **exits 0**. The staleness check is skipped on that run.
+- **Fix found while wiring.** A local dict named `log` in `write_scores` shadowed the module logger. The failure-record fallback's `log.warning(...)` would therefore have raised AttributeError and masked the original error. The dict is renamed `prov`; behaviour is otherwise unchanged.
+- **Tests** in `tests/test_locks.py`:
+  - DB-free: constant match, acquisition order (gate shared → 100 exclusive), `Locked` on the gate or on 100, writer writes and records nothing when locked, CLI exits 0 with the notice;
+  - live, two real connections on `wp_ml`: a holder of exclusive 100 → skip; a holder of the exclusive gate (as in a migration) → skip, with 0 score rows and 0 ingest_run rows; after the holder commits, the next write succeeds; a holder of the *shared* gate (another ETL load) does not block scoring.
+
+```
+$ WP_ML_TEST_DB_URL=$DATABASE_URL uv run --no-sync pytest -q tests/test_locks.py tests/test_risk_cell_score_db.py
+18 passed in 4.34s
+$ uv run --isolated --no-dev --with pytest pytest -q -p no:cacheprovider      # no extras
+104 passed, 10 skipped in 86.29s (0:01:26)
+$ WP_ML_TEST_DB_URL=$DATABASE_URL uv run --no-sync pytest -q                  # all extras + live DB
+113 passed, 1 skipped in 24.43s
+$ uv run --no-sync python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+After the run, `wp_ml` holds 0 rows in `wp.risk_cell_score` and in `wp.ingest_run`, and 0 WPET advisory locks.
+
+Answer to ETL-LOCKS open question 3: yes. `write_scores` replaces every (day, model_id) partition, applies retention and marks the ingest_run row in **one** transaction, so lock 100 lives inside it. No session-lock exception is needed.
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|
