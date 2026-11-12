@@ -14,6 +14,11 @@ uv run wp-ingest eccc       # → data/processed/weather_obs
 uv run wp-ingest load       # processed → PostGIS wp.* (DATABASE_URL), one txn per source
 uv run wp-ingest load --weather-since 2025-11-01   # same, wp.weather_obs bounded (hosted DB)
 uv run wp-ingest load --source eccc-geomet        # one source only (repeatable; canonical source_id)
+uv run wp-ingest boundaries # limadmin + archipel (CC BY 4.0) → data/processed/boundaries (main island, units, islands)
+uv run wp-ingest osm-island # island graph (same PBF + rules as the pilot) → data/processed/osm_island (local only)
+uv run wp-ingest entraves --region island            # closures on agglomeration land → data/processed/entraves_island
+uv run wp-ingest voirie --region island              # all sidewalk/îlot polygons matched to osm_island → voirie_island
+DATABASE_URL=…/wp_island uv run wp-ingest load --region island   # local wp_island DB only (osm, voirie, entraves island; 311, weather as-is)
 uv run alembic -c ../../db/alembic.ini upgrade head   # migrations (db/migrations)
 uv run pytest               # unit + PostGIS tests (PostGIS tests skip if unreachable)
 ```
@@ -157,3 +162,64 @@ current rows. Re-running is a no-op per source. Re-running with a different cuto
 SELECT source_id, status, record_count, finished_at FROM wp.ingest_run ORDER BY finished_at;
 SELECT pg_size_pretty(pg_database_size(current_database()));
 ```
+
+## Island graph (WinterPath 2.0 Wave 1, local only)
+
+`wp-ingest osm-island` builds the pedestrian graph for the Island of Montréal from the same
+Geofabrik PBF as the pilot, pinned through `osm_pilot`'s manifest provenance URL, and with the
+same `graph.build_graph` rules. The area rule is documented in `osm/island.py`:
+- Clip to agglomeration land, i.e. every archipel island, keeping complete ways.
+- Keep a connected network only if it has a node on the main island. Other islands are included
+  only through mapped pedestrian links.
+- Label every node `main_island`, `other_island` or `outside_agglomeration_land` (bridge decks,
+  the Laval or Longueuil end of a bridge). Nothing outside the agglomeration is labelled island.
+
+Load it into the separate local database `wp_island` with `load --region island` (`--osm-graph` is kept as an alias).
+Never load it into `wp_data` or a hosted DB without a decision; see
+`docs/agent-reports/data.md` → "Island feasibility" for sizes. The QA summary is
+`data/qa/island_feasibility.json`.
+
+## ETL advisory locks (`infra/ETL-LOCKS.md`)
+
+Every `load` takes Postgres advisory locks with classid `1464878420` ("WPET"):
+- First the **schema gate** (objid 0), shared.
+- Then the source's lock, exclusive: `osm` 1, `mtl-voirie` 2, `mtl-entraves` 3, `mtl-311` 4,
+  `eccc-geomet` 5. The island graph load uses 1001, from the reserved 1000–1999 range.
+- Both are transaction-scoped inside the load's single staging + swap transaction, so they are
+  safe on Supabase's session and transaction poolers and are always released on commit, rollback
+  or a lost connection.
+
+Behaviour:
+- **Default: try-lock.** On contention the load prints
+  `::notice::lock (1464878420,<objid>) held by another run — skipping`, writes nothing, records no
+  ingest_run row, and the command exits 0.
+- **`--wait`** blocks instead, under `lock_timeout` 5min. A timeout is an error.
+- **Alembic** (`db/migrations/env.py`) holds the schema gate **exclusively** for the whole run, as
+  a session lock on a dedicated connection, because migrations commit per migration. It waits up
+  to `WP_MIGRATION_LOCK_TIMEOUT` (default `5min`) and then fails: it never migrates under a load.
+- Advisory locks are per database, so `wp_data` and `wp_island` never contend.
+
+## Daily 311 refresh (rolling window)
+
+```bash
+uv run wp-ingest 311 --recent-days 14                 # DataStore query → data/processed/report_311_recent
+uv run wp-ingest load --source mtl-311 --recent       # upsert the window under lock (WPET,4)
+```
+
+- **Fetch:** the portal's CKAN DataStore (`datastore_search_sql`, POST JSON) on the same resource
+  as the full file, filtered to the winter categories and to `DDS_DATE_CREATION >= start`.
+  - Only the 6 columns the classifier reads are fetched, in pages of 5,000 ordered by `_id`.
+  - The page sum must equal a `COUNT(*)` of the same filter, or the run fails.
+  - Raw rows go to the git-ignored `data/raw/311/recent_window.jsonl`.
+- **Window:** `[today − N + 1, today]`, with today in America/Montreal.
+- **Aggregation:** the same `classify` / `aggregate_rows` as the full build, so categories, natures,
+  H3 r9 and the n<3 rule are unchanged. Counts are stored as-is, and consumers apply k ≥ 3 after
+  summing.
+- **Load:** upserts the window and prunes only `mtl-311` rows whose day lies **inside** the window.
+  Older days are never touched. It is idempotent: the same content is a no-op. `wp_writer`
+  privileges suffice (DELETE/INSERT/UPDATE on `wp.report_311_cell`, plus TEMP).
+- **Freshness:** each run prints `fetch.source_data_through`, the latest `DDS_DATE_CREATION` in the
+  whole resource, and `latest_winter_row`, so "no winter report since X" is distinguishable from a
+  stale pipeline.
+- **Limit:** reports changed upstream for days **before** the window are only picked up by a full
+  rebuild (`wp-ingest 311 && wp-ingest load --source mtl-311`, which downloads about 850 MB).

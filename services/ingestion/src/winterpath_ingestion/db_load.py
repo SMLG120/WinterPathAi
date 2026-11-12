@@ -19,6 +19,7 @@ from pathlib import Path
 import psycopg
 from psycopg.types.json import Jsonb
 
+from . import locks
 from .config import Settings
 from .osm.pipeline import read_geojson
 from .runs import read_manifest
@@ -122,14 +123,32 @@ def _run_log(manifest: dict, counts: dict) -> dict:
     return out
 
 
-def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict:
+def _load(
+    conn,
+    source_id: str,
+    manifest: dict,
+    fn,
+    force: bool = False,
+    *,
+    lock_objid: int | None = None,
+    wait: bool = False,
+) -> dict:
+    """One transaction: ETL locks (infra/ETL-LOCKS.md) → ingest_run 'running' → load → succeeded.
+    Lock contention (try-lock) rolls back before anything is written and returns `skipped`; it
+    is not a failure and records no ingest_run row (the run-status vocabulary is contract-fixed).
+    """
     checksum = manifest["input_checksum"]
     if not force and _already_loaded(conn, source_id, checksum):
         return {"source_id": source_id, "noop": True}
     run_id = manifest["ingest_run_id"]
+    objid = locks.objid_for(source_id) if lock_objid is None else lock_objid
     try:
         with conn.transaction():
             with conn.cursor() as cur:
+                locks.acquire(cur, objid, wait=wait)
+                # re-check under the lock: a run that held it may have just loaded this input
+                if not force and _already_loaded(conn, source_id, checksum):
+                    return {"source_id": source_id, "noop": True}
                 cur.execute(
                     "INSERT INTO wp.ingest_run (ingest_run_id, source_id, status, input_checksum)"
                     " VALUES (%s, %s, 'running', %s) ON CONFLICT (ingest_run_id) DO UPDATE SET "
@@ -148,6 +167,9 @@ def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict
                     (source_id,),
                 )
         return {"source_id": source_id, "noop": False, "counts": counts}
+    except locks.Locked as e:
+        print(e.notice, flush=True)
+        return {"source_id": source_id, "skipped": "locked", "lock": [locks.WPET, e.objid]}
     except Exception as e:
         with conn.transaction():
             conn.execute(
@@ -159,13 +181,21 @@ def _load(conn, source_id: str, manifest: dict, fn, force: bool = False) -> dict
 
 
 # ------------------------------------------------------------------------------ per source
-def _osm(settings: Settings):
-    d = settings.processed_dir / "osm_pilot"
+# `--region`: which processed products the region-scoped sources load (311 and weather are
+# agglomeration-wide and identical for both). Island = v2 Wave 1/2b, local wp_island only.
+REGION_DIRS = {
+    "pilot": {"osm": "osm_pilot", "voirie": "voirie", "entraves": "entraves"},
+    "island": {"osm": "osm_island", "voirie": "voirie_island", "entraves": "entraves_island"},
+}
+
+
+def _osm(settings: Settings, region: str = "pilot"):
+    d = settings.processed_dir / REGION_DIRS[region]["osm"]
     m = read_manifest(d)
-    voirie = settings.processed_dir / "voirie"
+    voirie = settings.processed_dir / REGION_DIRS[region]["voirie"]
     vm = read_manifest(voirie)
     mapping = {}
-    if vm and vm.get("osm_input_checksum") == m["input_checksum"]:
+    if m is not None and vm and vm.get("osm_input_checksum") == m["input_checksum"]:
         mapping = json.loads((voirie / "edge_sidewalk_polygons.json").read_text())
         m = {**m, "input_checksum": m["input_checksum"] + "+" + vm["input_checksum"]}
 
@@ -314,8 +344,8 @@ def _crossing(c, key: str):
     return c.get(key) if isinstance(c, dict) else None
 
 
-def _voirie(settings: Settings):
-    d = settings.processed_dir / "voirie"
+def _voirie(settings: Settings, region: str = "pilot"):
+    d = settings.processed_dir / REGION_DIRS[region]["voirie"]
     m = read_manifest(d)
 
     def fn(cur, run_id):
@@ -368,8 +398,8 @@ def _voirie(settings: Settings):
     return "mtl-voirie", m, fn
 
 
-def _entraves(settings: Settings):
-    d = settings.processed_dir / "entraves"
+def _entraves(settings: Settings, region: str = "pilot"):
+    d = settings.processed_dir / REGION_DIRS[region]["entraves"]
     m = read_manifest(d)
 
     def fn(cur, run_id):
@@ -435,9 +465,16 @@ def _csv_rows(path: Path, cols: list[str], run_id: str):
             yield tuple((r[c] if r[c] != "" else None) for c in cols)
 
 
-def _r311(settings: Settings):
-    d = settings.processed_dir / "report_311"
+def _r311(settings: Settings, recent: bool = False):
+    """recent=True: the rolling-window product (`wp-ingest 311 --recent-days N`). It upserts the
+    window and prunes ONLY mtl-311 rows whose day lies inside the window (reports withdrawn or
+    re-categorised upstream); rows outside the window are never touched."""
+    d = settings.processed_dir / ("report_311_recent" if recent else "report_311")
     m = read_manifest(d)
+    prune = None
+    if recent and m is not None:
+        start, end = (date.fromisoformat(x).isoformat() for x in m["window"])
+        prune = f"t.source_id='mtl-311' AND t.day BETWEEN DATE '{start}' AND DATE '{end}'"
 
     def fn(cur, run_id):
         cols = ["h3", "day", "category", "nature", "n", "source_id", "ingest_run_id"]
@@ -456,6 +493,7 @@ def _r311(settings: Settings):
             },
             rows=_csv_rows(d / "report_311_cell.csv", cols, run_id),
             key=["h3", "day", "category", "nature"],
+            prune_where=prune,
         )
         return {"report_311_cell": n}
 
@@ -572,18 +610,38 @@ def load(
     url: str | None = None,
     force: bool = False,
     weather_since: date | None = None,
+    region: str = "pilot",
+    wait: bool = False,
+    r311_recent: bool = False,
 ) -> list[dict]:
     results = []
     with connect(url) as conn:
-        with conn.transaction():
-            upsert_sources(conn)
+        try:
+            with conn.transaction():
+                with conn.cursor() as cur:
+                    locks.acquire(cur, None, wait=wait)  # schema gate (shared) for the registry
+                upsert_sources(conn)
+        except locks.Locked as e:  # a migration holds the schema gate: skip everything
+            print(e.notice, flush=True)
+            return [
+                {"source_id": sid, "skipped": "locked", "lock": [locks.WPET, e.objid]}
+                for sid, key in SOURCE_LOADERS.items()
+                if key in which
+            ]
         for name in which:
             if name == "eccc":
                 source_id, manifest, fn = _weather(settings, weather_since)
+            elif name == "311":
+                source_id, manifest, fn = _r311(settings, recent=r311_recent)
+            elif name in ("osm", "voirie", "entraves"):
+                source_id, manifest, fn = LOADERS[name](settings, region)
             else:
                 source_id, manifest, fn = LOADERS[name](settings)
             if manifest is None:
                 results.append({"source_id": source_id, "skipped": "no processed output"})
                 continue
-            results.append(_load(conn, source_id, manifest, fn, force=force))
+            objid = locks.objid_for(source_id, island=region == "island")
+            results.append(
+                _load(conn, source_id, manifest, fn, force=force, lock_objid=objid, wait=wait)
+            )
     return results

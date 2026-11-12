@@ -1,0 +1,10 @@
+{
+  "label": "RECORDED real response (not synthetic)",
+  "source_url": "https://api.weather.gc.ca/collections/weather-alerts/items?f=json&bbox=-73.98%2C45.4%2C-73.47%2C45.71&limit=500",
+  "retrieved_at": "2026-11-11T23:49:43+00:00",
+  "http_status": 200,
+  "sha256": "1f02370e76c21ddd1a04415d7d1cbce976c59a8842d45f0129c0ab96761e10d1",
+  "bytes": 853,
+  "attribution": "Data Source: Environment and Climate Change Canada",
+  "licence": "ECCC Data Server End-use Licence (https://eccc-msc.github.io/open-data/licence/readme_en/)"
+}

@@ -92,8 +92,11 @@ def handle(op: Operation, request: Request, data: dict[str, Any], rid: str, ctx:
             return JSONResponse(fixtures.coverage())
         case "listDataSources":
             return JSONResponse([])
-        case "getCurrentWeather" | "getWeatherForecast":
+        case "getCurrentWeather" | "getWeatherForecast" | "getWeatherAlerts":
+            # 503, not an empty alert list: an empty list would assert "ECCC reported no alerts".
             return error(503, "UPSTREAM_UNAVAILABLE", "stub has no weather source (ECCC not connected)", rid)
+        case "getDataStatus":
+            return JSONResponse(fixtures.data_status())
         case "getModelStatus":
             return JSONResponse(fixtures.model_status())
         case "listHazards" | "listSegments":

@@ -614,6 +614,377 @@ OLD code: repo_root venv | registry <tmp>/venv/models/registry.json | provider N
 
 **For the image (Platform):** set `MODEL_REGISTRY_PATH=/app/models/registry.json` and `MODEL_ARTIFACT_DIR=/app/models/artifacts` (absolute). `DEFAULT_EDGES_GEOJSON` (used only by `api_provider()` when `WP_EDGES_GEOJSON` is unset) is also REPO_ROOT-based; the configured `RISK_PROVIDER=winterpath_ml.inference:load_provider` does not use it.
 
+## WinterPath 2.0, Wave 1 (ml): live weather library and Phase 5 plan (2026-11-11)
+
+Merged integration eaac440 (clean). No training, no DB writes, no contract edits.
+
+### Deviation: module name `winterpath_ml.weather_live`, not `winterpath_ml.weather`
+`winterpath_ml.weather` already exists. It is the climate-daily feature loader, and its sha256 is pinned by the pre-registered logistic-regression gate (`models/gate-logreg-2026.md`). A package with that name would replace the module and void the 2027-05-08 run. The library is therefore `services/ml/src/winterpath_ml/weather_live/`. If the coordinator wants the plan's name, a re-export can be added after the gate run, or with a dated gate addendum.
+
+### Library
+| Module | Role |
+|---|---|
+| `model.py` (pure) | Dataclasses, `Provenance`, freshness rules, DST-safe helpers (`local_iso`, `local_day_bounds_utc`). All stored times are tz-aware UTC; local semantics use America/Toronto (America/Montreal links to it). |
+| `eccc.py` | `http_get_json` (8 s timeout, User-Agent, 404 → `ProductUnavailable`, other failures → `FetchError`, non-JSON → `MalformedPayload`). `parse_citypage` / `parse_alerts` validate and normalise. |
+| `provider.py` | `LiveWeatherProvider`: per-product TTL cache, single-flight lock, `retry_after` back-off (60 s) after a failure. Serves the last validated payload with degraded freshness. Injectable clock and fetcher. |
+| `record.py` | Re-records the labelled fixtures. |
+
+What `parse_citypage` / `parse_alerts` check and keep:
+- The identifier must be `qc-147`.
+- `lastUpdated` must carry an explicit offset (naive times are rejected).
+- Hourly times must be strictly increasing.
+- An alert page with `numberMatched > numberReturned` is rejected as truncated.
+- Missing or blank values stay `None`, never 0.
+- Alert text is kept verbatim. The licence requires "no alteration of the content or intent of the alert".
+- ECCC icon URLs are not carried, because the GeoMet docs say commercial use of ECCC icons needs prior explicit consent.
+
+Each `Snapshot` carries:
+- provider (`eccc-geomet`), product, source URL;
+- `issued_at`, `valid_from` / `valid_to`, `fetched_at`, `validated_at`;
+- attribution and licence URL;
+- freshness (`current|delayed|stale|unavailable`, with a reason);
+- `fallback`.
+
+**Freshness rules.** The state is the worst of issue age and our fetch age. It is `unavailable` when there is no payload or when `now ≥ valid_to` (last hourly + 1 h).
+
+| Product | TTL | current → delayed | delayed → stale | Basis |
+|---|---|---|---|---|
+| citypage qc-147 | 10 min | issue > 90 min or fetch > 30 min | issue > 3 h or fetch > 3 h | ECCC: XML "updated hourly at a minimum" (Datamart readme). No cadence is published for the OGC item. |
+| weather-alerts | 5 min | fetch > 15 min | fetch > 1 h | Alerts can come with "less than a half hours' notice". An empty list has no issue time, so only fetch age counts. |
+
+If the city page is unavailable, or the product returns 404, the snapshot carries `fallback="observations_only"`: show SWOB observations, no forecast. An empty alert list means "ECCC reported no alerts for the queried area at `fetched_at`". It never means safe.
+
+**Island matching for alerts is bbox-only for now.** The bbox is (−73.98, 45.40, −73.47, 45.71), each alert is labelled `area_match="bbox_intersects"`, and the bbox can match neighbouring areas such as Laval. Switch to Data's island polygon once it is published.
+
+**Request volume.** One process makes at most 144 city-page and 288 alert fetches per day. ECCC's contact threshold is 86,400 requests/day (about 1 per second).
+
+### Recorded fixtures (`services/ml/tests/fixtures/eccc/`, 128 KB, each with `.meta.json`: URL, `retrieved_at`, HTTP status, sha256, attribution)
+```text
+citypage_qc-147_20261111T234942Z.json  HTTP 200  30576 B  sha256 265c88ec62a2…  2026-11-11T23:49:42+00:00
+alerts_island_bbox_20261111T234943Z.json  HTTP 200  853 B  sha256 1f02370e76c2…  2026-11-11T23:49:43+00:00
+citypage_bc-98_with_warnings_20261111T234943Z.json  HTTP 200  36395 B  sha256 e11f9a814bdf…  2026-11-11T23:49:43+00:00
+alerts_canada_sample_20261111T234943Z.json  HTTP 200  29774 B  sha256 2448a36a7cd8…  2026-11-11T23:49:43+00:00
+citypage_missing_item_404_20261111T234944Z.json  HTTP 404  74 B  sha256 2d9bd297c82b…  2026-11-11T23:49:44+00:00
+```
+- Montréal had no warnings and no island alerts at recording time. The bc-98 page and the Canada-wide sample are labelled structure samples, not Montréal data.
+- The Canada sample is a real partial page (limit 5 of 98). The parser rejects it as truncated, and the test checks that.
+- Edge cases are SYNTHETIC copies of a recording, each with a named mutation inside the test.
+- Tests verify each recording against its sha256 before use.
+
+### Tests (`tests/test_weather_live.py`, 25 passed)
+- **Outage:** no payload → `unavailable` + `observations_only`. A prior payload is kept and degrades current → delayed → stale. No upstream retries within `retry_after`.
+- **Malformed:** six mutation cases, plus non-JSON and a truncated page. The last good payload is kept and the reason is shown.
+- **Expired forecast:** `now = last hourly + 1 h` → `unavailable` + fallback.
+- **Product disappearing:** 404 (the real 404 body) → `ProductUnavailable` → `observations_only`.
+- **DST 2026-11-01:** 05:00Z → `01:00-04:00` and 06:00Z → `01:00-05:00`, both kept and distinct. The local day is 25 h, and ages are measured in UTC (80 min across the change).
+- **DST 2027-03-14:** no 02:xx local hour, 07:00Z → `03:00-04:00`, the local day is 23 h.
+- **TTL and single-flight:** 20 concurrent callers → 1 fetch; within the TTL there is no fetch.
+- Missing fields stay None, warnings parse, alert text is verbatim (en and fr), and expired alerts are filtered at read time.
+
+Live smoke (real ECCC, 2026-11-11 ~23:52 UTC; evidence only, not a test):
+```text
+citypage current | issued 49 min ago; fetched 0 min ago | fallback None
+ issued 2026-11-11 23:02:50+00:00 valid 2026-11-12 00:00:00+00:00 -> 2026-11-13 00:00:00+00:00
+ now 2026-11-11T18:00:00-05:00 4.7 C windchill -2.0 | Partly Cloudy
+ hour+1 2026-11-11T19:00:00-05:00 4.0 C POP 0.0 %
+ periods 12 Tonight | Increasing cloudiness early this evening. Low plus 1. | warnings 0
+alerts current | 0 alerts, matched 0
+second call (cached) ms 0.06 fetches {'citypage': 1, 'alerts': 1} | first calls s 0.7
+```
+
+### ECCC licence and usage summary
+Pages read on 2026-11-11, all HTTP 200: licence, usage policy, GeoMet overview, OGC API page, City Page Weather (Datamart) readme, and the alerts readmes, at `eccc-msc.github.io/open-data/…`.
+- **Licence (ECCC Data Server End-use Licence, page header "Version 2.1.1 - August 2026", while §9 says "version 2.1"):**
+  - worldwide, royalty-free, perpetual, non-exclusive; commercial use included; copy, modify, publish, translate, adapt or distribute "for any lawful purpose";
+  - attribution "Data Source: Environment and Climate Change Canada", with a link to the licence where possible;
+  - no use of ECCC names, crests or logos, and no implied endorsement;
+  - "as is", no warranty or liability;
+  - alerts must be reproduced with "no alteration of the content or intent of the alert".
+- **Usage policy:**
+  - contact ECCC at or above 86,400 requests/day; ECCC may block users who saturate the service;
+  - a meaningful User-Agent is recommended;
+  - do not send `Cache-Control: no-cache` / `Pragma: no-cache` (our fetcher sends neither);
+  - build local archives from the MSC Datamart, not GeoMet;
+  - the policy "is subject to change".
+- **Service level:** GeoMet is "operational 24/7", with user support "on a best effort basis during normal business hours". There is no SLA.
+- **Icons:** commercial use requires prior explicit consent. We do not use them.
+- **Not confirmed:**
+  - No page read calls `citypageweather-realtime` experimental. None of the pages read documents that collection at all; the Datamart readme covers the XML files only. So "experimental" in the plan is unverified, but the fallback is built anyway.
+  - **Correction (2026-11-11, coordinator; re-checked by ML at 23:58 UTC):** "experimental" **is** verified. The GeoMet `/collections` listing titles `citypageweather-realtime` as "City Page Weather [experimental]" (`weather-alerts` is titled "Weather Alerts"). I had fetched the collection document earlier but printed only its description, not its title. The observations-only fallback therefore covers a documented risk.
+  - The alert time fields (publication / validity / expiration / event_end) are not defined on any page read. They are parsed as published.
+  - No page read contains a "not for safety-critical use" statement.
+
+### Phase 5 model-comparison plan (written only; nothing trained)
+**Labels that exist.** Only one exists: winter-related Montréal 311 reports. Target: P(≥ 1 report in an H3 r9 cell on a local day), `NATURE ∈ {Requete, Plainte}`, four categories. It measures reporting behaviour, not sidewalk condition. There is no ground-truth label for ice or sidewalk state, and ECCC data are features, not labels.
+
+Counts from the v2 snapshot 8d19aa86. Winter Y = Nov Y to Apr Y+1; "2021" is Jan–Apr 2022 only. A positive cell-day is a cell-day with at least one report.
+
+| Winter | Reports | Positive cell-days | Cells | roadway_slippery | sidewalk_slippery | snow_clearing | snow_dumping |
+|---|---|---|---|---|---|---|---|
+| 2021 (Jan–Apr 2022) | 11,250 | 8,901 | 2,143 | 1,750 | 2,049 | 6,679 | 772 |
+| 2022 | 15,125 | 12,568 | 2,236 | 1,219 | 1,357 | 10,983 | 1,566 |
+| 2023 | 11,050 | 9,076 | 2,087 | 1,312 | 1,880 | 7,226 | 632 |
+| 2024 | 17,595 | 13,992 | 2,280 | 1,650 | 1,661 | 12,920 | 1,364 |
+| 2025 | 17,974 | 14,970 | 2,294 | 3,161 | 3,257 | 10,420 | 1,136 |
+| 2026 (to 11-07) | 6 | 5 | 5 | 0 | 1 | 5 | 0 |
+
+The newer snapshot 7318fc5d (2026-11-11) has the same 2026 counts. Its reports end 2026-11-07, while all requests run to 11-10. v2 panel positives within the 2,930 coverage cells: train 20,675 / valid 10,608 / test_chrono 11,356 / test_spatial 3,607 (of 929,764 / 372,317 / 372,317 / 158,013 rows).
+
+**Constraints the comparison must respect:**
+1. **Island coverage gap.** The 311 dataset covers only the 19 City of Montréal boroughs. The 15 linked municipalities (e.g. Westmount, Mont-Royal, Pointe-Claire) have no labels, so no model can be trained or validated there. Island cells outside labelled boroughs must stay `unknown`, not extrapolated. A geographic holdout can test transfer between boroughs, not to unlabelled municipalities.
+2. **Frozen gate.** The logistic-regression gate pre-registered winter 2026-27 as its test winter (earliest run 2027-05-08). Computing any candidate metric on winter-2026 rows before then voids it. Until then, comparisons may use winters ≤ 2025 only, and since winter 2025 was already seen (the v2 test), those results are hypothesis-generating. The binding comparison is a new pre-registration written **before** its test winter. The next unseen winter is 2027-28, unless the new protocol is registered before 2026-27 data are touched and evaluated after 2027-05-08 alongside the existing gate.
+3. **Coverage change.** The island needs coverage recomputed from Data's island polygon, which differs from the frozen v2 coverage. The new protocol must state it and must not alter the v2 files.
+4. **Forecast features.** These cannot be trained yet: ECCC City Page Weather has no archive we have, so a forecast-aware model needs an archive of issued forecasts first. Recommendation (Platform/Data): store each City Page snapshot (e.g. from the Datamart, per the usage policy) from now on. Until then, models use observed weather only (the current D-1 features), and `departure_time` affects only the display of forecast weather, not the risk score.
+
+**Candidates.** All take the same 24 v2 features (plus island coverage), fixed hyper-parameters chosen on the validation winter only, and isotonic calibration on a calibration winter:
+- (a) historical frequency;
+- (b) the current weather-rules heuristic;
+- (c) logistic regression (the pinned gate candidate);
+- (d) Poisson / negative-binomial count regression on the daily report count;
+- (e) random forest;
+- (f) gradient boosting, using `HistGradientBoosting`. XGBoost would be a new dependency (Apache-2.0) and is added only if the coordinator approves.
+
+**Evaluation and decision:**
+- **Holdouts:** chronological (the unseen winter) plus spatial (H3 res-6 blocks, seeded).
+- **Metrics:** PR-AUC, Brier, precision/recall@50 cells/day, calibration curve, per-borough calibration ratio, and a day-block bootstrap 95 % CI for the PR-AUC difference against the best baseline.
+- **Decision:** the same four criteria as the existing gates, all required on both holdouts. Otherwise the heuristic stays, with probability null.
+- **Label noise and reporting bias** are stated in the card. Borough-level report rates differ, so per-borough calibration is gating.
+
+### Checks
+```text
+$ uvx ruff check . && uvx ruff format --check .
+All checks passed!
+39 files already formatted
+$ uv sync --locked && uv run --no-sync pytest -q                     (no extras)
+89 passed, 7 skipped in 14.84s
+$ uv sync --locked --all-extras && WP_ML_TEST_DB_URL=<wp_ml> uv run --no-sync pytest -q
+95 passed, 1 skipped in 21.68s
+$ uv run --no-sync python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+$ scripts/check-ownership.sh ml
+ownership OK for agent/ml
+```
+
+## Wave 1 follow-up: City Page forecast archive proposal and Phase 5 pre-registration draft (2026-11-11)
+Merged integration 47615b4 (fast-forward; it contains contract v1.8.0 2e3d4b2 and the Wave 2a briefs). No ML files changed in the merge. No DB writes, no uploads, nothing provisioned.
+
+### (1) Proposal: archive issued City Page forecasts from the MSC Datamart
+**Why.** A forecast-aware risk model needs the forecasts as they were issued. GeoMet keeps only the latest, and the usage policy says local archives must be built "using MSC Datamart services, not MSC GeoMet services".
+
+**Facts measured on 2026-11-11/12.** These came from ad-hoc requests (the policy reserves curl/wget for ad hoc retrieval): 24 hour-directory listings, 3 dated-directory listings and one file.
+- **Path layout:** `https://dd.weather.gc.ca/today/citypage_weather/QC/{HH}/{YYYYMMDD}T{HHmmss.sss}Z_MSC_CitypageWeather_s0000635_{en|fr}.xml`. Site `s0000635` is "Montréal" (the `<name>` in the file) and has `hourlyForecast` × 24.
+- **Volume:** on 2026-11-11, 62 Montréal files (31 en + 31 fr) appeared across all 24 UTC hours. That is one issue per hour plus extra issues; the readme says "updated hourly at a minimum, but can be updated earlier with issue of special weather warnings, watches and amendments".
+- **Size:** about 34 KB (en) and 35 KB (fr) per file. One en file is 34,125 B, 2,707 B with `gzip -9` (12.6×), and 2,552 B with `xz -9`.
+- **Retention:** dated copies exist at `https://dd.weather.gc.ca/{YYYYMMDD}/WXO-DD/citypage_weather/QC/{HH}/`. The root listed `20261013/ … 20261112/`, so about 30 days. `20261013/WXO-DD/citypage_weather/QC/12/` contained `20261013T120243.420Z_…_s0000635_en.xml`. **Issues older than about 30 days are lost**, so a backfill started now recovers 2026-10-13 onwards and loses one day per day of delay.
+
+**Projected storage:**
+| What | Per day | Per year |
+|---|---|---|
+| Raw XML, en only, gzip | 31 × 2.7 KB ≈ 84 KB | ≈ 31 MB |
+| Raw XML, en + fr, gzip | ≈ 170 KB | ≈ 62 MB |
+| Parsed hourly table (issue_time, valid_time, temp, POP, wind, gust, condition) | 31 × 24 = 744 rows ≈ 30–60 KB as Parquet (estimate, not measured) | ≈ 10–20 MB |
+
+Recommendation: archive **en raw XML (gzip)** plus the parsed Parquet. The numbers are identical in fr, and the fr text is not needed for ML. Add fr only if the product needs historical French text.
+
+**How to retrieve.** The usage policy prefers AMQP, and says not to request directory listings to check for new data.
+- **Preferred:** an `sr3` (AMQP) subscription filtered to `citypage_weather/QC/.*s0000635_en\.xml`, downloading each file as it is announced. It needs a process that runs often enough for the broker queue to persist between connections. The queue-expiry setting has to be verified with ECCC's AMQP docs before relying on a periodic (rather than always-on) subscriber. GitHub cron is unreliable here (v2-plan problem 2), and Render Free sleeps.
+- **Fallback, which needs a coordinator decision against the policy wording:** a once-daily job reads yesterday's dated directory (24 listings/day) and downloads the 31 en files. It is cheap (about 55 requests/day), but it uses listings.
+- **One-time backfill now:** the same dated-directory read for 2026-10-13 → today, about 30 days × 55 requests ≈ 1,650 requests in one ad-hoc run. It must run soon, because each day of delay drops one day off the window.
+
+**Where to store (owner/Platform decision; nothing provisioned):**
+- Not git (CLAUDE.md: "Raw data … never go in Git").
+- Not the Supabase database, given the 500 MB limit (`docs/FREE_TIER_LIMITS.md`) and that history is not needed by the API.
+- Not GitHub Actions artifacts, which have limited retention.
+- The right fit is **object storage**: Supabase Storage on the existing project, or Cloudflare R2 (Pages is already on Cloudflare). I have not verified either service's current free-tier limits or terms. Platform should confirm them before the owner chooses.
+- Layout: `citypage/qc/s0000635/en/{YYYY}/{MM}/{DD}/{file}.xml.gz` plus a daily `parsed/{YYYY}-{MM}-{DD}.parquet` and a manifest (sha256, retrieval time, source URL).
+
+**ML would add, once storage is decided (not now):**
+- a Datamart XML parser in `weather_live`, sharing the normalised `HourlyForecast` records;
+- the manifest writer;
+- a test on a recorded file.
+
+**Use limits:**
+- The forecast archive starts in winter 2026-27, so no forecast-aware model can be trained before about two archived winters.
+- `departure_time` stays display-only for risk (contract v1.8 `used_for: display_only`).
+
+### (2) Phase 5 pre-registration draft: `models/gate-island-2027.DRAFT.md`
+It is DRAFT only: not registered, with no force until renamed with all TBDs fixed before 2027-11-01. Its content:
+- **Labels:** unchanged from v2.
+- **Coverage:** island polygon ∩ the 19 boroughs ∩ prior 311 activity before 2026-11-01. The linked municipalities, which have no labels, stay `unknown`.
+- **Splits:**
+  - train winters 2021–2025;
+  - selection on 2025-26 (already seen; used for choosing only);
+  - calibration on 2026-27, **read only after 2027-05-08**;
+  - **test 2027-28**, chronological plus spatial holdout with a new seed. Earliest run 2028-05-08.
+- **Primary candidate:** one, chosen before registration among logistic / Poisson / RF / HGB (XGBoost pending the coordinator's decision).
+- **Gate:** the same four criteria as v2, required on both holdouts.
+- **Embargo:** it imposes, from now, an embargo on modelling reads of rows ≥ 2026-11-01 until the logistic-regression gate has run. The operational scoring job is the stated exception: it computes no metric.
+- **Frozen files:** it touches none of the frozen v2 files and reads no winter-2026 rows. The label table it contains was computed in Wave 1 from snapshot 8d19aa86 (winters ≤ 2025 plus the 6 reports of November 2026, which were counted, not modelled).
+- **Why 2027-28:** it is the earliest winter that is both unseen and not already pre-registered as a test winter by the logistic-regression gate.
+
+## City Page forecast archive: one-time Datamart backfill + XGBoost pin (2026-11-12)
+Coordinator decision: run the backfill now into the git-ignored `data/raw/eccc_citypage/`, then once a day by hand until the owner chooses storage. No AMQP subscriber, no cloud, nothing committed except code and this report.
+
+**Script:** `services/ml/src/winterpath_ml/weather_live/datamart_archive.py`.
+- **Requests:** sequential, ≥ 1.05 s between requests, User-Agent `WinterPathAI-dev/0.1 (local development)`. No Cache-Control/Pragma (urllib adds none; asserted in tests). Retries wait 5 / 15 / 45 s on timeouts, 429 and 5xx; 404 means "not there".
+- **Scope:** only `*_s0000635_en.xml`. The French files are never requested.
+- **Validation:** each XML is parsed and must carry `<location><name code="s0000635">` before it is stored.
+- **Storage:** written via a `.part` file as `s0000635/en/YYYY/MM/DD/<file>.xml.gz`. `manifest.jsonl` records URL, `retrieved_at`, sha256 of the XML and of the gzip, and sizes. `days.json` records per-UTC-day status.
+- **Idempotent:** known files are skipped, and complete past days are not listed again, so a daily run is about 48 listings plus about 35 downloads.
+- **Tests:** `tests/test_datamart_archive.py` has 6 tests (spacing, retry, headers, gaps, wrong-site rejection, idempotence). They use SYNTHETIC XML and no network.
+
+**Backfill run** (`--start 2026-10-13`, started 2026-11-12 00:03 UTC):
+```text
+{"requests": 1861, "wall_s": 1965}            # 0.95 requests/s average; 0 retries
+records 1117 | unique files 1117 | unique XML sha256 1117
+bytes xml 38481402 | bytes gz 3213221 | mean gz 2877
+retrieved_at 2026-11-12T00:03:26+00:00 -> 2026-11-12T00:35:45+00:00
+sha re-check on 50 random files: mismatches 0
+$ du -sh data/raw/eccc_citypage  ->  5.0M   (git status: ignored)
+```
+
+**Per UTC day** (EN files; all 24 hour directories had files on every past day; 0 errors):
+| Day | Files | Day | Files | Day | Files |
+|---|---|---|---|---|---|
+| 10-13 | 76 | 10-24 | 34 | 11-04 | 33 |
+| 10-14 | 49 | 10-25 | 33 | 11-05 | 37 |
+| 10-15 | 31 | 10-26 | 39 | 11-06 | 35 |
+| 10-16 | 55 | 10-27 | 33 | 11-07 | 33 |
+| 10-17 | 40 | 10-28 | 36 | 11-08 | 41 |
+| 10-18 | 36 | 10-29 | 39 | 11-09 | 36 |
+| 10-19 | 32 | 10-30 | 35 | 11-10 | 37 |
+| 10-20 | 32 | 10-31 | 33 | 11-11 | 31 |
+| 10-21 | 31 | 11-01 | 33 | 11-12 | 1 (partial: run at 00:03 UTC) |
+| 10-22 | 33 | 11-02 | 32 | | |
+| 10-23 | 32 | 11-03 | 39 | | |
+
+**Gaps:**
+- None in 2026-10-13 … 2026-11-11.
+- 2026-11-12 is incomplete by design: only hour 00 existed, hour 23 was listed but empty, and hours 01–22 returned 404. Days before 2026-10-13 were already purged from the Datamart (about 30-day retention) and cannot be recovered.
+- 2026-10-13 has 76 files, all distinct XML, but still only 4 forecast issues.
+
+**What the files contain:**
+- Distinct forecast issue times per day: `forecastGroup` usually 4 (5 on 10-28 and 11-06); `hourlyForecastGroup` usually 4 (5–6 on 10-27, 10-28, 11-01, 11-06).
+- The archive holds **96 distinct hourly-forecast issues** in total. The extra files per day are hourly refreshes of current conditions and warnings.
+- **For training:** the forecast-feature unit is about 4 issues/day, i.e. about 120 issues/month. Annual size is about 3.2 MB per 31 days gzip, so about 38 MB/year EN gzip, close to the 31 MB projected from one file.
+
+**Daily run by hand** (from this machine, until the owner chooses storage):
+```text
+cd services/ml && uv run --no-sync python -m winterpath_ml.weather_live.datamart_archive
+# default window: today-2 .. today (UTC); complete days are skipped
+```
+Missing a run is safe for up to about 30 days, which is the Datamart retention. After that, issues are lost.
+
+**XGBoost (approved as a candidate):**
+- `phase5` optional extra, exact pin 3.4.1, released 2026-08-15.
+- **Licence:** Apache-2.0, verified from the installed wheel (`xgboost-3.4.1.dist-info/licenses/LICENSE` starts "Apache License / Version 2.0, January 2004"; `License-Expression: Apache-2.0`).
+- **GPU dependency:** on Linux, `xgboost` pulls `nvidia-nccl-cu13` 2.32.6. That is a 206 MB wheel uploaded 2026-11-11, with no licence metadata on PyPI. So Linux (CI) uses `xgboost-cpu==3.4.1` (same release, Apache-2.0, 5.8 MB, no GPU deps), and other platforms use `xgboost==3.4.1` (the macOS wheel has no nccl dependency; `xgboost-cpu` has no macOS wheel). `uv.lock` contains no nccl.
+- **Smoke test:** `import xgboost` gives 3.4.1, and `XGBClassifier` fits on toy data.
+- **Audit:** `uvx pip-audit` on the locked `--all-extras` export reports "No known vulnerabilities found".
+- **Not used yet:** no training.
+
+**Checks:** no extras `95 passed, 7 skipped`. `--all-extras` + `WP_ML_TEST_DB_URL=<wp_ml>` `101 passed, 1 skipped`. `uvx ruff check/format`: clean. `gate_logreg_2026 --check`: `pins OK; coverage list OK`. `check-ownership.sh ml`: OK.
+
+## Phase 5 EXPLORATORY model comparison (2026-11-12) — hypothesis-generating, NOT a validation claim
+Winter 2025-26 was already seen (it was the v2 test). Nothing here validates any model, changes the registry or the gates, or reaches the API. The shipped layer remains the heuristic, with probability null.
+
+**What ran.** `services/ml/src/winterpath_ml/phase5_explore.py` is a new module that imports `models`, `metrics` and `features` read-only.
+- Data: the v2 panel `models/artifacts/v2-8d19aa86/features.parquet` (sha256 `ad63e3f0…` = registry) and the v2 interim 311 aggregates (snapshot `8d19aa86`). Every frame is filtered to `day < 2026-11-01` and asserted; `max_day_read = 2026-10-31`. **No rows from 2026-11-01 onwards were read.**
+- Splits are exactly v2's: fit on train (2022-02-01..2024-04-30, 929,764 rows / 20,675 positives); isotonic on valid (2024-25, 372,317 / 10,608); report on test_chrono (2025-26, 372,317 / 11,356) and test_spatial (158,013 / 3,607).
+- Candidates, with hyper-parameters fixed before the first run (no search):
+  - hist freq and freq×weather (gating baselines);
+  - Logistic (v2 pipeline);
+  - Poisson count regression (same preprocessing, `PoissonRegressor(alpha=1e-4)`, target = daily report count; `count>0` reproduces the v2 label exactly, asserted);
+  - RandomForest (300 trees, min_samples_leaf 100, sqrt features, max_samples 0.5);
+  - XGBoost 3.4.1 (hist, 400 trees, depth 6, lr 0.05, subsample/colsample 0.8, min_child_weight 50);
+  - v2 HGB (reference).
+- Sanity check: Logistic and HGB reproduce `models/evaluation/v2-8d19aa86.json` to every printed digit (test_chrono 0.164858 / 0.161579; test_spatial 0.134491 / 0.133353).
+- Command: `uv run --extra phase5 python -m winterpath_ml.phase5_explore` (wall 937 s, peak RSS 1.24 GB). Fit seconds: logistic 12.0, poisson 12.0, RF 120.9, XGB 55.6, HGB 391.6.
+
+**Results (literal, from `results.json`).**
+- PR-AUC is on uncalibrated scores. Brier is isotonic-calibrated on 2024-25.
+- Δ is the difference against the best gating baseline (freq×weather on both splits), with a 95 % day-block bootstrap CI (200 resamples, seed 0).
+- P/R@x% means the top ceil(x % × cells) flagged each day, pooled. @50 is `metrics.precision_recall_at_k` (k = 50/day ≈ 1.7 %).
+
+test_chrono (2025-26):
+```
+method                      PR-AUC   dBest              CI95    Brier   P@1%   R@1%   P@5%   R@5%   P@50   R@50
+baseline_hist_freq          0.0752 -0.0178 [-0.0346,-0.0048]  0.02888  0.134  0.045  0.099  0.162  0.111  0.088
+baseline_freq_x_weather     0.0930 +0.0000                    0.02875  0.134  0.045  0.099  0.162  0.111  0.088
+baseline_logistic           0.1649 +0.0718 [+0.0406,+0.1064]  0.02736  0.146  0.049  0.108  0.178  0.124  0.098
+poisson_count               0.1626 +0.0696 [+0.0378,+0.1042]  0.02741  0.144  0.048  0.109  0.178  0.123  0.098
+random_forest               0.1556 +0.0625 [+0.0354,+0.0989]  0.02758  0.139  0.046  0.110  0.180  0.122  0.097
+xgboost                     0.1600 +0.0669 [+0.0383,+0.1032]  0.02753  0.141  0.047  0.106  0.174  0.125  0.099
+hgb                         0.1616 +0.0686 [+0.0387,+0.1015]  0.02750  0.140  0.047  0.108  0.178  0.121  0.096
+```
+test_spatial (2025-26, holdout blocks):
+```
+method                      PR-AUC   dBest              CI95    Brier   P@1%   R@1%   P@5%   R@5%   P@50   R@50
+baseline_hist_freq          0.0563 -0.0172 [-0.0330,-0.0051]  0.02192  0.101  0.045  0.074  0.163  0.072  0.182
+baseline_freq_x_weather     0.0736 +0.0000                    0.02175  0.101  0.045  0.074  0.163  0.072  0.182
+baseline_logistic           0.1345 +0.0609 [+0.0375,+0.0874]  0.02099  0.113  0.051  0.082  0.181  0.079  0.199
+poisson_count               0.1313 +0.0578 [+0.0347,+0.0838]  0.02104  0.114  0.052  0.080  0.177  0.079  0.199
+random_forest               0.1301 +0.0566 [+0.0352,+0.0857]  0.02103  0.115  0.052  0.081  0.179  0.080  0.200
+xgboost                     0.1319 +0.0584 [+0.0377,+0.0849]  0.02100  0.112  0.050  0.082  0.182  0.080  0.201
+hgb                         0.1334 +0.0598 [+0.0388,+0.0843]  0.02097  0.106  0.048  0.082  0.180  0.080  0.200
+```
+Per-borough calibration, test_chrono. Boroughs with ≥ 100 positives (15 of them); `mean_pred / obs_rate` min–max:
+- hist 0.73–1.46;
+- freq×weather 0.85–1.51;
+- logistic 0.90–1.80;
+- poisson 0.88–1.89;
+- RF 0.86–1.40;
+- XGB 0.91–1.47;
+- HGB 0.91–1.43.
+
+The worst is Saint-Laurent: obs 0.0104, logistic mean_pred 0.0188, ratio 1.80.
+
+**Hypotheses, not conclusions.**
+1. All five learned models beat both baselines by a similar, CI-separated margin, about +0.06 to +0.07 PR-AUC. Among them the spread is ≤ 0.009 PR-AUC, smaller than any CI width. The data does not separate logistic, Poisson, RF, XGB and HGB. More model complexity shows no visible gain, so the simplest candidate (logistic) remains the natural primary for the island pre-registration.
+2. At a fixed alert rate the gain is small: P@1 % is 0.134 → 0.146 (chrono); R@5 % is 0.162 → 0.178. Most of the PR-AUC gain is in ordering *across* days, i.e. which days are bad. The within-day ranking comes mostly from history.
+3. Hist freq and freq×weather give identical P/R at every alert rate. That is expected, because the weather multiplier is constant within a day, so it cannot change which cells are flagged on that day.
+4. At a 5 % citywide alert rate, recall is concentrated in the central boroughs. In logistic, test_chrono: Plateau 0.60, Outremont 0.46, Ville-Marie 0.45. Pierrefonds-Roxboro and RDP-PAT are 0.00, Saint-Laurent 0.005. A citywide top-k under-serves outer boroughs. Per-borough or rate-normalised alerting is a question for the island protocol, not a result.
+5. Calibrated per-borough ratios stay within [0.5, 2.0] for every method, but Saint-Laurent is over-predicted by 1.4–1.9×.
+
+**Artifacts.** These are in `models/artifacts/phase5-explore-8d19aa86/` (git-ignored directory, committed with `git add -f` as instructed; no model pickles):
+
+| file | bytes | sha256 |
+|---|---|---|
+| results.json | 14,108 | `96c86deb4beffa38ce0d4e2adc6e9f4bd51753bdbf1e32acfdd45bcbfd6632b0` |
+| reliability.csv | 11,057 | `f46a289bd9a4bb7a51cd455847fdcdd3eac73fb1b4afcdfffca20c791b90328d` |
+| borough.csv | 37,445 | `a25ac472fc280801355b242f9bda6e9b1b79f6d2211f8ed979c378129d8293b8` |
+| manifest.json | 987 | lists the three above, input shas, the embargo check |
+
+Tests: `tests/test_phase5_explore.py` (SYNTHETIC; alert-rate counting, embargo constant, method names) → `3 passed in 15.24s`.
+
+## ETL advisory lock 100 for `wp.risk_cell_score` (2026-11-12)
+This implements `infra/ETL-LOCKS.md` on integration `11ad5a2`, merged with `--no-edit`.
+- **Constants.** `services/ml/src/winterpath_ml/locks.py` holds `WPET = 1464878420`, `SCHEMA_GATE = 0` and `RISK_CELL_SCORE = 100`. They are copied from Data's `winterpath_ingestion/locks.py`, not imported. `test_constants_match_data_copy` fails if Data's values ever drift.
+- **`score_db.write_scores`.**
+  - The first statement inside the existing single transaction is `pg_try_advisory_xact_lock_shared(WPET, 0)`, then `pg_try_advisory_xact_lock(WPET, 100)`.
+  - If either lock is held elsewhere, `locks.Locked` is raised and the transaction rolls back. Nothing is written and **no** `ingest_run` row is recorded, because the other run is doing this work.
+  - The best-effort `failed` ingest_run record also takes the shared schema gate first; if the gate is held, it skips recording.
+  - Both locks are transaction-scoped and released on COMMIT, ROLLBACK or connection loss.
+- **`score.main --write-db`.** On `Locked` it prints `NOTICE: lock (1464878420,<objid>) held by another run — skipping` (plus a `::notice` annotation under Actions) and **exits 0**. The staleness check is skipped on that run.
+- **Fix found while wiring.** A local dict named `log` in `write_scores` shadowed the module logger. The failure-record fallback's `log.warning(...)` would therefore have raised AttributeError and masked the original error. The dict is renamed `prov`; behaviour is otherwise unchanged.
+- **Tests** in `tests/test_locks.py`:
+  - DB-free: constant match, acquisition order (gate shared → 100 exclusive), `Locked` on the gate or on 100, writer writes and records nothing when locked, CLI exits 0 with the notice;
+  - live, two real connections on `wp_ml`: a holder of exclusive 100 → skip; a holder of the exclusive gate (as in a migration) → skip, with 0 score rows and 0 ingest_run rows; after the holder commits, the next write succeeds; a holder of the *shared* gate (another ETL load) does not block scoring.
+
+```
+$ WP_ML_TEST_DB_URL=$DATABASE_URL uv run --no-sync pytest -q tests/test_locks.py tests/test_risk_cell_score_db.py
+18 passed in 4.34s
+$ uv run --isolated --no-dev --with pytest pytest -q -p no:cacheprovider      # no extras
+104 passed, 10 skipped in 86.29s (0:01:26)
+$ WP_ML_TEST_DB_URL=$DATABASE_URL uv run --no-sync pytest -q                  # all extras + live DB
+113 passed, 1 skipped in 24.43s
+$ uv run --no-sync python -m winterpath_ml.gate_logreg_2026 --check
+pins OK; coverage list OK
+```
+After the run, `wp_ml` holds 0 rows in `wp.risk_cell_score` and in `wp.ingest_run`, and 0 WPET advisory locks.
+
+Answer to ETL-LOCKS open question 3: yes. `write_scores` replaces every (day, model_id) partition, applies retention and marks the ingest_run row in **one** transaction, so lock 100 lives inside it. No session-lock exception is needed.
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|
