@@ -19,7 +19,7 @@ Rules that still apply: CLAUDE.md, `docs/contracts/integration-rules.md`, the ho
 1. **Coverage is a 2.6 × 1.9 km downtown bbox** (`-73.588,45.496,-73.562,45.513`): 6,807 nodes, 16,296 edges, largest component 95.8 %.
 2. **The GitHub cron has never fired.** Since the workflow was registered (19:10 UTC), every run was a manual `workflow_dispatch`; the 21:17 UTC weather run never happened. As a result, weather freshness depends on manual runs.
 3. **Weather is observations only** (ECCC SWOB, 2 stations). `GET /weather/forecast` is in the contract but returns 503 (`ECCC forecast is unavailable`): not implemented. No hourly forecast, alerts, wind chill or precipitation probability reach the user. `departure_time` exists in the contract, but forecasts are not used for it.
-4. **311 aggregates end on 2026-11-07.** There is no scheduled 311 ingest, so the 311 hazard layer is empty right now.
+4. **311 aggregates end on 2026-11-07.** *Corrected 2026-11-12 (data c6c0b79):* this is not staleness. The source has no **located** winter-category report after 2026-11-07 (later rows are unlocated `Information` requests). A scheduled 311 refresh was still missing; data added an incremental DataStore refresh (about 5 KB per run).
 5. **Address search is disabled** (no permitted geocoder). Users must pick points on the map or type coordinates. This is the largest usability gap.
 6. **Steps exist but are unusable for navigation.** The live API returned 46 steps for a 1.1 km walk; some legs are under 2 m, `street_name` is always null, and the UI has no live navigation (no position tracking, progress or reroute).
 7. **Risk layer is a labelled heuristic** (historical winter 311 frequency × observed weather). No validated supervised model.
