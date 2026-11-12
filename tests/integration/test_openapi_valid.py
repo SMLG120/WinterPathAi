@@ -24,7 +24,7 @@ def test_contract_version_is_v1() -> None:
 
 def test_every_operation_has_an_operation_id_and_success_response() -> None:
     ops = operations()
-    assert len(ops) == 14  # contract v1
+    assert len(ops) == 16  # contract v1.8 (+getWeatherAlerts, getDataStatus)
     for op in ops.values():
         assert any(s.startswith("2") for s in op.declared_statuses), op.operation_id
 

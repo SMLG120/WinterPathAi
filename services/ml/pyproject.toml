@@ -15,6 +15,12 @@ dependencies = [
 
 [project.optional-dependencies]
 db = ["psycopg[binary]>=3.2", "sqlalchemy>=2.0"]
+# Phase 5 candidate: XGBoost 3.4.1 exact pin, Apache-2.0 (verified from the wheel LICENSE, 2026-11-12).
+# Linux uses the CPU-only build: `xgboost` on Linux pulls nvidia-nccl-cu13 (206 MB, no licence metadata).
+phase5 = [
+    "xgboost-cpu==3.4.1; sys_platform == 'linux'",
+    "xgboost==3.4.1; sys_platform != 'linux'",
+]
 
 [dependency-groups]
 dev = ["pytest>=8"]

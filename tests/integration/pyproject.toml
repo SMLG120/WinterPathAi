@@ -25,7 +25,7 @@ testpaths = ["."]
 addopts = "-ra"
 markers = [
   "contract: Schemathesis contract tests against API_BASE_URL",
-  "smoke: smoke tests (/health, /coverage)",
+  "smoke: smoke tests (/health, /coverage, v1.8 /data-status /weather/alerts)",
   "privacy: log privacy tests",
   "cors: CORS policy tests",
 ]

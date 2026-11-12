@@ -5,6 +5,208 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## v2 Wave 2a (b) — 2026-11-12: 311 jobs in scheduled.yml
+Merged `integration/winterpath` e7fc370 (Data c6c0b79: incremental 311 refresh, ETL locks implemented) as 1ee4813; no platform-owned paths changed. Nothing pushed, so nothing in this section is live: scheduled runs fire only from main.
+
+- **`report-311-daily`**, cron `27 11 * * *` (before the 12:07 scoring):
+  - runs `uv run --locked wp-ingest 311 --recent-days 14 && uv run --locked wp-ingest load --source mtl-311 --recent` in `services/ingestion`, with `DATABASE_URL` from `WP_ETL_DATABASE_URL`;
+  - concurrency group `scheduled-311-daily`, timeout 15 min;
+  - dispatch `job=311`.
+- **`report-311-weekly-full`**, cron `47 10 * * 0` (Sunday 10:47 UTC, 40 min before that day's incremental run):
+  - `wp-ingest 311 --refresh` (about 850 MB download, no DB access), then `wp-ingest load --source mtl-311`;
+  - group `scheduled-311-weekly-full`, timeout 45 min;
+  - dispatch `job=311-full`.
+- **Both jobs:**
+  - Same opt-in gate as the other jobs: they skip with a `::notice` when the secret is missing.
+  - Pinned checkout and setup-uv, `permissions: contents: read`, `uv sync --locked --no-dev`.
+  - They share lock (WPET,4) but not a concurrency group. On contention the second load prints Data's `::notice::… skipping`, writes nothing, and exits 0.
+- **Dispatch semantics fixed:** weather and scoring guards were `inputs.job != 'scoring'` / `!= 'weather'`, which would have started weather and scoring on a `311` dispatch. They are now explicit: `weather|both` and `scoring|both`. `both` still means weather + scoring.
+- 311 is no longer "not scheduled". The MONITORING.md F4/F5 thresholds should change to daily cadence once this is on main (tracked; MONITORING.md is not edited in this commit).
+
+```
+$ make lint-infra
+../../.github/workflows/scheduled.yml: 5 cron(s), every one guarded, no dangling guards
+compose config OK
+$ actionlint .github/workflows/scheduled.yml && echo actionlint-ok
+actionlint-ok
+$ (services/ingestion) uv lock --check
+Resolved 34 packages in 9ms
+$ (services/ingestion) uv run --locked wp-ingest load --source mtl-311 --recent-days 3   # flag validation reachable
+wp-ingest: error: --recent-days only applies to `311`
+# negative control: weekly guard changed to '47 10 * * 6' in a temp copy
+ERROR …/s.yml: cron '47 10 * * 0' is not referenced by any job if: (jobs skip silently)
+ERROR …/s.yml: job(s) ['report-311-weekly-full'] guard on '47 10 * * 6', which is not in on.schedule
+exit=1
+```
+Not run: the jobs themselves. Running them locally would download from the portal and write to a DB, and on GitHub they need a push.
+
+## v2 Wave 2a — 2026-11-12: contract v1.8 tests, `/data-status` in the integrity proposal
+Base: merge commit 8d64022 (`integration/winterpath` 2e3d4b2 contract v1.8.0 + 47615b4 briefs; no platform-owned paths changed). Brief: `docs/agents/v2-plan.md` Wave 2a → "platform". `integration/winterpath` has since moved to 5c7b5aa (ML merge). I was not told to merge it, so I did not. No contract edits, no deploys, and no API requests to Render.
+
+### Changes
+- **Stub (`tests/integration/stub_server/`):**
+  - `getWeatherAlerts` → **503 UPSTREAM_UNAVAILABLE**, like the other weather endpoints. It is deliberately not `200 {alerts: []}`: per the contract, an empty list means "ECCC reported no alerts", and the stub has no ECCC connection.
+  - `getDataStatus` → all 7 products with `freshness.state = unavailable`, a SIMULATED reason, `last_success_at`/`expected_cadence` null, and mechanisms per the brief (routing item 3).
+  - `compareRoutes` returns `weather_context: null`.
+- **`test_openapi_valid.py`:** operation count 14 → 16 (getWeatherAlerts, getDataStatus). Before the fix, this test and `test_contract.py::test_positive[GET /weather/alerts]` (500 "Undocumented status code" from the stub) were the two failures against v1.8.
+- **New `tests/integration/test_v18.py`** (marker `smoke`, target-agnostic). It checks semantics the schema cannot express:
+  - `/data-status` lists each of the 7 product ids exactly once;
+  - each mechanism matches the agreed table;
+  - each freshness is valid with a non-empty reason;
+  - `current` requires a `last_success_at`;
+  - `/weather/alerts` is either a declared 503, or alerts are present only with provenance (and a non-`unavailable` list carries provenance);
+  - `/weather/current|forecast` freshness is valid when served;
+  - route `weather_context` is null or `used_for: display_only`.
+- **`infra/MONITORING.md`:** the integrity job's single API request is now `GET /api/v1/data-status` (was `/health`). It makes no retry and no second call, and the endpoint never triggers a refresh. New checks A1–A4 come from that one response (schema, per-product state, API-vs-SQL disagreement, mechanism table). The SQL F-checks stay, because the API's freshness is computed by the code under test.
+
+### Commands run and literal results
+```
+$ cd tests/integration && uv sync --locked --quiet && echo "sync --locked ok"
+sync --locked ok
+$ uv run pytest -q          # against the stub
+SKIPPED [7] .venv/lib/python3.12/site-packages/pluggy/_manager.py:183: Impossible to generate negative test cases
+67 passed, 7 skipped in 57.16s
+$ uv run pytest -v test_v18.py
+test_v18.py::test_data_status_lists_every_product_once PASSED            [ 16%]
+test_v18.py::test_data_status_mechanisms_and_freshness PASSED            [ 33%]
+test_v18.py::test_weather_alerts_shape_or_declared_503 PASSED            [ 50%]
+test_v18.py::test_weather_freshness_when_served[/weather/current] PASSED [ 66%]
+test_v18.py::test_weather_freshness_when_served[/weather/forecast] PASSED [ 83%]
+test_v18.py::test_route_weather_context_is_display_only PASSED           [100%]
+============================== 6 passed in 2.99s ===============================
+$ make lint-infra
+../../.github/workflows/scheduled.yml: 3 cron(s), every one guarded, no dangling guards
+compose config OK
+```
+**Negative control:** with the stub's `closures` mechanism temporarily set to `scheduled_job`, the run gave `FAILED test_v18.py::test_data_status_mechanisms_and_freshness - AssertionError: closures` and `1 failed, 5 passed in 3.58s`. After reverting: `6 passed in 2.29s`.
+
+### Not done / blocked
+- **Real API not run against v1.8.** `services/api` has no `/data-status` on this branch, and `agent/routing`'s latest commit is 5635e6b (pre-v1.8). Once Routing's v1.8 lands in integration, `API_BASE_URL=… uv run pytest -q` runs these same tests unchanged.
+- **Cron follow-up (Wave 1 item 1). The first scheduled run has fired.**
+  - The watcher (5-min polls, last at 01:30:43Z) ended with `no schedule run by 01:30Z`.
+  - A read-only check at 03:41Z returned:
+    ```
+    schedule total_count=1
+    43140456539	completed	success	2026-11-12T02:18:16Z
+    state=active updated_at=2026-11-11T14:10:57.000-05:00
+    head_sha=4af5262b6f2d7b5fe9e69ff5e3989009a591f515 run_started_at=2026-11-12T02:18:16Z updated_at=2026-11-12T02:19:37Z
+    weather ingest (ECCC -> wp.weather_obs/daily)	completed	success	2026-11-12T02:18:18Z	2026-11-12T02:19:37Z
+    daily risk scoring (-> wp.risk_cell_score)	completed	skipped	2026-11-12T02:18:17Z	2026-11-12T02:18:16Z
+    ```
+  - What this shows:
+    - The schedule trigger works. The weather guard `'17 */3 * * *'` matched, and scoring was skipped as designed.
+    - Main still carries `0 12`/`0 18` for scoring. My `7 12`/`7 18` change is unpushed.
+  - What it does not show:
+    - **Which slot this was.** 02:18 is not a `17 */3` time: it is either the 00:17 slot about 2 h late, or 03:17 almost 1 h early. The API does not say.
+    - **Whether the 03:17 slot fires.** As of 03:41Z it had not.
+  - Either way, the slots are delayed or merged rather than on time. That supports the F1 WARN at 4 h / FAIL at 6 h thresholds and the off-GitHub dead-man's switch in MONITORING.md B5.
+  - Not yet observed: a scoring run on schedule (next: 12:00 UTC on main).
+  - **Recorded delay (coordinator's reading, 2026-11-12):** run 43140456539 is the **00:17 slot, started 02:18:16Z, about 2 h 01 min late**. GitHub could also have released it from a backlog; it does not expose the slot.
+
+### Slot observation log (read-only, `gh api …/workflows/415056056/runs?event=schedule`)
+Delay = `run_started_at` minus the nominal slot. Main's crons at 03:44Z (main head 4af5262): weather `17 */3 * * *`; scoring `0 12 * * *` and `0 18 * * *`. Scoring at `7 12` / `7 18` exists only on agent/platform and integration until main is updated. The scoring slot observed is whichever cron main carries.
+
+| Slot (UTC, nominal) | Run id | run_started_at | Delay | Jobs |
+|---|---|---|---|---|
+| weather 00:17 | 43140456539 | 02:18:16Z | +2 h 01 min (attribution per coordinator) | weather success; scoring skipped |
+
+## v2 Wave 1 — 2026-11-11/12: cron diagnosis, concurrency, lock scheme, monitoring proposals, benchmark harness
+Merged `integration/winterpath` eaac440 (fast-forward; no platform-owned paths changed). Brief: `docs/agents/v2-plan.md` → "platform (Agent 5)". This wave makes no Supabase writes, no deploys and no contract edits.
+
+### 1. Why the scheduled cron "never fired": diagnosis
+Evidence (read-only GitHub API at 23:44–23:46 UTC):
+```text
+repo: {"default_branch":"main","private":false,"archived":false,"disabled":false}      <- repo is now PUBLIC
+workflow scheduled: id 415056056, path .github/workflows/scheduled.yml, state "active", created 2026-11-11T19:10:57Z
+actions permissions: {"enabled":true,"allowed_actions":"all"}
+scheduled.yml runs: total 3 — all workflow_dispatch (19:11:53Z failure, 19:21:22Z success, 23:00:56Z success)
+runs with event=schedule across ALL workflows: 0
+on: block on main: crons "17 */3 * * *", "0 12 * * *", "0 18 * * *" (valid; jobs guard on the same strings)
+last commit touching the file on main: cb5226a 2026-11-11T19:15:16Z
+```
+- **Due slots since registration (19:10:57 UTC):** exactly **one**, the weather slot at **21:17 UTC**. The scoring slots (12:00/18:00) had not come round again yet.
+- **GitHub incident:** githubstatus.com reports a **critical incident** "Impact across multiple GitHub products including Actions, Pages, and Copilot products". It started **20:48:12 UTC** ("Actions is experiencing degraded availability" at 20:48:25). At 21:07 it moved to monitoring ("The backlog of Actions jobs are being processed"), at **21:21:32** "The backlog of Actions jobs has been fully processed", and it was resolved at 21:21:39 (https://stspg.io/jdjlq5zjyl48).
+- **GitHub docs** (verified verbatim): "The `schedule` event can be delayed during periods of high loads … High load times include the start of every hour. If the load is sufficiently high enough, some queued jobs may be dropped." Also "Scheduled workflows will only run on the default branch".
+
+**Conclusion.** The registration is correct: the workflow is active on the default branch, with valid crons and matching guards. The only slot that could have fired fell inside an Actions outage that was clearing its job backlog until 21:21. A dropped scheduled run is consistent with GitHub's documented best-effort behaviour. "Never fired" is therefore **one dropped slot during an incident**, not proof of a configuration fault. **Pending:** the next slot (00:17 UTC) is being observed read-only; the result will be appended to this report. If it does not fire either, that rules out the incident explanation and the investigation continues (see "next checks" below).
+
+Risks found on the way and fixed:
+- The two scoring crons were exactly on the **top of the hour**, which GitHub names as the high-load, drop-prone time. They are now `7 12 * * *` / `7 18 * * *`; the hours are unchanged.
+- **A cron-string/guard mismatch skips jobs silently.** New `infra/scripts/check-schedules.py` fails if any cron is not referenced by a job `if:` or a guard names a cron that does not exist. It is wired into `make lint-infra` and the CI `workflow-lint` job.
+- **The repository is now public:** "scheduled workflows are automatically disabled when no repository activity has occurred in 60 days." This is documented in scheduled.yml and covered by monitoring (below).
+- "Notifications for scheduled workflows are sent to the user who last modified the cron syntax", i.e. whoever pushes this commit to main. The owner should check that Actions failure emails are enabled for that account.
+
+No pings were added: no keep-alive, no artificial schedule, no extra workflow.
+
+### 2. Concurrency
+- `scheduled.yml` already has a per-job group (`scheduled-weather-ingest`, `scheduled-daily-scoring`) with `cancel-in-progress: false`. A job never overlaps itself and never kills a load mid-transaction; at most one run is in progress and one pending.
+- The rules are now documented at the top of the file. A **shared** group for both jobs was rejected: GitHub replaces a pending run with a newer pending one, so a weather run could cancel a pending scoring run.
+- `ci.yml` keeps its per-ref group with cancel-in-progress (CI only).
+- Exclusion **across** jobs and workflows is delegated to the database (next section).
+
+### 3. ETL advisory locks: proposal (`infra/ETL-LOCKS.md`, for Data/ML to implement)
+- Transaction-scoped two-key advisory locks, safe on both Supabase poolers. Namespace `classid = 1464878420` (`0x57504554`, "WPET").
+- `objid 0` = schema gate: shared for every writer, exclusive for migrations.
+- One stable id per resource: 1 osm, 2 voirie, 3 entraves, 4 311, 5 eccc-geomet, 100 risk_cell_score, 900 retention purge, and 1000–1999 reserved for v2 island builds.
+- Fixed acquisition order, so no deadlocks. On contention, scheduled runs try-lock and exit 0 with a `::notice`.
+- Verified on my local `wp_platform` (session A holds, session B probes):
+```text
+shared gate|t
+resource 5|t
+visible|0|ShareLock|t|t
+visible|5|ExclusiveLock|t|t
+after rollback held:|0
+B: resource 5 while A holds it ->|f
+B: migration exclusive gate while A holds shared ->|f
+B: other resource 100 ->|t
+held after A commits: 0
+```
+
+### 4. Daily data-integrity job and 5. staleness monitoring: proposals (`infra/MONITORING.md`)
+- **Integrity job** (`37 13 * * *` plus a final job of every scheduled run). It uses a new **read-only** secret `WP_MONITOR_DATABASE_URL` (`wp_reader`; owner creates it). 21 read-only checks:
+  - freshness of weather, scores, 311 and ingest runs;
+  - failed or stuck runs and stuck advisory locks;
+  - row-count sanity;
+  - orphans;
+  - privacy/retention (community reports past the 30-day hard delete);
+  - SRID and geometry validity;
+  - DB size against Supabase's 500 MB.
+
+  It makes **at most one** API request (`/health`, 120 s cold-start timeout). Failure is reported through the job status and the step summary. As drafted, F4 **would FAIL today** (311 data ends 2026-11-07, audit problem 4).
+- **Staleness without keep-alive**, layered:
+  1. in-band DB freshness surfaced by the API/web while awake;
+  2. a post-load freshness assertion in `scheduled.yml`;
+  3. the daily integrity job;
+  4. the same checks on every push to main;
+  5. **(owner)** a dead-man's switch outside GitHub, because a scheduler cannot report its own silence: either an outbound heartbeat (e.g. healthchecks.io free tier; never touches Render) or Cloudflare Workers Cron Triggers calling `workflow_dispatch`. I recommend the heartbeat first.
+
+### 6. Reusable Docker benchmark harness (`infra/bench/bench_api.py` + README, `make bench`)
+- Stdlib only. One container under explicit limits (default `--cpus=0.1 --memory=512m`).
+- Measures boot to the first `/health` 200, memory (sampled `docker stats` plus the cgroup v2 `memory.peak`), and sequential `/routes/compare` p50/p95/max per distance class over HTTP-200 only. Every non-200 is counted by `status:code`.
+- Pairs come from `--nodes` (graph nodes, so on-network), `--pairs` (explicit) or seeded random points in a bbox.
+- It raises the API rate limit by default (recorded in the output), so the limiter is not what gets measured. It never prints env values, binds 127.0.0.1 only and removes its container.
+- Development runs that shaped it (pilot fixture graph, local Apple-silicon Docker, 0.1 CPU / 512 MiB):
+```text
+run 1 (random bbox points): short 30× 422:OFF_NETWORK; medium 29× OFF_NETWORK + 1× 429:RATE_LIMITED  -> added --nodes and the rate-limit override
+run 2 (--nodes):  boot 39.23 s; mem after boot 68.3 MiB, sampled peak 71.6, cgroup peak 75.0
+                  short n=100 ok=99 p50=87.7 ms p95=194.9 ms max=299.6 ms non-200={'422:VALIDATION_ERROR': 1}  -> excluded origin==destination
+run 3 (--nodes):  boot 23.73 s; mem after boot 66.6 MiB, sampled peak 71.7, cgroup peak 83.3
+                  short n=100 ok=100 p50=6.5 ms p95=98.0 ms max=189.9 ms non-200={}
+leftover bench containers: 0
+```
+**Methodology note for Routing:** at `--cpus=0.1` the CFS quota (10 ms per 100 ms period) quantises latency. The same image gave p50 87.7 ms in one run and 6.5 ms in another, and boot times ranged from 23.7 s to 54.6 s across runs. Report at least 3 runs, never a single best run. These are laptop numbers, not Render's.
+
+```text
+$ actionlint                     -> exit 0
+$ make lint-infra                -> check-schedules: ci.yml 0 cron(s); scheduled.yml 3 cron(s), every one guarded, no dangling guards; compose config OK [exit 0]
+$ check-schedules negative control (guard '0 18 * * *' vs cron '7 18 * * *') -> 2 ERRORs, exit 1
+$ ruff check/format (bench_api.py, check-schedules.py) -> All checks passed!
+```
+Next checks if 00:17 UTC also does not fire:
+- re-push a no-op cron edit by the owner's account (that makes the owner the schedule's actor);
+- confirm Actions settings for scheduled workflows on the public repo;
+- open a GitHub support ticket with workflow id 415056056.
+
 ## Update 2026-11-11 (l) — `API_STORE_BACKEND` comment (Render service live)
 The coordinator reported that Render `winterpath-api` is live and asked for `API_STORE_BACKEND=postgis` in `infra/render.yaml`. **It was already `postgis`** on this branch and on integration b81b5b9 (since update (f)). If the live service runs `memory`, that comes from a dashboard value, not the blueprint. I added the requested comment: memory loads no closures or 311 hazards; writes stay blocked by `API_PUBLIC_WRITES=false`; the `wp_api` login is read-only.
 **Follow-up (coordinator):** the comment now also states that this setting requires routing's pending fix. With writes off, the community-report and pilot stores must stay in memory, because `wp_reader` has no SELECT on `community_report`. The coordinator will merge it together with that fix.
