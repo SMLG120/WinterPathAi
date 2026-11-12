@@ -1,4 +1,4 @@
-"""/health, /coverage, /data-sources, /models/status, /pilot-requests, /weather/*."""
+"""/health, /coverage, /data-sources, /data-status, /models/status, /pilot-requests, /weather/*."""
 
 from __future__ import annotations
 
@@ -16,9 +16,11 @@ from ..repositories.sources import PilotRequestRow
 from ..schemas import (
     Coverage,
     DataSource,
+    DataStatus,
     Health,
     ModelStatus,
     PilotRequest,
+    WeatherAlerts,
     WeatherCurrent,
     WeatherForecast,
 )
@@ -192,12 +194,63 @@ def _weather_unavailable(what: str) -> ApiError:
     tags=["weather"],
 )
 def get_current_weather(state: AppState = Depends(get_state)) -> WeatherCurrent:
-    if state.weather is None:
-        raise _weather_unavailable("current observation (no adapter configured)")
-    try:
-        return WeatherCurrent.model_validate(state.weather.current())
-    except WeatherUnavailableError as exc:
-        raise _weather_unavailable("current observation") from exc
+    """SWOB observation (PostGIS) is primary; City Page current conditions add wind chill and
+    condition. When no observation can be served, City Page current conditions alone are
+    returned. The evidence note names the source of every field."""
+    obs, obs_err = None, "no observation adapter configured"
+    if state.weather is not None:
+        try:
+            obs = state.weather.current()
+        except WeatherUnavailableError as exc:
+            obs_err = str(exc)
+    cc = state.live_weather.current_conditions() if state.live_weather is not None else None
+    if obs is None and cc is None:
+        raise _weather_unavailable("current observation")
+    if obs is not None:
+        if cc is not None:
+            cur, snap = cc
+            obs["wind_chill_c"] = cur.wind_chill
+            obs["condition"] = {"en": cur.condition.en, "fr": cur.condition.fr}
+            obs["evidence"]["note"] += (
+                " wind_chill_c and condition: ECCC City Page Weather (qc-147) current "
+                f"conditions observed {_iso(cur.observed_at)}, fetched "
+                f"{_iso(snap.provenance.fetched_at)} (freshness {snap.freshness.state}); every "
+                "other field: the observation above."
+            )
+        return WeatherCurrent.model_validate(obs)
+    cur, snap = cc
+    if cur.observed_at is None:
+        raise _weather_unavailable("current observation")
+    return WeatherCurrent.model_validate(
+        {
+            "station_id": cur.station_code or snap.data.location_id,
+            "station_name": cur.station_name.en or cur.station_name.fr,
+            "observed_at": cur.observed_at,
+            "temperature_c": cur.temperature_c,
+            "precipitation_mm_1h": None,
+            "snow_depth_cm": None,
+            "wind_speed_kmh": cur.wind_speed_kmh,
+            "freeze_thaw_24h": None,
+            "wind_chill_c": cur.wind_chill,
+            "condition": {"en": cur.condition.en, "fr": cur.condition.fr},
+            "freshness": {
+                "state": snap.freshness.state,
+                "reason": snap.freshness.reason,
+                "evaluated_at": snap.freshness.evaluated_at,
+            },
+            "provenance": _live_provenance(snap.provenance),
+            "evidence": {
+                "state": "confirmed",
+                "source_ids": ["eccc-geomet"],
+                "observed_at": cur.observed_at,
+                "retrieved_at": snap.provenance.fetched_at,
+                "confidence": None,
+                "note": "Every field: ECCC City Page Weather (qc-147) current conditions. "
+                f"No ingested observation could be served ({obs_err}); precipitation, snow "
+                "depth and freeze-thaw are therefore unknown.",
+            },
+        }
+    )
 
 
 @router.get(
@@ -209,9 +262,44 @@ def get_current_weather(state: AppState = Depends(get_state)) -> WeatherCurrent:
 def get_weather_forecast(
     hours: int = Query(24, ge=1, le=48), state: AppState = Depends(get_state)
 ) -> WeatherForecast:
-    if state.weather is None:
+    source = state.live_weather if state.live_weather is not None else state.weather
+    if source is None:
         raise _weather_unavailable("forecast (no adapter configured)")
     try:
-        return WeatherForecast.model_validate(state.weather.forecast(hours))
+        return WeatherForecast.model_validate(source.forecast(hours))
     except WeatherUnavailableError as exc:
         raise _weather_unavailable("forecast") from exc
+
+
+@router.get(
+    "/weather/alerts",
+    response_model=WeatherAlerts,
+    response_model_exclude_unset=True,
+    tags=["weather"],
+)
+def get_weather_alerts(state: AppState = Depends(get_state)) -> WeatherAlerts:
+    if state.live_weather is None:
+        raise _weather_unavailable("alerts (live weather disabled)")
+    try:
+        return WeatherAlerts.model_validate(state.live_weather.alerts())
+    except WeatherUnavailableError as exc:
+        raise _weather_unavailable("alerts") from exc
+
+
+@router.get(
+    "/data-status", response_model=DataStatus, response_model_exclude_unset=True, tags=["system"]
+)
+def get_data_status(state: AppState = Depends(get_state)) -> DataStatus:
+    from ..data_status import data_status
+
+    return DataStatus.model_validate(data_status(state))
+
+
+def _iso(dt) -> str:
+    return dt.isoformat().replace("+00:00", "Z") if dt is not None else "unknown"
+
+
+def _live_provenance(p) -> dict:
+    from ..live_weather import _provenance
+
+    return _provenance(p)

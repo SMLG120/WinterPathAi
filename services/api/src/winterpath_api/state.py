@@ -55,6 +55,8 @@ class AppState:
     sources: SourceRepository
     pilot_requests: PilotRequestRepository
     weather: WeatherAdapter | None = None
+    #: v1.8: live ECCC forecast/alerts (one provider per process); None when disabled
+    live_weather: Any = None
     db_engine: Any = None
     limiter: RateLimiter = field(default_factory=RateLimiter)
     client_hash: ClientHasher = field(default_factory=ClientHasher)
@@ -80,7 +82,14 @@ def _load_graph(
         else:
             provider = FixtureGraphProvider(settings.fixture_dir)
     try:
-        graph = PedestrianGraph(provider.load())
+        data = provider.load()
+        if settings.routing_compact_graph:
+            from winterpath_routing.compact import CompactGraph
+
+            graph = CompactGraph.from_graph_data(data)
+        else:
+            graph = PedestrianGraph(data)
+        del data
     except (GraphUnavailableError, ValueError) as exc:
         log.warning("graph_unavailable", reason=str(exc))
         return None, str(exc)
@@ -89,8 +98,14 @@ def _load_graph(
         nodes=len(graph.nodes),
         edges=len(graph.edges),
         simulated=graph.metadata.simulated,
+        compact=settings.routing_compact_graph,
+        steps_v2=settings.routing_steps_v2,
     )
-    return RoutingEngine(graph), None
+    if settings.routing_compact_graph:
+        from winterpath_routing.compact_engine import CompactRoutingEngine
+
+        return CompactRoutingEngine(graph, steps_v2=settings.routing_steps_v2), None
+    return RoutingEngine(graph, steps_v2=settings.routing_steps_v2), None
 
 
 def build_state(
@@ -103,6 +118,7 @@ def build_state(
     sources: SourceRepository | None = None,
     pilot_requests: PilotRequestRepository | None = None,
     weather: WeatherAdapter | None = None,
+    live_weather: Any = None,
 ) -> AppState:
     engine, graph_error = _load_graph(settings, graph_provider)
 
@@ -160,6 +176,11 @@ def build_state(
             station_ids=settings.weather_station_ids,
         )
 
+    if live_weather is None and settings.weather_live_enabled:
+        from .live_weather import build_live_weather
+
+        live_weather = build_live_weather(settings.weather_live_user_agent)
+
     compute = ComputePool(settings.routing_workers)
     compute.warm()
     return AppState(
@@ -173,5 +194,6 @@ def build_state(
         sources=sources,
         pilot_requests=pilot_requests,
         weather=weather,
+        live_weather=live_weather,
         db_engine=db_engine,
     )

@@ -150,6 +150,33 @@ class PilotRequest(_Req):
 
 
 # ----------------------------------------------------------------------------- weather
+FreshnessStateT = Literal["current", "delayed", "stale", "unavailable"]
+
+
+class LocalizedText(_Resp):
+    en: str | None
+    fr: str | None
+
+
+class Freshness(_Resp):
+    state: FreshnessStateT
+    reason: str
+    evaluated_at: datetime
+
+
+class Provenance(_Resp):
+    provider: str
+    product: str
+    source_url: str
+    issued_at: datetime | None = None
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+    fetched_at: datetime
+    validated_at: datetime
+    attribution: str
+    licence_url: str
+
+
 class WeatherCurrent(_Resp):
     station_id: str
     station_name: str | None = None
@@ -159,6 +186,10 @@ class WeatherCurrent(_Resp):
     snow_depth_cm: float | None = None
     wind_speed_kmh: float | None = None
     freeze_thaw_24h: bool | None = None
+    wind_chill_c: float | None = None
+    condition: LocalizedText | None = None
+    freshness: Freshness | None = None
+    provenance: Provenance | None = None
     evidence: Evidence
 
 
@@ -169,9 +200,20 @@ class ForecastPeriod(_Resp):
     summary_fr: str
     temperature_c: float | None = None
     pop_percent: int | None = None
+    wind_speed_kmh: float | None = None
+    wind_gust_kmh: float | None = None
 
 
-class WeatherAlert(_Resp):
+class TextPeriod(_Resp):
+    name: LocalizedText
+    summary: LocalizedText
+    temperature_high_c: float | None = None
+    temperature_low_c: float | None = None
+    wind_chill_c: float | None = None
+    precipitation: LocalizedText | None = None
+
+
+class ForecastAlert(_Resp):
     id: str
     headline: str
     text: str
@@ -184,8 +226,66 @@ class WeatherAlert(_Resp):
 class WeatherForecast(_Resp):
     issued_at: datetime
     periods: list[ForecastPeriod]
-    alerts: list[WeatherAlert]
+    text_periods: list[TextPeriod] | None = None
+    location: str | None = None
+    freshness: Freshness | None = None
+    provenance: Provenance | None = None
+    alerts: list[ForecastAlert]
     evidence: Evidence
+
+
+class LiveAlert(_Resp):
+    id: str
+    type: str | None
+    name: LocalizedText
+    text: LocalizedText
+    area_name: LocalizedText
+    risk_colour: str | None = None
+    published_at: datetime | None = None
+    valid_from: datetime | None = None
+    expires_at: datetime | None = None
+    area_match: Literal["bbox_intersects", "polygon_intersects"]
+
+
+class WeatherAlerts(_Resp):
+    alerts: list[LiveAlert]
+    freshness: Freshness
+    provenance: Provenance | None = None
+
+
+DataProductId = Literal[
+    "weather_observations",
+    "weather_forecast",
+    "weather_alerts",
+    "closures",
+    "reports_311",
+    "risk_scores",
+    "pedestrian_graph",
+]
+
+
+class DataProduct(_Resp):
+    id: DataProductId
+    freshness: Freshness
+    last_success_at: datetime | None = None
+    expected_cadence: str | None = None
+    mechanism: Literal["api_on_demand", "scheduled_job", "manual"]
+    notes: str | None = None
+
+
+class DataStatus(_Resp):
+    generated_at: datetime
+    products: list[DataProduct]
+
+
+class WeatherContext(_Resp):
+    departure_time: datetime
+    used_for: Literal["display_only"]
+    hour_start: datetime | None = None
+    condition: LocalizedText | None = None
+    temperature_c: float | None = None
+    pop_percent: int | None = None
+    freshness: Freshness
 
 
 # ----------------------------------------------------------------------------- map
@@ -337,6 +437,7 @@ class RouteCompareResponse(_Resp):
     identical: bool | None = None
     risk_layer: Literal["model", "heuristic", "none"]
     computed_at: datetime
+    weather_context: WeatherContext | None = None
     warnings: list[str] | None = None
 
 

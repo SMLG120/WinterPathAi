@@ -106,6 +106,12 @@ async def compare_routes(
             "identical": result.identical,
             "risk_layer": result.risk_layer,
             "computed_at": datetime.now(UTC),
+            # v1.8: forecast hour covering the departure, display only (the risk score does not
+            # use forecasts). From the cached forecast; null when there is none or the departure
+            # is outside it. Never triggers a weather refresh.
+            "weather_context": (
+                state.live_weather.context_at(at) if state.live_weather is not None else None
+            ),
             "warnings": result.warnings,
         }
     )

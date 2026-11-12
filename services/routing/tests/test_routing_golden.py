@@ -28,6 +28,7 @@ from winterpath_routing import (
     Evidence,
     EvidenceState,
     FixtureGraphProvider,
+    GraphData,
     Hazard,
     HazardKind,
     NullRiskProvider,
@@ -38,6 +39,8 @@ from winterpath_routing import (
     RoutingEngine,
     RoutingError,
 )
+from winterpath_routing.compact import CompactGraph
+from winterpath_routing.compact_engine import CompactRoutingEngine
 
 GOLDEN = Path(__file__).parent / "fixtures" / "golden" / "compare_golden.json"
 AT = datetime(2026, 12, 15, 15, 0, tzinfo=UTC)
@@ -122,8 +125,12 @@ def _ods(bbox, n, seed):
     ]
 
 
-def _cases():
-    """(case_id, engine, request, risk, hazards) — deterministic."""
+def _cases(compact: bool = False):
+    """(case_id, engine, request, risk, hazards) — deterministic.
+
+    ``compact``: the same graphs as :class:`CompactGraph` routed by :class:`CompactRoutingEngine`
+    (ROUTING_COMPACT_GRAPH prototype); it must reproduce the golden file exactly too.
+    """
     pm = PedestrianGraph(FixtureGraphProvider(PILOT_MINI).load())
     meta = json.loads((PILOT_MINI / "metadata.json").read_text())
     syn = _synthetic_graph()
@@ -132,7 +139,11 @@ def _cases():
         ("pilot_mini", pm, meta["bbox"], []),
         ("synthetic", syn, (W, S, E, N), _synthetic_hazards(syn)),
     ):
-        eng = RoutingEngine(g)
+        if compact:
+            g = CompactGraph.from_graph_data(_graph_data(g))
+            eng = CompactRoutingEngine(g)
+        else:
+            eng = RoutingEngine(g)
         risks = {"none": NullRiskProvider(), "static": _risk_for(g)}
         for i, (o, d) in enumerate(_ods(bbox, 24, seed=len(name))):
             profile = PROFILES[i % 3]
@@ -171,9 +182,16 @@ def _observe(eng, req, risk, hz) -> dict:
     }
 
 
-@pytest.fixture(scope="module")
-def observed() -> dict[str, dict]:
-    return {cid: _observe(eng, req, risk, hz) for cid, eng, req, risk, hz in _cases()}
+def _graph_data(g: PedestrianGraph) -> GraphData:
+    return GraphData(nodes=dict(g.nodes), edges=list(g.edges.values()), metadata=g.metadata)
+
+
+@pytest.fixture(scope="module", params=["networkx", "compact"])
+def observed(request) -> dict[str, dict]:
+    compact = request.param == "compact"
+    return {
+        cid: _observe(eng, req, risk, hz) for cid, eng, req, risk, hz in _cases(compact=compact)
+    }
 
 
 def test_golden_compare_outputs_unchanged(observed) -> None:
