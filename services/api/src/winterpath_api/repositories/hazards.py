@@ -222,7 +222,13 @@ class PostgisHazardRepository:
 
     def freshness(self) -> dict[str, datetime | None]:
         from sqlalchemy import text
+        from winterpath_routing.providers import route_source_freshness
 
         with self.engine.connect() as conn:
-            rows = conn.execute(text("SELECT source_id, last_success_at FROM wp.source")).all()
-        return {r[0]: r[1] for r in rows}
+            rows = (
+                conn.execute(text("SELECT source_id, status, last_success_at FROM wp.source"))
+                .mappings()
+                .all()
+            )
+        # Same rule as the graph loader: never-ingested inactive sources are not route inputs.
+        return route_source_freshness(rows)
