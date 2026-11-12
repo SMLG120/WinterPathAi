@@ -822,6 +822,69 @@ It is DRAFT only: not registered, with no force until renamed with all TBDs fixe
 - **Frozen files:** it touches none of the frozen v2 files and reads no winter-2026 rows. The label table it contains was computed in Wave 1 from snapshot 8d19aa86 (winters ≤ 2025 plus the 6 reports of November 2026, which were counted, not modelled).
 - **Why 2027-28:** it is the earliest winter that is both unseen and not already pre-registered as a test winter by the logistic-regression gate.
 
+## City Page forecast archive: one-time Datamart backfill + XGBoost pin (2026-11-12)
+Coordinator decision: run the backfill now into the git-ignored `data/raw/eccc_citypage/`, then once a day by hand until the owner chooses storage. No AMQP subscriber, no cloud, nothing committed except code and this report.
+
+**Script:** `services/ml/src/winterpath_ml/weather_live/datamart_archive.py`.
+- **Requests:** sequential, ≥ 1.05 s between requests, User-Agent `WinterPathAI-dev/0.1 (local development)`. No Cache-Control/Pragma (urllib adds none; asserted in tests). Retries wait 5 / 15 / 45 s on timeouts, 429 and 5xx; 404 means "not there".
+- **Scope:** only `*_s0000635_en.xml`. The French files are never requested.
+- **Validation:** each XML is parsed and must carry `<location><name code="s0000635">` before it is stored.
+- **Storage:** written via a `.part` file as `s0000635/en/YYYY/MM/DD/<file>.xml.gz`. `manifest.jsonl` records URL, `retrieved_at`, sha256 of the XML and of the gzip, and sizes. `days.json` records per-UTC-day status.
+- **Idempotent:** known files are skipped, and complete past days are not listed again, so a daily run is about 48 listings plus about 35 downloads.
+- **Tests:** `tests/test_datamart_archive.py` has 6 tests (spacing, retry, headers, gaps, wrong-site rejection, idempotence). They use SYNTHETIC XML and no network.
+
+**Backfill run** (`--start 2026-10-13`, started 2026-11-12 00:03 UTC):
+```text
+{"requests": 1861, "wall_s": 1965}            # 0.95 requests/s average; 0 retries
+records 1117 | unique files 1117 | unique XML sha256 1117
+bytes xml 38481402 | bytes gz 3213221 | mean gz 2877
+retrieved_at 2026-11-12T00:03:26+00:00 -> 2026-11-12T00:35:45+00:00
+sha re-check on 50 random files: mismatches 0
+$ du -sh data/raw/eccc_citypage  ->  5.0M   (git status: ignored)
+```
+
+**Per UTC day** (EN files; all 24 hour directories had files on every past day; 0 errors):
+| Day | Files | Day | Files | Day | Files |
+|---|---|---|---|---|---|
+| 10-13 | 76 | 10-24 | 34 | 11-04 | 33 |
+| 10-14 | 49 | 10-25 | 33 | 11-05 | 37 |
+| 10-15 | 31 | 10-26 | 39 | 11-06 | 35 |
+| 10-16 | 55 | 10-27 | 33 | 11-07 | 33 |
+| 10-17 | 40 | 10-28 | 36 | 11-08 | 41 |
+| 10-18 | 36 | 10-29 | 39 | 11-09 | 36 |
+| 10-19 | 32 | 10-30 | 35 | 11-10 | 37 |
+| 10-20 | 32 | 10-31 | 33 | 11-11 | 31 |
+| 10-21 | 31 | 11-01 | 33 | 11-12 | 1 (partial: run at 00:03 UTC) |
+| 10-22 | 33 | 11-02 | 32 | | |
+| 10-23 | 32 | 11-03 | 39 | | |
+
+**Gaps:**
+- None in 2026-10-13 … 2026-11-11.
+- 2026-11-12 is incomplete by design: only hour 00 existed, hour 23 was listed but empty, and hours 01–22 returned 404. Days before 2026-10-13 were already purged from the Datamart (about 30-day retention) and cannot be recovered.
+- 2026-10-13 has 76 files, all distinct XML, but still only 4 forecast issues.
+
+**What the files contain:**
+- Distinct forecast issue times per day: `forecastGroup` usually 4 (5 on 10-28 and 11-06); `hourlyForecastGroup` usually 4 (5–6 on 10-27, 10-28, 11-01, 11-06).
+- The archive holds **96 distinct hourly-forecast issues** in total. The extra files per day are hourly refreshes of current conditions and warnings.
+- **For training:** the forecast-feature unit is about 4 issues/day, i.e. about 120 issues/month. Annual size is about 3.2 MB per 31 days gzip, so about 38 MB/year EN gzip, close to the 31 MB projected from one file.
+
+**Daily run by hand** (from this machine, until the owner chooses storage):
+```text
+cd services/ml && uv run --no-sync python -m winterpath_ml.weather_live.datamart_archive
+# default window: today-2 .. today (UTC); complete days are skipped
+```
+Missing a run is safe for up to about 30 days, which is the Datamart retention. After that, issues are lost.
+
+**XGBoost (approved as a candidate):**
+- `phase5` optional extra, exact pin 3.4.1, released 2026-08-15.
+- **Licence:** Apache-2.0, verified from the installed wheel (`xgboost-3.4.1.dist-info/licenses/LICENSE` starts "Apache License / Version 2.0, January 2004"; `License-Expression: Apache-2.0`).
+- **GPU dependency:** on Linux, `xgboost` pulls `nvidia-nccl-cu13` 2.32.6. That is a 206 MB wheel uploaded 2026-11-11, with no licence metadata on PyPI. So Linux (CI) uses `xgboost-cpu==3.4.1` (same release, Apache-2.0, 5.8 MB, no GPU deps), and other platforms use `xgboost==3.4.1` (the macOS wheel has no nccl dependency; `xgboost-cpu` has no macOS wheel). `uv.lock` contains no nccl.
+- **Smoke test:** `import xgboost` gives 3.4.1, and `XGBClassifier` fits on toy data.
+- **Audit:** `uvx pip-audit` on the locked `--all-extras` export reports "No known vulnerabilities found".
+- **Not used yet:** no training.
+
+**Checks:** no extras `95 passed, 7 skipped`. `--all-extras` + `WP_ML_TEST_DB_URL=<wp_ml>` `101 passed, 1 skipped`. `uvx ruff check/format`: clean. `gate_logreg_2026 --check`: `pins OK; coverage list OK`. `check-ownership.sh ml`: OK.
+
 ## Blockers
 | Blocker | Impact | Next step / who |
 |---|---|---|
