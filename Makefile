@@ -10,7 +10,7 @@ COMPOSE := docker compose $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
 IT_DIR := tests/integration
 PY_PACKAGES := services/ingestion services/routing services/ml services/api
 
-.PHONY: help up up-db down config test contract smoke lint lint-python lint-web lint-infra secrets audit check-docker
+.PHONY: help up up-db down config test contract smoke lint lint-python lint-web lint-infra secrets audit check-docker bench
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-12s %s\n", $$1, $$2}'
@@ -60,9 +60,10 @@ lint-web:
 	@if [[ -f apps/web/package.json ]]; then (cd apps/web && { [[ -d node_modules ]] || npm ci --no-audit --no-fund; } && npm run --if-present lint); \
 	else echo "SKIP apps/web: no package.json on this branch"; fi
 
-lint-infra: ## actionlint + shellcheck + compose config
+lint-infra: ## actionlint + cron/guard check + shellcheck + compose config
 	@command -v actionlint >/dev/null || { echo "actionlint not installed (brew install actionlint)" >&2; exit 2; }
 	actionlint
+	cd $(IT_DIR) && uv run --locked python ../../infra/scripts/check-schedules.py ../../.github/workflows/*.yml
 	@command -v shellcheck >/dev/null || { echo "shellcheck not installed (brew install shellcheck)" >&2; exit 2; }
 	shellcheck -x -S warning infra/scripts/*.sh infra/db/init/*.sh
 	POSTGRES_USER=lint POSTGRES_PASSWORD=lint-placeholder docker compose config --quiet && echo "compose config OK"
@@ -79,3 +80,8 @@ audit: ## pip-audit for Python packages present; npm audit (fail on high) for we
 	done
 	@if [[ -f apps/web/package.json ]]; then (cd apps/web && npm audit --audit-level=high --omit=dev); \
 	else echo "SKIP apps/web: no package.json on this branch"; fi
+
+BENCH_IMAGE ?= winterpath-api:bench
+bench: check-docker ## API image benchmark (Render-Free limits by default); pass harness flags via BENCH_ARGS="..."
+	docker build -f infra/docker/api.Dockerfile -t $(BENCH_IMAGE) .
+	python3 infra/bench/bench_api.py --image $(BENCH_IMAGE) $(BENCH_ARGS)
