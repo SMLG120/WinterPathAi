@@ -956,3 +956,329 @@ $ wp-ingest load --source eccc-geomet (wp_data) → {"source_id": "eccc-geomet",
     → osm 23888 succeeded, eccc-geomet 20710 succeeded (only those two runs)
   SET ROLE wp_writer; INSERT/DELETE wp.risk_cell_score → INSERT 0 1 / DELETE 1
 ```
+
+## Island feasibility (WinterPath 2.0, Wave 1, 2026-11-12) — local only
+
+I merged integration `eaac440`. It was a fast-forward, because integration already contained
+`360fdd4`. Everything below is **local**: no Supabase writes, no contract edits, no deploys.
+The full machine-readable summary is in `data/qa/island_feasibility.json`.
+
+### → Routing: `wp_island` is loaded
+- **Database:** `wp_island`, on the shared container (port 55432). It is migrated to
+  `0007_risk_cell_score (head)`, the same schema as `wp_data`.
+  - Use the same credentials as `wp_data`, i.e. `DATABASE_URL` from `.env.local` with the database
+    name `wp_island`.
+- **Contents:**
+  - `wp.node`: 257,542 rows.
+  - `wp.edge`: 650,920 directed rows, 10,207.7 km undirected.
+  - One `wp.ingest_run`: `osm`, succeeded, checksum `c5c9e2b3…`.
+  - Every other table is empty. There are no closures, sidewalk polygons or risk scores yet.
+- **Snapshot:** the same as the pilot (`quebec-261108.osm.pbf`, 2026-11-08T21:21:00Z), built with
+  the same rules (`GRAPH_POLICY` v1.6.0).
+  - **16,748 of the pilot's 16,846 edge IDs (99.42%)** exist in `wp_island` with identical
+    geometry.
+  - The other 98 lie on the pilot bbox border. There, the island build splits ways at junctions
+    with roads outside the pilot bbox, as the stable-ID rule says it should.
+- **Columns:** `component_id` is island-wide (0 = largest). `sidewalk_polygon_ids` is empty: voirie
+  matching is not run for the island.
+- **Reload:** `DATABASE_URL=…/wp_island uv run wp-ingest load --source osm --osm-graph island`
+  (from `services/ingestion`).
+
+### 1. Boundaries
+- **`limites-administratives-agglomeration`** (WGS 84 GeoJSON, CC BY 4.0, CKAN modified 2026-11-01)
+  - sha256 `c2357160a8dce9039283cae02408cf48f02c20fd183fb75b93f80234555f70ef`
+  - 34 units: 19 arrondissements and 15 villes liées.
+- **`archipel-agglomeration`** (GPKG, EPSG:2950, photogrammetry 2020, CC BY 4.0)
+  - sha256 `687843fa0a55e555d8c94fc154c17d803feb36524ce603f58ac4b3ec70cd856d`
+  - One MultiPolygon, which explodes into **187 islands**.
+- Both are cached under `data/raw/boundaries/` (git-ignored).
+- `wp-ingest boundaries` writes `data/processed/boundaries/`: `main_island`, `islands` (id, area,
+  centroid, admin units, `is_main_island`), `units_on_land` (each unit clipped to the main island
+  and to other islands, flagged separately) and `admin_limits`.
+- **Main island:** 470.55 km². The other 186 islands total 30.68 km².
+  - Islands of 0.1 km² or more, identified by geometry and admin unit only (no names invented):
+
+    | Island | Area | Admin unit | Comment |
+    |---|---|---|---|
+    | isl-0001 | 22.76 km² | L'Île-Bizard-Sainte-Geneviève | |
+    | isl-0002 | 3.80 km² | Verdun | |
+    | isl-0003 | 1.31 km² | Ville-Marie | |
+    | isl-0004 | 1.23 km² | Ville-Marie | |
+    | isl-0005 | 0.48 km² | LaSalle | |
+    | isl-0006 | 0.18 km² | Dorval / L'Île-Dorval | |
+    | isl-0007, isl-0008 | 0.14 and 0.13 km² | Rivière-des-Prairies-Pointe-aux-Trembles | |
+    | isl-0009 | 0.12 km² | LaSalle | |
+    | isl-0010 | 0.11 km² | Ahuntsic-Cartierville | |
+
+  - Every unit has main-island land except **L'Île-Dorval**.
+  - Laval and Longueuil appear in neither dataset, so they are never labelled island.
+
+### 2. Island graph (`wp-ingest osm-island`)
+- **Area rule** (documented in `osm/island.py`):
+  - Clip to all agglomeration land, keeping complete ways.
+  - Apply the existing inclusion policy unchanged.
+  - Keep a connected network only if it has at least one node on the **main** island. Other
+    islands are therefore included only where mapped ways connect them; isolated networks are
+    dropped and counted.
+  - Label every node `main_island`, `other_island` or `outside_agglomeration_land`.
+  - No edges were invented, and prohibited ways are excluded, not penalised.
+- **Clip:** 268,011 highway ways and 952,235 nodes. No missing nodes or locations.
+- **Component rule:**
+  - 184,464 candidate ways; 184,192 kept.
+  - 272 ways in **87 networks** not connected to the main island were dropped.
+  - After the build, 0 components lack a main-island node.
+- **Result:**
+  - **257,542 nodes**, **650,920 directed edges** (325,460 segments).
+  - **10,207.7 km** of network (undirected), 62,044 crossing nodes.
+- **Nodes by land:**
+  - Main island: 252,103.
+  - Other islands: 5,372, mostly isl-0002 (3,309), isl-0001 (1,127), isl-0003 (573) and isl-0004 (292).
+  - Outside agglomeration land: 67.
+- **Policy effects:**
+  - The foot-over-access rule admitted 240 ways: service 145, path 53, footway 38, residential 2, steps 2.
+  - The largest exclusions are `service` without explicit foot permission (47,689 ways) and
+    `foot=use_sidepath` (18,128); the full breakdown is in the QA JSON.
+- **Connected components: 1,778.**
+  - The largest has **250,008 nodes (97.07%)** and **10,088.6 km (98.83% of length)**.
+  - By size in directed edges: 1–2 edges: 857; 3–10: 723; 11–50: 177; over 50 (excluding the
+    largest): **20**.
+  - Gaps reported, never repaired: 3,977, of which 2,200 are near-miss dangling endpoints and 1,777
+    are disconnected components. The list is in `data/processed/osm_island/gaps.json`.
+
+  Components of more than 50 edges, other than the largest:
+
+  | id | directed edges | km | unit | centroid |
+  |---|---|---|---|---|
+  | 1 | 664 | 8.20 | Côte-des-Neiges-NDG | -73.65388, 45.50196 |
+  | 2 | 252 | 0.75 | Ville-Marie | -73.58151, 45.51016 |
+  | 3 | 240 | 1.93 | Sainte-Anne-de-Bellevue | -73.93637, 45.42659 |
+  | 4 | 172 | 1.68 | Sainte-Anne-de-Bellevue | -73.93866, 45.40677 |
+  | 5 | 166 | 1.10 | Mercier-Hochelaga-Maisonneuve | -73.54317, 45.58770 |
+  | 6 | 138 | 1.19 | Pointe-Claire | -73.79693, 45.48089 |
+  | 8 | 124 | 0.84 | Sainte-Anne-de-Bellevue | -73.94960, 45.41228 |
+  | 7 | 122 | 2.36 | Rosemont-La Petite-Patrie | -73.56722, 45.56155 |
+  | 9 | 92 | 0.68 | Dorval | -73.74090, 45.45410 |
+  | 14 | 90 | 0.88 | Saint-Laurent | -73.67299, 45.51589 |
+  | 10 | 86 | 0.61 | Pointe-Claire | -73.80835, 45.43429 |
+  | 12 | 72 | 0.50 | Sainte-Anne-de-Bellevue | -73.93905, 45.40843 |
+  | 11 | 70 | 0.38 | Pierrefonds-Roxboro | -73.85599, 45.48563 |
+  | 13 | 66 | 0.24 | Dorval | -73.74059, 45.45277 |
+  | 18 | 62 | 2.02 | Sainte-Anne-de-Bellevue | -73.93892, 45.42997 |
+  | 24 | 58 | 1.14 | Ville-Marie | -73.54351, 45.50539 |
+  | 15 | 56 | 0.28 | Senneville (main 8 / other island 16 / off-land 5 nodes) | -73.96907, 45.41845 |
+  | 17 | 56 | 0.27 | Côte-des-Neiges-NDG | -73.62877, 45.45690 |
+  | 16 | 54 | 0.27 | Pierrefonds-Roxboro | -73.91949, 45.46041 |
+  | 20 | 52 | 0.40 | Ahuntsic-Cartierville | -73.67355, 45.53590 |
+
+  These are mapped networks with no mapped pedestrian link to the main network, for example
+  campuses, parks, or areas reached only by excluded service roads. They are reported, not
+  repaired.
+
+- **Per unit.** Nodes are assigned by location; edges and km by edge midpoint against the
+  unclipped admin limits. "Trottoir" is the number of voirie trottoir polygons in the unit.
+
+  | Unit | Type | Nodes | Directed edges | km | Trottoir | Trottoir / km |
+  |---|---|---|---|---|---|---|
+  | Ahuntsic-Cartierville | Arr. | 22,643 | 56,516 | 745.1 | 5,548 | 7.45 |
+  | Anjou | Arr. | 4,076 | 10,352 | 202.1 | 2,272 | 11.24 |
+  | Côte-des-Neiges-NDG | Arr. | 18,079 | 45,624 | 638.4 | 4,467 | 7.00 |
+  | L'Île-Bizard-Sainte-Geneviève | Arr. | 1,944 | 4,826 | 156.0 | 1,220 | 7.82 |
+  | LaSalle | Arr. | 10,357 | 25,798 | 420.5 | 3,016 | 7.17 |
+  | Lachine | Arr. | 5,954 | 14,750 | 240.6 | 2,719 | 11.30 |
+  | Le Plateau-Mont-Royal | Arr. | 11,335 | 31,152 | 415.6 | 3,611 | 8.69 |
+  | Le Sud-Ouest | Arr. | 17,729 | 43,776 | 468.0 | 4,487 | 9.59 |
+  | Mercier-Hochelaga-Maisonneuve | Arr. | 16,554 | 44,642 | 716.7 | 6,185 | 8.63 |
+  | Montréal-Nord | Arr. | 4,050 | 11,076 | 241.2 | 3,122 | 12.94 |
+  | Outremont | Arr. | 3,394 | 9,582 | 148.8 | 1,091 | 7.33 |
+  | Pierrefonds-Roxboro | Arr. | 7,256 | 17,238 | 375.0 | 3,956 | 10.55 |
+  | Rivière-des-Prairies-Pointe-aux-Trembles | Arr. | 7,947 | 22,032 | 616.4 | 6,136 | 9.95 |
+  | Rosemont-La Petite-Patrie | Arr. | 18,709 | 50,384 | 707.6 | 4,197 | 5.93 |
+  | Saint-Laurent | Arr. | 16,939 | 39,304 | 561.3 | 5,788 | 10.31 |
+  | Saint-Léonard | Arr. | 6,356 | 16,630 | 320.1 | 3,021 | 9.44 |
+  | Verdun | Arr. | 9,331 | 21,930 | 267.4 | 2,316 | 8.66 |
+  | Ville-Marie | Arr. | 20,586 | 52,080 | 621.4 | 4,970 | 8.00 |
+  | Villeray-Saint-Michel-Parc-Extension | Arr. | 15,567 | 39,080 | 507.7 | 4,423 | 8.71 |
+  | Baie-D'Urfé | V.l. | 1,461 | 3,084 | 60.7 | 172 | 2.83 |
+  | Beaconsfield | V.l. | 2,482 | 5,830 | 154.5 | 704 | 4.56 |
+  | Côte-Saint-Luc | V.l. | 2,256 | 5,868 | 106.8 | 1,191 | 11.15 |
+  | Dollard-des-Ormeaux | V.l. | 4,121 | 10,080 | 254.8 | 2,684 | 10.53 |
+  | Dorval | V.l. | 4,623 | 10,276 | 175.9 | 2,186 | 12.43 |
+  | Hampstead | V.l. | 1,282 | 3,974 | 69.9 | 402 | 5.75 |
+  | Kirkland | V.l. | 3,060 | 7,174 | 151.1 | 1,915 | 12.67 |
+  | L'Île-Dorval | V.l. | 0 | 0 | 0.0 | **0** | — |
+  | Mont-Royal | V.l. | 3,600 | 9,098 | 159.5 | 1,673 | 10.49 |
+  | Montréal-Est | V.l. | 811 | 2,028 | 57.4 | 708 | 12.33 |
+  | Montréal-Ouest | V.l. | 980 | 2,592 | 42.3 | 378 | 8.94 |
+  | Pointe-Claire | V.l. | 7,226 | 17,210 | 314.8 | 2,880 | 9.15 |
+  | Sainte-Anne-de-Bellevue | V.l. | 2,811 | 6,268 | 95.5 | 632 | 6.62 |
+  | Senneville | V.l. | 416 | 890 | 31.6 | 73 | 2.31 |
+  | Westmount | V.l. | 3,544 | 9,642 | 155.5 | 1,094 | 7.04 |
+  | outside the agglomeration limits (bridge ends) | — | 63 | 134 | 7.6 | — | — |
+
+- **Build time and memory** (`/usr/bin/time -l`, Apple M4, 10 cores, 16 GB):
+  - `wp-ingest osm-island`: **295 s wall time, 2.58 GB peak RSS**. Stages: clip 106 s (two
+    passes over the 1.17 GB PBF), component filter 3 s, `build_graph` 95 s, write GeoJSON 79 s.
+  - Load into `wp_island`: **379 s wall time, 1.91 GB peak RSS**.
+  - Outputs (git-ignored): `edges.geojson` 523 MB, `nodes.geojson` 101 MB, clip cache 136 MB.
+- **Correction during the run.** The first build resolved Geofabrik's "latest" redirect, which now
+  points to `quebec-261110.osm.pbf`. It downloaded that 1.17 GB file (cached, git-ignored, MD5
+  verified) and built from it.
+  - I then **pinned** the island build to the pilot's PBF URL from the `osm_pilot` manifest and
+    rebuilt from `quebec-261108`, as the brief requires. All figures above come from 261108.
+  - The 261110 file is still in `data/raw/osm/geofabrik/`. It can be deleted, or kept for the
+    next pilot refresh: plain `wp-ingest osm` would now resolve to 261110, but it has not been run.
+
+### 3. Database size (local `wp_island`, after `VACUUM ANALYZE`, `pg_total_relation_size` including indexes)
+
+| Table | Rows | Heap | Indexes | Total |
+|---|---|---|---|---|
+| `wp.edge` | 650,920 | 199.0 MB | 102.4 MB | **301.5 MB** (486 B/edge) |
+| `wp.node` | 257,542 | 29.5 MB | 26.3 MB | **55.8 MB** |
+| other `wp.*` (empty) | — | — | — | 0.4 MB |
+| **whole DB** | | | | **374 MB** (391,655,907 B) |
+
+- Edge indexes: `edge_pkey` 37 MB, `edge_geom_gix` 27 MB, `edge_to_idx` 21 MB, `edge_from_idx`
+  14 MB, `edge_component_idx` 4 MB.
+- Node indexes: `node_pkey` 16 MB, `node_geom_gix` 10 MB.
+
+**Projected Supabase total.** The base is the live hosted size of **49 MB** from the coordinator's
+audit. From it I subtract the pilot graph, measured on a fresh local load: `edge` 8.1 MB plus
+`node` 1.6 MB, 9.7 MB in all. Measured components are marked; extrapolations are marked
+*projected*.
+
+| Scenario | Size |
+|---|---|
+| Hosted today | 49 MB |
+| + island graph, replacing the pilot graph (measured) | **≈ 397 MB** |
+| + island `risk_cell_score`: 4,365 H3 r9 cells × 30 days × 1 model = 130,950 rows (measured with placeholder rows in a scratch DB, then dropped) | +25 MB per model → **≈ 422 MB** |
+| + island-wide voirie sidewalk polygons: 89,249 trottoir + 11,187 îlot × 1.36 kB/row, the pilot's measured rate (*projected*) | +≈131 MB → **≈ 553 MB, over the 500 MB Free limit** |
+| + address search (section 4) | +66 MB (Montréal dataset) or +166 MB (RQA) |
+
+- **Verdict:** the island graph alone fits in Supabase Free, with about 80–100 MB of headroom
+  after one model's scores. Adding island-wide sidewalk polygons, address search or a second model
+  takes it over or to the limit. Supabase's own schemas are included in the 49 MB base, since the
+  coordinator measured it live.
+- **Measured option A:** store each segment once instead of in both directions. That is 325,460
+  rows and **152 MB** including the same indexes, against 302 MB, saving **about 150 MB**.
+  - This is a **contract change**: `wp.edge` would become undirected, and readers expand it to
+    directed edges. It is the coordinator's and owner's decision; I have not done it.
+- **Option B, unmeasured:** keep the routing graph out of Postgres. The API would load a compact
+  artifact, which is routing's CSR prototype, and the DB would keep only what the API queries.
+- **Option C:** a paid tier. This is the owner's decision.
+
+### 4. Sidewalk dataset reach (voirie trottoir)
+- The plan assumed voirie trottoir is City of Montréal only. **It is not.**
+  - The cached citywide file (89,249 trottoir polygons) has polygons in all 19 boroughs and in
+    **14 of the 15 linked municipalities**.
+  - **The only linked municipality with no sidewalk polygons is L'Île-Dorval**, which also has no
+    pedestrian network connected to the main island.
+  - Polygons were assigned to units by representative point; 12 fall outside the limits.
+- Coverage density varies: from 2.3 to 4.6 trottoir polygons per network km in Senneville,
+  Baie-D'Urfé and Beaconsfield, against 7 to 13 elsewhere.
+  - This may reflect real sidewalk scarcity or incomplete mapping. The publisher warns the polygons
+    are "not necessarily up to date across the whole territory".
+  - It must not be read as sidewalk presence or absence on any given street.
+- Polygons stay enrichment only and never create connectivity. They were **not matched** to island
+  edges in this wave.
+
+### 5. Place-search assessment (not built)
+
+| | Ville de Montréal "Adresse ponctuelle" | Référentiel québécois des adresses (RQA), MRNF |
+|---|---|---|
+| Licence | CC BY 4.0 (CKAN `adresses-ponctuelles`) | CC BY 4.0 (Données Québec `referentiel-quebecois-des-adresses`). "Code postal" is noted as an official mark of Canada Post |
+| Coverage | All 34 units: 345,969 points, 0 outside the limits, every unit including L'Île-Dorval (61) has points | All of Québec: 5,356,156 rows. Region 06 (the agglomeration): 1,258,169 active rows, all "Certifiée", covering Montréal (19 arrondissements) and all 15 linked municipalities |
+| Rows for search | 345,969 (civic **ranges** such as "6215-23", one point per building) | **636,161** distinct civic addresses (number + suffix + street + municipality, ignoring apartment units) |
+| Update | "irregular"; last 2026-11-09 | monthly; version 2026-11-01. It replaces Adresses Québec, which is being phased out by the end of 2026 |
+| Position quality | not stated per row | per row: Géocodée 374,192; Bâtiment 315,608; **Incertaine 567,733 (45%)**; Centre lot 633 |
+| Raw size | CSV 36 MB, sha256 `64cd31f0d01f9e2ade29a0a2fbb7fe618175f41626a32e5795954fcea32cc560` | zip 818 MB (3.16 GB CSV), sha256 `f1e0725894bcfed5690a708c218af80e1a9564be0ce5263efc23ddd1d51450ea` |
+| **Measured DB size** (label + point, PK, GIN `gin_trgm_ops` on `lower(label)`, GiST) | **66 MB**: heap 29, trigram 16, GiST 14, PK 7.6 | **166 MB**: heap 74, trigram 53, GiST 25, PK 14 |
+
+- The sizes were measured in a scratch database that has since been dropped. Nothing is in `wp_*`.
+- **Query design matters.** A naive `label % '5664 1re avenue'` over the RQA table took **9.2 s**
+  locally, because the GIN index returned 214k candidates for a short, common-token query.
+  - Production search needs a tokenised or prefix strategy, for example number plus street-name
+    prefix plus municipality, or a dedicated search column. That belongs to Wave 2 or 3.
+- **Recommendation:**
+  - Use RQA, for its monthly updates, per-row position quality, municipality and arrondissement
+    columns and clean civic numbers. Display its positioning quality, and never present an
+    "Incertaine" point as an exact entrance.
+  - The Montréal dataset is smaller (66 MB) but uses ranges and has no quality flag.
+  - Neither fits next to the island graph in Supabase Free without option A, B or C.
+  - **Not verified:** the RQA user guide PDF is downloaded but could not be text-extracted here,
+    because there is no PDF tool. Any terms it adds beyond the CC BY 4.0 dataset licence have not
+    been read.
+- Attribution, if used: "Ministère des Ressources naturelles et des Forêts — Référentiel québécois
+  des adresses (CC BY 4.0)" or "Ville de Montréal — Adresse ponctuelle (CC BY 4.0)".
+
+### Code (agent/data)
+- `sources/boundaries.py` (`wp-ingest boundaries`) and `osm/island.py` (`wp-ingest osm-island`,
+  pinned to the pilot's PBF).
+- `geofabrik.clip_area` and `area_predicate`. The pilot bbox clip is unchanged and its tests pass.
+- `load --osm-graph {pilot,island}`, default `pilot`.
+- `tests/test_island.py` covers: largest part = main island, units clipped to land, segment
+  semantics for the area predicate, the component rule (bridged island kept, isolated island
+  dropped, excluded ways still counted), and off-land nodes never labelled island.
+- `test_cli` covers the `--osm-graph` wiring.
+- `data/fixtures/` is unchanged.
+
+```
+$ git merge --no-edit integration/winterpath → fast-forward to eaac440
+$ uv run wp-ingest boundaries → 34 units, 187 islands, main island 470.55 km²
+$ /usr/bin/time -l uv run wp-ingest osm-island → 295.11 real, 2579300352 maximum resident set size
+$ psql …/postgres -c "CREATE DATABASE wp_island"; alembic -x url=…/wp_island upgrade head → 0007_risk_cell_score (head)
+$ /usr/bin/time -l env DATABASE_URL=…/wp_island uv run wp-ingest load --source osm --osm-graph island
+{"source_id": "osm", "noop": false, "counts": {"node": 257542, "edge": 650920}}
+      378.60 real   1909538816  maximum resident set size
+$ psql …/wp_island: edge 316145664 B total (idx 107388928), node 58515456 B (idx 27574272), database 391655907 B; invalid geoms 0
+$ pilot overlap: 16846 pilot edges, 16748 in island (99.42%), 16748 same geometry
+$ uv run pytest -q
+.....................................................................    [100%]
+69 passed in 157.18s (0:02:37)
+$ uv run ruff check . → All checks passed!   $ ruff format --check → 31 files already formatted
+```
+
+## Wave 2b (1) — ETL advisory locks (2026-11-12)
+
+I merged integration `5f084bf` and implemented `infra/ETL-LOCKS.md` as specified.
+- **New `locks.py`:**
+  - `WPET=1464878420`, schema gate 0, sources `osm` 1, `mtl-voirie` 2, `mtl-entraves` 3,
+    `mtl-311` 4, `eccc-geomet` 5; the island graph load is 1001 (1000–1999 is reserved for island
+    builds).
+  - Order is fixed: shared gate first, then one exclusive resource lock. There is never a second
+    resource lock in a transaction.
+- **`db_load._load`:** the locks are taken transaction-scoped as the first statements of the
+  existing single staging + swap transaction.
+  - Idempotency is re-checked under the lock, so a run that waited after another loaded the same
+    input is a no-op.
+  - Contention raises `Locked` → rollback before anything is written → a `{"skipped": "locked",
+    "lock": [1464878420, objid]}` result plus the `::notice::…skipping` line → **exit 0**.
+  - **Only one shared-gate path sits outside a source lock:** the `wp.source` registry upsert at
+    the start of `load`. If a migration holds the gate, every requested source skips.
+- **`--wait`** (load only): blocking `pg_advisory_xact_lock*` under `lock_timeout` (`5min`). A
+  timeout raises `LockNotAvailable` and is recorded as a failed run; it is not a silent skip.
+- **Migrations** (`db/migrations/env.py`): exclusive schema gate, blocking, with
+  `WP_MIGRATION_LOCK_TIMEOUT` (default `5min`). Alembic commits one transaction per migration, so
+  the gate is a **session lock on a dedicated connection** (`application_name=alembic-schema-gate`)
+  held for the whole run and unlocked in `finally`. This is the scheme's documented exception.
+- **Answers to Platform's open questions:**
+  1. Every loader's staging + swap is one transaction, so the transaction lock fits. Only the
+     migration runner needs the session-lock exception.
+  2. `skipped_locked` is not recorded in `wp.ingest_run`: its status CHECK
+     (`running|succeeded|failed`) is contract-fixed. Contention is visible in the job log notice
+     and the JSON result line. Adding a status would need a change request.
+  3. That question is for ML.
+- **Test** `test_etl_locks_try_skip_wait_and_migration_gate` covers:
+  - a held lock 4 skips 311 (notice, no row, CLI exit 0) without blocking other sources;
+  - `--wait` times out with `LockNotAvailable`;
+  - a held exclusive gate skips all sources;
+  - a free gate loads, and a rerun is a no-op;
+  - a load holding the shared gate makes `alembic downgrade` fail on lock timeout, with nothing
+    migrated, and no WPET locks remain afterwards.
+
+```
+$ git merge --no-edit integration/winterpath → 5f084bf (fast-forward)
+$ uv run pytest -q
+......................................................................   [100%]
+70 passed in 50.92s
+$ uv run ruff check src tests → All checks passed!
+```

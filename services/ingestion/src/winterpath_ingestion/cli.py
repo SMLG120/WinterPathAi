@@ -17,7 +17,19 @@ SOURCE_IDS = ["osm", "mtl-voirie", "mtl-entraves", "mtl-311", "eccc-geomet"]
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="wp-ingest")
     ap.add_argument(
-        "pipeline", choices=["osm", "fixture", "voirie", "entraves", "311", "eccc", "all", "load"]
+        "pipeline",
+        choices=[
+            "osm",
+            "fixture",
+            "voirie",
+            "entraves",
+            "311",
+            "eccc",
+            "all",
+            "load",
+            "boundaries",
+            "osm-island",
+        ],
     )
     ap.add_argument("--refresh", action="store_true", help="re-download raw inputs")
     ap.add_argument("--force", action="store_true", help="rebuild even if checksum unchanged")
@@ -37,11 +49,28 @@ def main(argv: list[str] | None = None) -> int:
         help="load only: load just this canonical source id (repeatable), with the same "
         "per-source transaction, staging and checksum no-op as a full load",
     )
+    ap.add_argument(
+        "--osm-graph",
+        choices=["pilot", "island"],
+        default="pilot",
+        help="load only: which processed OSM graph the `osm` source loads (default pilot; "
+        "island = data/processed/osm_island, for the local wp_island DB)",
+    )
+    ap.add_argument(
+        "--wait",
+        action="store_true",
+        help="load only: block on ETL advisory locks (lock_timeout 5min) instead of skipping "
+        "when another run holds them (infra/ETL-LOCKS.md); default try-lock + exit 0",
+    )
     args = ap.parse_args(argv)
     if args.weather_since is not None and args.pipeline != "load":
         ap.error("--weather-since only applies to `load`")
     if args.source and args.pipeline != "load":
         ap.error("--source only applies to `load`")
+    if args.wait and args.pipeline != "load":
+        ap.error("--wait only applies to `load`")
+    if args.osm_graph != "pilot" and args.pipeline != "load":
+        ap.error("--osm-graph only applies to `load`")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     s = get_settings()
     if args.pipeline == "load":
@@ -52,7 +81,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.source
             else list(LOADERS)
         )
-        for r in load(s, which, force=args.force, weather_since=args.weather_since):
+        for r in load(
+            s,
+            which,
+            force=args.force,
+            weather_since=args.weather_since,
+            osm_graph=args.osm_graph,
+            wait=args.wait,
+        ):
             print(json.dumps(r, default=str))
         return 0
 
@@ -72,6 +108,10 @@ def main(argv: list[str] | None = None) -> int:
             from .sources.entraves import run
         elif step == "311":
             from .sources.r311 import run
+        elif step == "boundaries":
+            from .sources.boundaries import run
+        elif step == "osm-island":
+            from .osm.island import run
         else:
             from .sources.eccc import run
         r = run(s, refresh=args.refresh, force=args.force)
