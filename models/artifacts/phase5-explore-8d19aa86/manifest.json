@@ -1,0 +1,26 @@
+{
+  "run_id": "phase5-explore-8d19aa86",
+  "label": "EXPLORATORY: hypothesis-generating; winter 2025-26 was already seen (v2 test). Not a validation claim.",
+  "generated_at": "2026-11-12T04:03:13+00:00",
+  "inputs": {
+    "panel_sha256": "ad63e3f0e36897c6255a85b57d7f51aab169ff3aa6a5df111d39ddefdea1fcc5",
+    "source_311_sha256": "8d19aa86ebc17270697883bcc3d0f746b381899501a5dc8967477bd6d49de8bb",
+    "max_day_read": "2026-10-31",
+    "embargo_before": "2026-11-01"
+  },
+  "files": {
+    "results.json": {
+      "bytes": 14108,
+      "sha256": "96c86deb4beffa38ce0d4e2adc6e9f4bd51753bdbf1e32acfdd45bcbfd6632b0"
+    },
+    "reliability.csv": {
+      "bytes": 11057,
+      "sha256": "f46a289bd9a4bb7a51cd455847fdcdd3eac73fb1b4afcdfffca20c791b90328d"
+    },
+    "borough.csv": {
+      "bytes": 37445,
+      "sha256": "a25ac472fc280801355b242f9bda6e9b1b79f6d2211f8ed979c378129d8293b8"
+    }
+  },
+  "not_included": "fitted models (pickles) are not saved; re-run the module to reproduce"
+}
