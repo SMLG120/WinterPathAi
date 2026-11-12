@@ -710,6 +710,7 @@ Pages read on 2026-11-11, all HTTP 200: licence, usage policy, GeoMet overview, 
 - **Icons:** commercial use requires prior explicit consent. We do not use them.
 - **Not confirmed:**
   - No page read calls `citypageweather-realtime` experimental. None of the pages read documents that collection at all; the Datamart readme covers the XML files only. So "experimental" in the plan is unverified, but the fallback is built anyway.
+  - **Correction (2026-11-11, coordinator; re-checked by ML at 23:58 UTC):** "experimental" **is** verified. The GeoMet `/collections` listing titles `citypageweather-realtime` as "City Page Weather [experimental]" (`weather-alerts` is titled "Weather Alerts"). I had fetched the collection document earlier but printed only its description, not its title. The observations-only fallback therefore covers a documented risk.
   - The alert time fields (publication / validity / expiration / event_end) are not defined on any page read. They are parsed as published.
   - No page read contains a "not for safety-critical use" statement.
 
@@ -763,6 +764,63 @@ pins OK; coverage list OK
 $ scripts/check-ownership.sh ml
 ownership OK for agent/ml
 ```
+
+## Wave 1 follow-up: City Page forecast archive proposal and Phase 5 pre-registration draft (2026-11-11)
+Merged integration 47615b4 (fast-forward; it contains contract v1.8.0 2e3d4b2 and the Wave 2a briefs). No ML files changed in the merge. No DB writes, no uploads, nothing provisioned.
+
+### (1) Proposal: archive issued City Page forecasts from the MSC Datamart
+**Why.** A forecast-aware risk model needs the forecasts as they were issued. GeoMet keeps only the latest, and the usage policy says local archives must be built "using MSC Datamart services, not MSC GeoMet services".
+
+**Facts measured on 2026-11-11/12.** These came from ad-hoc requests (the policy reserves curl/wget for ad hoc retrieval): 24 hour-directory listings, 3 dated-directory listings and one file.
+- **Path layout:** `https://dd.weather.gc.ca/today/citypage_weather/QC/{HH}/{YYYYMMDD}T{HHmmss.sss}Z_MSC_CitypageWeather_s0000635_{en|fr}.xml`. Site `s0000635` is "Montréal" (the `<name>` in the file) and has `hourlyForecast` × 24.
+- **Volume:** on 2026-11-11, 62 Montréal files (31 en + 31 fr) appeared across all 24 UTC hours. That is one issue per hour plus extra issues; the readme says "updated hourly at a minimum, but can be updated earlier with issue of special weather warnings, watches and amendments".
+- **Size:** about 34 KB (en) and 35 KB (fr) per file. One en file is 34,125 B, 2,707 B with `gzip -9` (12.6×), and 2,552 B with `xz -9`.
+- **Retention:** dated copies exist at `https://dd.weather.gc.ca/{YYYYMMDD}/WXO-DD/citypage_weather/QC/{HH}/`. The root listed `20261013/ … 20261112/`, so about 30 days. `20261013/WXO-DD/citypage_weather/QC/12/` contained `20261013T120243.420Z_…_s0000635_en.xml`. **Issues older than about 30 days are lost**, so a backfill started now recovers 2026-10-13 onwards and loses one day per day of delay.
+
+**Projected storage:**
+| What | Per day | Per year |
+|---|---|---|
+| Raw XML, en only, gzip | 31 × 2.7 KB ≈ 84 KB | ≈ 31 MB |
+| Raw XML, en + fr, gzip | ≈ 170 KB | ≈ 62 MB |
+| Parsed hourly table (issue_time, valid_time, temp, POP, wind, gust, condition) | 31 × 24 = 744 rows ≈ 30–60 KB as Parquet (estimate, not measured) | ≈ 10–20 MB |
+
+Recommendation: archive **en raw XML (gzip)** plus the parsed Parquet. The numbers are identical in fr, and the fr text is not needed for ML. Add fr only if the product needs historical French text.
+
+**How to retrieve.** The usage policy prefers AMQP, and says not to request directory listings to check for new data.
+- **Preferred:** an `sr3` (AMQP) subscription filtered to `citypage_weather/QC/.*s0000635_en\.xml`, downloading each file as it is announced. It needs a process that runs often enough for the broker queue to persist between connections. The queue-expiry setting has to be verified with ECCC's AMQP docs before relying on a periodic (rather than always-on) subscriber. GitHub cron is unreliable here (v2-plan problem 2), and Render Free sleeps.
+- **Fallback, which needs a coordinator decision against the policy wording:** a once-daily job reads yesterday's dated directory (24 listings/day) and downloads the 31 en files. It is cheap (about 55 requests/day), but it uses listings.
+- **One-time backfill now:** the same dated-directory read for 2026-10-13 → today, about 30 days × 55 requests ≈ 1,650 requests in one ad-hoc run. It must run soon, because each day of delay drops one day off the window.
+
+**Where to store (owner/Platform decision; nothing provisioned):**
+- Not git (CLAUDE.md: "Raw data … never go in Git").
+- Not the Supabase database, given the 500 MB limit (`docs/FREE_TIER_LIMITS.md`) and that history is not needed by the API.
+- Not GitHub Actions artifacts, which have limited retention.
+- The right fit is **object storage**: Supabase Storage on the existing project, or Cloudflare R2 (Pages is already on Cloudflare). I have not verified either service's current free-tier limits or terms. Platform should confirm them before the owner chooses.
+- Layout: `citypage/qc/s0000635/en/{YYYY}/{MM}/{DD}/{file}.xml.gz` plus a daily `parsed/{YYYY}-{MM}-{DD}.parquet` and a manifest (sha256, retrieval time, source URL).
+
+**ML would add, once storage is decided (not now):**
+- a Datamart XML parser in `weather_live`, sharing the normalised `HourlyForecast` records;
+- the manifest writer;
+- a test on a recorded file.
+
+**Use limits:**
+- The forecast archive starts in winter 2026-27, so no forecast-aware model can be trained before about two archived winters.
+- `departure_time` stays display-only for risk (contract v1.8 `used_for: display_only`).
+
+### (2) Phase 5 pre-registration draft: `models/gate-island-2027.DRAFT.md`
+It is DRAFT only: not registered, with no force until renamed with all TBDs fixed before 2027-11-01. Its content:
+- **Labels:** unchanged from v2.
+- **Coverage:** island polygon ∩ the 19 boroughs ∩ prior 311 activity before 2026-11-01. The linked municipalities, which have no labels, stay `unknown`.
+- **Splits:**
+  - train winters 2021–2025;
+  - selection on 2025-26 (already seen; used for choosing only);
+  - calibration on 2026-27, **read only after 2027-05-08**;
+  - **test 2027-28**, chronological plus spatial holdout with a new seed. Earliest run 2028-05-08.
+- **Primary candidate:** one, chosen before registration among logistic / Poisson / RF / HGB (XGBoost pending the coordinator's decision).
+- **Gate:** the same four criteria as v2, required on both holdouts.
+- **Embargo:** it imposes, from now, an embargo on modelling reads of rows ≥ 2026-11-01 until the logistic-regression gate has run. The operational scoring job is the stated exception: it computes no metric.
+- **Frozen files:** it touches none of the frozen v2 files and reads no winter-2026 rows. The label table it contains was computed in Wave 1 from snapshot 8d19aa86 (winters ≤ 2025 plus the 6 reports of November 2026, which were counted, not modelled).
+- **Why 2027-28:** it is the earliest winter that is both unseen and not already pre-registered as a test winter by the logistic-regression gate.
 
 ## Blockers
 | Blocker | Impact | Next step / who |
