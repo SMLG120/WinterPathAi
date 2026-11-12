@@ -34,17 +34,28 @@ def test_help_lists_source_ids_unbroken(monkeypatch, capsys, columns):
 def test_load_source_selects_only_that_loader(monkeypatch, capsys):
     seen = {}
 
-    def fake_load(settings, which, url=None, force=False, weather_since=None):
-        seen.update(which=which, force=force, weather_since=weather_since)
+    def fake_load(
+        settings,
+        which,
+        url=None,
+        force=False,
+        weather_since=None,
+        osm_graph="pilot",
+        wait=False,
+        r311_recent=False,
+    ):
+        seen.update(which=which, force=force, weather_since=weather_since, osm_graph=osm_graph)
         return [{"source_id": "eccc-geomet", "noop": True}]
 
     monkeypatch.setattr(db_load, "load", fake_load)
     assert cli.main(["load", "--source", "eccc-geomet", "--source", "eccc-geomet"]) == 0
-    assert seen == {"which": ["eccc"], "force": False, "weather_since": None}
+    assert seen == {"which": ["eccc"], "force": False, "weather_since": None, "osm_graph": "pilot"}
     assert cli.main(["load", "--source", "mtl-311", "--source", "osm", "--force"]) == 0
     assert seen["which"] == ["311", "osm"] and seen["force"] is True
     assert cli.main(["load"]) == 0
     assert seen["which"] == list(db_load.LOADERS)
+    assert cli.main(["load", "--source", "osm", "--osm-graph", "island"]) == 0
+    assert seen["which"] == ["osm"] and seen["osm_graph"] == "island"
 
 
 @pytest.mark.parametrize(
@@ -53,6 +64,11 @@ def test_load_source_selects_only_that_loader(monkeypatch, capsys):
         ["load", "--source", "eccc"],  # pipeline name, not a source_id
         ["load", "--source", "mtl-planif-neige"],  # registered, but has no loader
         ["eccc", "--source", "eccc-geomet"],  # --source only applies to load
+        ["osm", "--osm-graph", "island"],  # --osm-graph only applies to load
+        ["load", "--osm-graph", "laval"],
+        ["load", "--recent"],  # --recent needs --source mtl-311
+        ["load", "--source", "eccc-geomet", "--recent"],
+        ["eccc", "--recent-days", "14"],  # --recent-days only for 311
     ],
 )
 def test_load_source_rejects(argv):

@@ -1,0 +1,1059 @@
+{
+ "generated": "2026-11-12",
+ "note": "WinterPath 2.0 Wave 1 island feasibility — local only (wp_island). Derived counts; no raw data.",
+ "osm": {
+  "file": "quebec-261108.osm.pbf",
+  "snapshot": "2026-11-08T21:21:00Z",
+  "sha256": "76f100e41397bbc3428ed357b2c1f91d3f8d3f2663b335c34dfb3321e9614768",
+  "graph_policy": "v1.6.0:footway,living_street,path,pedestrian,primary,residential,secondary,steps,tertiary|cond:cycleway,service|access_override_by_foot:designated,permissive,yes",
+  "input_checksum": "c5c9e2b3c0cdebce3c5af15e8178254b127a0a1e64b44e68925c6849f8231711"
+ },
+ "boundaries": {
+  "raw": {
+   "archipel": {
+    "fetched_at": "2026-11-11T23:45:39+00:00",
+    "file": "carto_dra_archipel.gpkg",
+    "sha256": "687843fa0a55e555d8c94fc154c17d803feb36524ce603f58ac4b3ec70cd856d",
+    "url": "https://donnees.montreal.ca/dataset/7c4ffd4b-8473-4874-87b0-ca265ce36e3a/resource/f0b26281-bc3c-4851-b2c9-607a6546ca50/download/carto_dra_archipel.gpkg"
+   },
+   "limits": {
+    "fetched_at": "2026-11-11T23:45:37+00:00",
+    "file": "limites-administratives-agglomeration.geojson",
+    "sha256": "c2357160a8dce9039283cae02408cf48f02c20fd183fb75b93f80234555f70ef",
+    "url": "https://donnees.montreal.ca/dataset/9797a946-9da8-41ec-8815-f6b276dec7e9/resource/e18bfd07-edc8-4ce8-8a5a-3b617662a794/download/limites-administratives-agglomeration.geojson"
+   }
+  },
+  "stats": {
+   "admin_units": 34,
+   "admin_units_by_type": {
+    "Arrondissement": 19,
+    "Ville liée": 15
+   },
+   "islands": 187,
+   "main_island_area_km2": 470.55,
+   "other_islands_area_km2": 30.68,
+   "other_islands_ge_0_1_km2": [
+    {
+     "admin_units": [
+      "L'Île-Bizard-Sainte-Geneviève"
+     ],
+     "area_km2": 22.758,
+     "centroid": [
+      -73.89673,
+      45.49436
+     ],
+     "island_id": "isl-0001"
+    },
+    {
+     "admin_units": [
+      "Verdun"
+     ],
+     "area_km2": 3.804,
+     "centroid": [
+      -73.54798,
+      45.46045
+     ],
+     "island_id": "isl-0002"
+    },
+    {
+     "admin_units": [
+      "Ville-Marie"
+     ],
+     "area_km2": 1.31,
+     "centroid": [
+      -73.5347,
+      45.51821
+     ],
+     "island_id": "isl-0003"
+    },
+    {
+     "admin_units": [
+      "Ville-Marie"
+     ],
+     "area_km2": 1.231,
+     "centroid": [
+      -73.5255,
+      45.50682
+     ],
+     "island_id": "isl-0004"
+    },
+    {
+     "admin_units": [
+      "LaSalle"
+     ],
+     "area_km2": 0.476,
+     "centroid": [
+      -73.57854,
+      45.42322
+     ],
+     "island_id": "isl-0005"
+    },
+    {
+     "admin_units": [
+      "Dorval",
+      "L'Île-Dorval"
+     ],
+     "area_km2": 0.184,
+     "centroid": [
+      -73.74159,
+      45.43235
+     ],
+     "island_id": "isl-0006"
+    },
+    {
+     "admin_units": [
+      "Rivière-des-Prairies-Pointe-aux-Trembles"
+     ],
+     "area_km2": 0.135,
+     "centroid": [
+      -73.49657,
+      45.70161
+     ],
+     "island_id": "isl-0007"
+    },
+    {
+     "admin_units": [
+      "Rivière-des-Prairies-Pointe-aux-Trembles"
+     ],
+     "area_km2": 0.126,
+     "centroid": [
+      -73.6051,
+      45.64274
+     ],
+     "island_id": "isl-0008"
+    },
+    {
+     "admin_units": [
+      "LaSalle"
+     ],
+     "area_km2": 0.118,
+     "centroid": [
+      -73.57796,
+      45.42616
+     ],
+     "island_id": "isl-0009"
+    },
+    {
+     "admin_units": [
+      "Ahuntsic-Cartierville"
+     ],
+     "area_km2": 0.114,
+     "centroid": [
+      -73.75448,
+      45.51593
+     ],
+     "island_id": "isl-0010"
+    }
+   ],
+   "units_on_main_island": [
+    "Ahuntsic-Cartierville",
+    "Anjou",
+    "Baie-D'Urfé",
+    "Beaconsfield",
+    "Côte-Saint-Luc",
+    "Côte-des-Neiges-Notre-Dame-de-Grâce",
+    "Dollard-des-Ormeaux",
+    "Dorval",
+    "Hampstead",
+    "Kirkland",
+    "L'Île-Bizard-Sainte-Geneviève",
+    "LaSalle",
+    "Lachine",
+    "Le Plateau-Mont-Royal",
+    "Le Sud-Ouest",
+    "Mercier-Hochelaga-Maisonneuve",
+    "Mont-Royal",
+    "Montréal-Est",
+    "Montréal-Nord",
+    "Montréal-Ouest",
+    "Outremont",
+    "Pierrefonds-Roxboro",
+    "Pointe-Claire",
+    "Rivière-des-Prairies-Pointe-aux-Trembles",
+    "Rosemont-La Petite-Patrie",
+    "Saint-Laurent",
+    "Saint-Léonard",
+    "Sainte-Anne-de-Bellevue",
+    "Senneville",
+    "Verdun",
+    "Ville-Marie",
+    "Villeray-Saint-Michel-Parc-Extension",
+    "Westmount"
+   ],
+   "units_with_other_island_land": [
+    "Ahuntsic-Cartierville",
+    "Baie-D'Urfé",
+    "Beaconsfield",
+    "Dorval",
+    "L'Île-Bizard-Sainte-Geneviève",
+    "L'Île-Dorval",
+    "LaSalle",
+    "Lachine",
+    "Montréal-Est",
+    "Pierrefonds-Roxboro",
+    "Pointe-Claire",
+    "Rivière-des-Prairies-Pointe-aux-Trembles",
+    "Sainte-Anne-de-Bellevue",
+    "Senneville",
+    "Verdun",
+    "Ville-Marie"
+   ],
+   "units_without_main_island_land": [
+    "L'Île-Dorval"
+   ]
+  }
+ },
+ "graph": {
+  "ways_downloaded": 267739,
+  "ways_included": 184192,
+  "segments": 325460,
+  "nodes": 257542,
+  "directed_edges": 650920,
+  "network_km_undirected": 10207.7,
+  "crossing_nodes": 62044,
+  "gap_count": 3977,
+  "clip": {
+   "nodes": 952235,
+   "nodes_missing": 0,
+   "way_node_refs_without_location": 0,
+   "ways": 268011
+  },
+  "component_filter": {
+   "candidate_ways": 184464,
+   "networks_dropped_not_connected_to_main_island": 87,
+   "ways_dropped_not_connected_to_main_island": 272,
+   "ways_kept": 184192
+  },
+  "components_without_main_island_node_after_build": 0,
+  "nodes_by_land": {
+   "main_island": 252103,
+   "other_island": 5372,
+   "outside_agglomeration_land": 67
+  },
+  "nodes_by_other_island": {
+   "isl-0001": 1127,
+   "isl-0002": 3309,
+   "isl-0003": 573,
+   "isl-0004": 292,
+   "isl-0012": 2,
+   "isl-0014": 26,
+   "isl-0016": 4,
+   "isl-0018": 6,
+   "isl-0020": 13,
+   "isl-0029": 2,
+   "isl-0033": 16,
+   "isl-0036": 2
+  },
+  "edge_kind_counts": {
+   "crossing": 235626,
+   "footway": 110736,
+   "other": 104146,
+   "path": 17478,
+   "pedestrian_street": 1358,
+   "shared_street": 242,
+   "sidewalk": 176124,
+   "steps": 5210
+  },
+  "ways_admitted_by_foot_over_access": {
+   "footway": 38,
+   "path": 53,
+   "residential": 2,
+   "service": 145,
+   "steps": 2
+  },
+  "ways_excluded_by_reason": {
+   "access=no": 159,
+   "access=private": 9574,
+   "area=yes (polygon, not a linear walkway)": 179,
+   "foot=no": 535,
+   "foot=private": 39,
+   "foot=use_sidepath": 18135,
+   "highway=corridor": 334,
+   "highway=cycleway without explicit foot=yes|designated|permissive": 3559,
+   "highway=primary_link": 379,
+   "highway=secondary_link": 1063,
+   "highway=service without explicit foot=yes|designated|permissive": 47675,
+   "highway=tertiary_link": 344,
+   "highway=track": 238,
+   "highway=unclassified": 1334
+  },
+  "timings_s": {
+   "build_graph_s": 95.4,
+   "clip_cached": false,
+   "clip_s": 106.2,
+   "component_filter_s": 3.4,
+   "fetch_and_boundaries_s": 3.4,
+   "label_s": 0.9,
+   "report_s": 4.0,
+   "total_s": 292.1,
+   "write_s": 78.8
+  }
+ },
+ "components": {
+  "components": 1778,
+  "largest_km": 10088.6,
+  "largest_length_share": 0.9883,
+  "largest_node_share": 0.9707,
+  "largest_nodes": 250008,
+  "non_largest_over_50_edges": [
+   {
+    "centroid": [
+     -73.65388,
+     45.50196
+    ],
+    "component_id": 1,
+    "directed_edges": 664,
+    "km": 8.2,
+    "land": {
+     "main_island": 261
+    },
+    "nodes": 261,
+    "units": [
+     "Côte-des-Neiges-Notre-Dame-de-Grâce"
+    ]
+   },
+   {
+    "centroid": [
+     -73.58151,
+     45.51016
+    ],
+    "component_id": 2,
+    "directed_edges": 252,
+    "km": 0.75,
+    "land": {
+     "main_island": 115
+    },
+    "nodes": 115,
+    "units": [
+     "Ville-Marie"
+    ]
+   },
+   {
+    "centroid": [
+     -73.93637,
+     45.42659
+    ],
+    "component_id": 3,
+    "directed_edges": 240,
+    "km": 1.93,
+    "land": {
+     "main_island": 106
+    },
+    "nodes": 106,
+    "units": [
+     "Sainte-Anne-de-Bellevue"
+    ]
+   },
+   {
+    "centroid": [
+     -73.93866,
+     45.40677
+    ],
+    "component_id": 4,
+    "directed_edges": 172,
+    "km": 1.68,
+    "land": {
+     "main_island": 77
+    },
+    "nodes": 77,
+    "units": [
+     "Sainte-Anne-de-Bellevue"
+    ]
+   },
+   {
+    "centroid": [
+     -73.54317,
+     45.5877
+    ],
+    "component_id": 5,
+    "directed_edges": 166,
+    "km": 1.1,
+    "land": {
+     "main_island": 69
+    },
+    "nodes": 69,
+    "units": [
+     "Mercier-Hochelaga-Maisonneuve"
+    ]
+   },
+   {
+    "centroid": [
+     -73.79693,
+     45.48089
+    ],
+    "component_id": 6,
+    "directed_edges": 138,
+    "km": 1.19,
+    "land": {
+     "main_island": 69
+    },
+    "nodes": 69,
+    "units": [
+     "Pointe-Claire"
+    ]
+   },
+   {
+    "centroid": [
+     -73.9496,
+     45.41228
+    ],
+    "component_id": 8,
+    "directed_edges": 124,
+    "km": 0.84,
+    "land": {
+     "main_island": 52
+    },
+    "nodes": 52,
+    "units": [
+     "Sainte-Anne-de-Bellevue"
+    ]
+   },
+   {
+    "centroid": [
+     -73.56722,
+     45.56155
+    ],
+    "component_id": 7,
+    "directed_edges": 122,
+    "km": 2.36,
+    "land": {
+     "main_island": 53
+    },
+    "nodes": 53,
+    "units": [
+     "Rosemont-La Petite-Patrie"
+    ]
+   },
+   {
+    "centroid": [
+     -73.7409,
+     45.4541
+    ],
+    "component_id": 9,
+    "directed_edges": 92,
+    "km": 0.68,
+    "land": {
+     "main_island": 47
+    },
+    "nodes": 47,
+    "units": [
+     "Dorval"
+    ]
+   },
+   {
+    "centroid": [
+     -73.67299,
+     45.51589
+    ],
+    "component_id": 14,
+    "directed_edges": 90,
+    "km": 0.88,
+    "land": {
+     "main_island": 29
+    },
+    "nodes": 29,
+    "units": [
+     "Saint-Laurent"
+    ]
+   },
+   {
+    "centroid": [
+     -73.80835,
+     45.43429
+    ],
+    "component_id": 10,
+    "directed_edges": 86,
+    "km": 0.61,
+    "land": {
+     "main_island": 38
+    },
+    "nodes": 38,
+    "units": [
+     "Pointe-Claire"
+    ]
+   },
+   {
+    "centroid": [
+     -73.93905,
+     45.40843
+    ],
+    "component_id": 12,
+    "directed_edges": 72,
+    "km": 0.5,
+    "land": {
+     "main_island": 34
+    },
+    "nodes": 34,
+    "units": [
+     "Sainte-Anne-de-Bellevue"
+    ]
+   },
+   {
+    "centroid": [
+     -73.85599,
+     45.48563
+    ],
+    "component_id": 11,
+    "directed_edges": 70,
+    "km": 0.38,
+    "land": {
+     "main_island": 36
+    },
+    "nodes": 36,
+    "units": [
+     "Pierrefonds-Roxboro"
+    ]
+   },
+   {
+    "centroid": [
+     -73.74059,
+     45.45277
+    ],
+    "component_id": 13,
+    "directed_edges": 66,
+    "km": 0.24,
+    "land": {
+     "main_island": 32
+    },
+    "nodes": 32,
+    "units": [
+     "Dorval"
+    ]
+   },
+   {
+    "centroid": [
+     -73.93892,
+     45.42997
+    ],
+    "component_id": 18,
+    "directed_edges": 62,
+    "km": 2.02,
+    "land": {
+     "main_island": 26
+    },
+    "nodes": 26,
+    "units": [
+     "Sainte-Anne-de-Bellevue"
+    ]
+   },
+   {
+    "centroid": [
+     -73.54351,
+     45.50539
+    ],
+    "component_id": 24,
+    "directed_edges": 58,
+    "km": 1.14,
+    "land": {
+     "main_island": 23
+    },
+    "nodes": 23,
+    "units": [
+     "Ville-Marie"
+    ]
+   },
+   {
+    "centroid": [
+     -73.96907,
+     45.41845
+    ],
+    "component_id": 15,
+    "directed_edges": 56,
+    "km": 0.28,
+    "land": {
+     "main_island": 8,
+     "other_island": 16,
+     "outside_agglomeration_land": 5
+    },
+    "nodes": 29,
+    "units": [
+     "Senneville"
+    ]
+   },
+   {
+    "centroid": [
+     -73.62877,
+     45.4569
+    ],
+    "component_id": 17,
+    "directed_edges": 56,
+    "km": 0.27,
+    "land": {
+     "main_island": 28
+    },
+    "nodes": 28,
+    "units": [
+     "Côte-des-Neiges-Notre-Dame-de-Grâce"
+    ]
+   },
+   {
+    "centroid": [
+     -73.91949,
+     45.46041
+    ],
+    "component_id": 16,
+    "directed_edges": 54,
+    "km": 0.27,
+    "land": {
+     "main_island": 28
+    },
+    "nodes": 28,
+    "units": [
+     "Pierrefonds-Roxboro"
+    ]
+   },
+   {
+    "centroid": [
+     -73.67355,
+     45.5359
+    ],
+    "component_id": 20,
+    "directed_edges": 52,
+    "km": 0.4,
+    "land": {
+     "main_island": 24
+    },
+    "nodes": 24,
+    "units": [
+     "Ahuntsic-Cartierville"
+    ]
+   }
+  ],
+  "size_histogram_directed_edges": {
+   "1-2": 857,
+   "11-50": 177,
+   "3-10": 723,
+   "51+ (not largest)": 20
+  }
+ },
+ "per_unit": [
+  {
+   "directed_edges": 56516,
+   "km": 745.1,
+   "nodes": 22643,
+   "type": "Arrondissement",
+   "unit": "Ahuntsic-Cartierville",
+   "voirie_trottoir_polygons": 5548,
+   "trottoir_per_network_km": 7.45,
+   "mtl_address_points": 22119
+  },
+  {
+   "directed_edges": 10352,
+   "km": 202.1,
+   "nodes": 4076,
+   "type": "Arrondissement",
+   "unit": "Anjou",
+   "voirie_trottoir_polygons": 2272,
+   "trottoir_per_network_km": 11.24,
+   "mtl_address_points": 7062
+  },
+  {
+   "directed_edges": 3084,
+   "km": 60.7,
+   "nodes": 1461,
+   "type": "Ville liée",
+   "unit": "Baie-D'Urfé",
+   "voirie_trottoir_polygons": 172,
+   "trottoir_per_network_km": 2.83,
+   "mtl_address_points": 1410
+  },
+  {
+   "directed_edges": 5830,
+   "km": 154.5,
+   "nodes": 2482,
+   "type": "Ville liée",
+   "unit": "Beaconsfield",
+   "voirie_trottoir_polygons": 704,
+   "trottoir_per_network_km": 4.56,
+   "mtl_address_points": 6340
+  },
+  {
+   "directed_edges": 5868,
+   "km": 106.8,
+   "nodes": 2256,
+   "type": "Ville liée",
+   "unit": "Côte-Saint-Luc",
+   "voirie_trottoir_polygons": 1191,
+   "trottoir_per_network_km": 11.15,
+   "mtl_address_points": 4757
+  },
+  {
+   "directed_edges": 45624,
+   "km": 638.4,
+   "nodes": 18079,
+   "type": "Arrondissement",
+   "unit": "Côte-des-Neiges-Notre-Dame-de-Grâce",
+   "voirie_trottoir_polygons": 4467,
+   "trottoir_per_network_km": 7.0,
+   "mtl_address_points": 19743
+  },
+  {
+   "directed_edges": 10080,
+   "km": 254.8,
+   "nodes": 4121,
+   "type": "Ville liée",
+   "unit": "Dollard-des-Ormeaux",
+   "voirie_trottoir_polygons": 2684,
+   "trottoir_per_network_km": 10.53,
+   "mtl_address_points": 13550
+  },
+  {
+   "directed_edges": 10276,
+   "km": 175.9,
+   "nodes": 4623,
+   "type": "Ville liée",
+   "unit": "Dorval",
+   "voirie_trottoir_polygons": 2186,
+   "trottoir_per_network_km": 12.43,
+   "mtl_address_points": 5355
+  },
+  {
+   "directed_edges": 3974,
+   "km": 69.9,
+   "nodes": 1282,
+   "type": "Ville liée",
+   "unit": "Hampstead",
+   "voirie_trottoir_polygons": 402,
+   "trottoir_per_network_km": 5.75,
+   "mtl_address_points": 1781
+  },
+  {
+   "directed_edges": 7174,
+   "km": 151.1,
+   "nodes": 3060,
+   "type": "Ville liée",
+   "unit": "Kirkland",
+   "voirie_trottoir_polygons": 1915,
+   "trottoir_per_network_km": 12.67,
+   "mtl_address_points": 6473
+  },
+  {
+   "directed_edges": 4826,
+   "km": 156.0,
+   "nodes": 1944,
+   "type": "Arrondissement",
+   "unit": "L'Île-Bizard-Sainte-Geneviève",
+   "voirie_trottoir_polygons": 1220,
+   "trottoir_per_network_km": 7.82,
+   "mtl_address_points": 5713
+  },
+  {
+   "directed_edges": 0,
+   "km": 0.0,
+   "nodes": 0,
+   "type": "Ville liée",
+   "unit": "L'Île-Dorval",
+   "voirie_trottoir_polygons": 0,
+   "trottoir_per_network_km": 0,
+   "mtl_address_points": 61
+  },
+  {
+   "directed_edges": 25798,
+   "km": 420.5,
+   "nodes": 10357,
+   "type": "Arrondissement",
+   "unit": "LaSalle",
+   "voirie_trottoir_polygons": 3016,
+   "trottoir_per_network_km": 7.17,
+   "mtl_address_points": 13716
+  },
+  {
+   "directed_edges": 14750,
+   "km": 240.6,
+   "nodes": 5954,
+   "type": "Arrondissement",
+   "unit": "Lachine",
+   "voirie_trottoir_polygons": 2719,
+   "trottoir_per_network_km": 11.3,
+   "mtl_address_points": 9155
+  },
+  {
+   "directed_edges": 31152,
+   "km": 415.6,
+   "nodes": 11335,
+   "type": "Arrondissement",
+   "unit": "Le Plateau-Mont-Royal",
+   "voirie_trottoir_polygons": 3611,
+   "trottoir_per_network_km": 8.69,
+   "mtl_address_points": 15840
+  },
+  {
+   "directed_edges": 43776,
+   "km": 468.0,
+   "nodes": 17729,
+   "type": "Arrondissement",
+   "unit": "Le Sud-Ouest",
+   "voirie_trottoir_polygons": 4487,
+   "trottoir_per_network_km": 9.59,
+   "mtl_address_points": 12478
+  },
+  {
+   "directed_edges": 44642,
+   "km": 716.7,
+   "nodes": 16554,
+   "type": "Arrondissement",
+   "unit": "Mercier-Hochelaga-Maisonneuve",
+   "voirie_trottoir_polygons": 6185,
+   "trottoir_per_network_km": 8.63,
+   "mtl_address_points": 23671
+  },
+  {
+   "directed_edges": 9098,
+   "km": 159.5,
+   "nodes": 3600,
+   "type": "Ville liée",
+   "unit": "Mont-Royal",
+   "voirie_trottoir_polygons": 1673,
+   "trottoir_per_network_km": 10.49,
+   "mtl_address_points": 4992
+  },
+  {
+   "directed_edges": 2028,
+   "km": 57.4,
+   "nodes": 811,
+   "type": "Ville liée",
+   "unit": "Montréal-Est",
+   "voirie_trottoir_polygons": 708,
+   "trottoir_per_network_km": 12.33,
+   "mtl_address_points": 1085
+  },
+  {
+   "directed_edges": 11076,
+   "km": 241.2,
+   "nodes": 4050,
+   "type": "Arrondissement",
+   "unit": "Montréal-Nord",
+   "voirie_trottoir_polygons": 3122,
+   "trottoir_per_network_km": 12.94,
+   "mtl_address_points": 13053
+  },
+  {
+   "directed_edges": 2592,
+   "km": 42.3,
+   "nodes": 980,
+   "type": "Ville liée",
+   "unit": "Montréal-Ouest",
+   "voirie_trottoir_polygons": 378,
+   "trottoir_per_network_km": 8.94,
+   "mtl_address_points": 1548
+  },
+  {
+   "directed_edges": 9582,
+   "km": 148.8,
+   "nodes": 3394,
+   "type": "Arrondissement",
+   "unit": "Outremont",
+   "voirie_trottoir_polygons": 1091,
+   "trottoir_per_network_km": 7.33,
+   "mtl_address_points": 3926
+  },
+  {
+   "directed_edges": 17238,
+   "km": 375.0,
+   "nodes": 7256,
+   "type": "Arrondissement",
+   "unit": "Pierrefonds-Roxboro",
+   "voirie_trottoir_polygons": 3956,
+   "trottoir_per_network_km": 10.55,
+   "mtl_address_points": 17591
+  },
+  {
+   "directed_edges": 17210,
+   "km": 314.8,
+   "nodes": 7226,
+   "type": "Ville liée",
+   "unit": "Pointe-Claire",
+   "voirie_trottoir_polygons": 2880,
+   "trottoir_per_network_km": 9.15,
+   "mtl_address_points": 9451
+  },
+  {
+   "directed_edges": 22032,
+   "km": 616.4,
+   "nodes": 7947,
+   "type": "Arrondissement",
+   "unit": "Rivière-des-Prairies-Pointe-aux-Trembles",
+   "voirie_trottoir_polygons": 6136,
+   "trottoir_per_network_km": 9.95,
+   "mtl_address_points": 26671
+  },
+  {
+   "directed_edges": 50384,
+   "km": 707.6,
+   "nodes": 18709,
+   "type": "Arrondissement",
+   "unit": "Rosemont-La Petite-Patrie",
+   "voirie_trottoir_polygons": 4197,
+   "trottoir_per_network_km": 5.93,
+   "mtl_address_points": 23049
+  },
+  {
+   "directed_edges": 39304,
+   "km": 561.3,
+   "nodes": 16939,
+   "type": "Arrondissement",
+   "unit": "Saint-Laurent",
+   "voirie_trottoir_polygons": 5788,
+   "trottoir_per_network_km": 10.31,
+   "mtl_address_points": 15827
+  },
+  {
+   "directed_edges": 16630,
+   "km": 320.1,
+   "nodes": 6356,
+   "type": "Arrondissement",
+   "unit": "Saint-Léonard",
+   "voirie_trottoir_polygons": 3021,
+   "trottoir_per_network_km": 9.44,
+   "mtl_address_points": 11204
+  },
+  {
+   "directed_edges": 6268,
+   "km": 95.5,
+   "nodes": 2811,
+   "type": "Ville liée",
+   "unit": "Sainte-Anne-de-Bellevue",
+   "voirie_trottoir_polygons": 632,
+   "trottoir_per_network_km": 6.62,
+   "mtl_address_points": 1511
+  },
+  {
+   "directed_edges": 890,
+   "km": 31.6,
+   "nodes": 416,
+   "type": "Ville liée",
+   "unit": "Senneville",
+   "voirie_trottoir_polygons": 73,
+   "trottoir_per_network_km": 2.31,
+   "mtl_address_points": 387
+  },
+  {
+   "directed_edges": 21930,
+   "km": 267.4,
+   "nodes": 9331,
+   "type": "Arrondissement",
+   "unit": "Verdun",
+   "voirie_trottoir_polygons": 2316,
+   "trottoir_per_network_km": 8.66,
+   "mtl_address_points": 9595
+  },
+  {
+   "directed_edges": 52080,
+   "km": 621.4,
+   "nodes": 20586,
+   "type": "Arrondissement",
+   "unit": "Ville-Marie",
+   "voirie_trottoir_polygons": 4970,
+   "trottoir_per_network_km": 8.0,
+   "mtl_address_points": 10277
+  },
+  {
+   "directed_edges": 39080,
+   "km": 507.7,
+   "nodes": 15567,
+   "type": "Arrondissement",
+   "unit": "Villeray-Saint-Michel-Parc-Extension",
+   "voirie_trottoir_polygons": 4423,
+   "trottoir_per_network_km": 8.71,
+   "mtl_address_points": 22224
+  },
+  {
+   "directed_edges": 9642,
+   "km": 155.5,
+   "nodes": 3544,
+   "type": "Ville liée",
+   "unit": "Westmount",
+   "voirie_trottoir_polygons": 1094,
+   "trottoir_per_network_km": 7.04,
+   "mtl_address_points": 4354
+  },
+  {
+   "directed_edges": 134,
+   "km": 7.6,
+   "nodes": 63,
+   "type": "—",
+   "unit": "outside agglomeration limits",
+   "voirie_trottoir_polygons": null,
+   "trottoir_per_network_km": null,
+   "mtl_address_points": null
+  }
+ ],
+ "voirie_reach": {
+  "trottoir_rows": 89249,
+  "ilot_rows": 11187,
+  "units_without_trottoir": [
+   "L'Île-Dorval"
+  ]
+ },
+ "addresses": {
+  "rqa": {
+   "rows_total_quebec": 5356156,
+   "rows_region_06": 1259686,
+   "rows_region_06_active": 1258169,
+   "distinct_civic_addresses": 636161,
+   "by_municipality": {
+    "Montréal": 1137636,
+    "Dollard-des-Ormeaux": 20191,
+    "Pointe-Claire": 19061,
+    "Côte-Saint-Luc": 17374,
+    "Dorval": 12240,
+    "Westmount": 11870,
+    "Mont-Royal": 11109,
+    "Kirkland": 7785,
+    "Beaconsfield": 7510,
+    "Montréal-Est": 3201,
+    "Sainte-Anne-de-Bellevue": 2892,
+    "Hampstead": 2831,
+    "Montréal-Ouest": 2340,
+    "Baie-D'Urfé": 1625,
+    "Senneville": 438,
+    "L'Île-Dorval": 66
+   },
+   "by_arrondissement": {
+    "Ville-Marie": 127061,
+    "Côte-des-Neiges - Notre-Dame-de-Grâce": 107250,
+    "Rosemont - La Petite-Patrie": 99361,
+    "Mercier - Hochelaga-Maisonneuve": 91000,
+    "Villeray - Saint-Michel - Parc-Extension": 88428,
+    "Le Plateau-Mont-Royal": 86449,
+    "Ahuntsic-Cartierville": 82536,
+    "Le Sud-Ouest": 64890,
+    "Saint-Laurent": 56008,
+    "Rivière-des-Prairies - Pointe-aux-Trembles": 53781,
+    "Montréal-Nord": 48195,
+    "LaSalle": 45332,
+    "Verdun": 43118,
+    "Saint-Léonard": 40315,
+    "Pierrefonds - Roxboro": 29880,
+    "Lachine": 27546,
+    "Anjou": 23969,
+    "Outremont": 13931,
+    "LÎle-Bizard - Sainte-Geneviève": 8587
+   },
+   "etat": {
+    "Certifiée": 1258169
+   },
+   "positioning": {
+    "Géocodée": 374192,
+    "Bâtiment": 315608,
+    "Incertaine": 567733,
+    "Centre lot": 633,
+    "Front lot": 3
+   },
+   "categorie_top": {
+    "RESI": 1071776,
+    "SACO": 91428,
+    "REIN": 25967,
+    "SERV": 25355,
+    "COMM": 22168,
+    "INST": 5098,
+    "INLE": 4774,
+    "REHE": 4456
+   }
+  },
+  "mtl_adresse_ponctuelle": {
+   "rows": 345969,
+   "units_with_zero_points": []
+  }
+ }
+}
