@@ -56,11 +56,19 @@ def main(argv: list[str] | None = None) -> int:
         help="load only: which processed OSM graph the `osm` source loads (default pilot; "
         "island = data/processed/osm_island, for the local wp_island DB)",
     )
+    ap.add_argument(
+        "--wait",
+        action="store_true",
+        help="load only: block on ETL advisory locks (lock_timeout 5min) instead of skipping "
+        "when another run holds them (infra/ETL-LOCKS.md); default try-lock + exit 0",
+    )
     args = ap.parse_args(argv)
     if args.weather_since is not None and args.pipeline != "load":
         ap.error("--weather-since only applies to `load`")
     if args.source and args.pipeline != "load":
         ap.error("--source only applies to `load`")
+    if args.wait and args.pipeline != "load":
+        ap.error("--wait only applies to `load`")
     if args.osm_graph != "pilot" and args.pipeline != "load":
         ap.error("--osm-graph only applies to `load`")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
@@ -79,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             force=args.force,
             weather_since=args.weather_since,
             osm_graph=args.osm_graph,
+            wait=args.wait,
         ):
             print(json.dumps(r, default=str))
         return 0

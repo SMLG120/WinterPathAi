@@ -176,3 +176,23 @@ Load it into the separate local database `wp_island` with `load --source osm --o
 Never load it into `wp_data` or a hosted DB without a decision; see
 `docs/agent-reports/data.md` → "Island feasibility" for sizes. The QA summary is
 `data/qa/island_feasibility.json`.
+
+## ETL advisory locks (`infra/ETL-LOCKS.md`)
+
+Every `load` takes Postgres advisory locks with classid `1464878420` ("WPET"):
+- First the **schema gate** (objid 0), shared.
+- Then the source's lock, exclusive: `osm` 1, `mtl-voirie` 2, `mtl-entraves` 3, `mtl-311` 4,
+  `eccc-geomet` 5. The island graph load uses 1001, from the reserved 1000–1999 range.
+- Both are transaction-scoped inside the load's single staging + swap transaction, so they are
+  safe on Supabase's session and transaction poolers and are always released on commit, rollback
+  or a lost connection.
+
+Behaviour:
+- **Default: try-lock.** On contention the load prints
+  `::notice::lock (1464878420,<objid>) held by another run — skipping`, writes nothing, records no
+  ingest_run row, and the command exits 0.
+- **`--wait`** blocks instead, under `lock_timeout` 5min. A timeout is an error.
+- **Alembic** (`db/migrations/env.py`) holds the schema gate **exclusively** for the whole run, as
+  a session lock on a dedicated connection, because migrations commit per migration. It waits up
+  to `WP_MIGRATION_LOCK_TIMEOUT` (default `5min`) and then fails: it never migrates under a load.
+- Advisory locks are per database, so `wp_data` and `wp_island` never contend.

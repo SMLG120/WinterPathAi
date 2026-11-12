@@ -34,7 +34,9 @@ def test_help_lists_source_ids_unbroken(monkeypatch, capsys, columns):
 def test_load_source_selects_only_that_loader(monkeypatch, capsys):
     seen = {}
 
-    def fake_load(settings, which, url=None, force=False, weather_since=None, osm_graph="pilot"):
+    def fake_load(
+        settings, which, url=None, force=False, weather_since=None, osm_graph="pilot", wait=False
+    ):
         seen.update(which=which, force=force, weather_since=weather_since, osm_graph=osm_graph)
         return [{"source_id": "eccc-geomet", "noop": True}]
 
