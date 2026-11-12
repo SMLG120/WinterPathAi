@@ -78,7 +78,8 @@
     "hazardsOnRoute_other": "{{count}} problèmes connus sur le trajet",
     "show": "Afficher sur la carte",
     "shown": "Affiché sur la carte",
-    "computedAt": "Calculé {{time}}"
+    "computedAt": "Calculé {{time}}",
+    "details": "Détails des itinéraires"
   },
   "errors": {
     "NO_ROUTE": {
@@ -131,7 +132,8 @@
     "error": "Impossible de charger les couches.",
     "inView": "Problèmes dans la vue",
     "none": "Aucune fermeture ni aucun signalement dans cette vue.",
-    "demoNote": "Les fermetures et signalements sont simulés. Les tracés de trottoirs sont de vraies données OpenStreetMap (jeu pilot_mini, quelques îlots autour de McGill) dont l'état est inconnu — aucune couche de risque n'est active."
+    "demoNote": "Les fermetures et signalements sont simulés. Les tracés de trottoirs sont de vraies données OpenStreetMap (jeu pilot_mini, quelques îlots autour de McGill) dont l'état est inconnu — aucune couche de risque n'est active.",
+    "reset": "Réinitialiser les couches"
   },
   "hazardSources": {
     "overlay": "Des fermetures et des requêtes 311 peuvent manquer sur cette carte : toutes les sources ne sont pas chargées dans ce déploiement. Une liste vide ne veut pas dire qu'il n'y en a aucune.",
@@ -180,10 +182,38 @@
     "label": "Carte de planification de trajet",
     "fallback": "La carte interactive ne peut pas s'afficher dans ce navigateur (WebGL indisponible). Vous pouvez quand même entrer des coordonnées et lire le trajet sous forme de liste.",
     "loadError": "Le fond de carte n'a pas pu se charger. Vous pouvez quand même entrer des coordonnées et lire le trajet sous forme de liste.",
-    "hint": "La carte est facultative : toutes les actions sont aussi offertes dans le panneau."
+    "hint": "La carte est facultative : toutes les actions sont aussi offertes dans le panneau.",
+    "recenterRoute": "Recentrer sur l'itinéraire",
+    "recenterArea": "Recentrer sur la zone pilote"
   },
   "sheet": {
-    "expand": "Agrandir le panneau",
-    "collapse": "Réduire le panneau"
+    "toggle": "Panneau du planificateur : {{state}}. Touchez pour redimensionner, ou utilisez les flèches.",
+    "state": {
+      "peek": "réduit",
+      "half": "à mi-hauteur",
+      "full": "plein écran"
+    },
+    "ready": "Prêt — touchez Comparer les trajets",
+    "empty": "Planifier une marche : choisissez un départ et une destination"
+  },
+  "panel": {
+    "hide": "Masquer le panneau",
+    "show": "Afficher le planificateur"
+  },
+  "actions": {
+    "clearAll": "Tout effacer"
+  },
+  "cards": {
+    "label": "Résumés des itinéraires",
+    "unknown": "Aucune donnée d'état pour {{pct}} de l'itinéraire",
+    "known": "Données d'état sur tout l'itinéraire",
+    "oldest": "Donnée la plus ancienne"
+  },
+  "recent": {
+    "optIn": "Mémoriser les destinations récentes sur cet appareil",
+    "desc": "Désactivé par défaut. Jusqu'à 5 destinations (jamais votre point de départ), arrondies à environ 11 m et conservées seulement dans ce navigateur pendant 30 jours. Décocher les supprime.",
+    "title": "Destinations récentes",
+    "use": "Aller à {{coords}}",
+    "clear": "Effacer les destinations récentes"
   }
 }

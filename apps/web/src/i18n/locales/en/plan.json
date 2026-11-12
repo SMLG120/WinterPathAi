@@ -76,7 +76,8 @@
     "hazardsOnRoute_other": "{{count}} known issues on route",
     "show": "Show on map",
     "shown": "Shown on map",
-    "computedAt": "Computed {{time}}"
+    "computedAt": "Computed {{time}}",
+    "details": "Route details"
   },
   "errors": {
     "NO_ROUTE": {
@@ -129,7 +130,8 @@
     "error": "Couldn't load map layers.",
     "inView": "Issues in view",
     "none": "No closures or reports in this view.",
-    "demoNote": "Closures & reports are simulated. Sidewalk lines are real OpenStreetMap data (pilot_mini fixture, a few blocks around McGill) with unknown conditions — no risk layer is active."
+    "demoNote": "Closures & reports are simulated. Sidewalk lines are real OpenStreetMap data (pilot_mini fixture, a few blocks around McGill) with unknown conditions — no risk layer is active.",
+    "reset": "Reset layers"
   },
   "hazardSources": {
     "overlay": "Closures and 311 reports may be missing from this map: not every source is loaded in this deployment. An empty list does not mean there are none.",
@@ -177,10 +179,38 @@
     "label": "Route planning map",
     "fallback": "The interactive map can't be shown in this browser (WebGL unavailable). You can still enter coordinates and read the route as a list.",
     "loadError": "The basemap couldn't load. You can still enter coordinates and read the route as a list.",
-    "hint": "Map is optional: every action is also available in the panel."
+    "hint": "Map is optional: every action is also available in the panel.",
+    "recenterRoute": "Recenter on the route",
+    "recenterArea": "Recenter on the pilot area"
   },
   "sheet": {
-    "expand": "Expand panel",
-    "collapse": "Collapse panel"
+    "toggle": "Planner panel: {{state}}. Tap to resize, or use the arrow keys.",
+    "state": {
+      "peek": "minimised",
+      "half": "half height",
+      "full": "full height"
+    },
+    "ready": "Ready — tap Compare routes",
+    "empty": "Plan a walk: choose a start and a destination"
+  },
+  "panel": {
+    "hide": "Hide panel",
+    "show": "Show planner"
+  },
+  "actions": {
+    "clearAll": "Clear all"
+  },
+  "cards": {
+    "label": "Route summaries",
+    "unknown": "No condition data for {{pct}} of the route",
+    "known": "Condition data along the whole route",
+    "oldest": "Oldest data"
+  },
+  "recent": {
+    "optIn": "Remember recent destinations on this device",
+    "desc": "Off by default. Up to 5 destinations (never your start point), rounded to about 11 m and kept only in this browser for 30 days. Unticking deletes them.",
+    "title": "Recent destinations",
+    "use": "Go to {{coords}}",
+    "clear": "Clear recent destinations"
   }
 }

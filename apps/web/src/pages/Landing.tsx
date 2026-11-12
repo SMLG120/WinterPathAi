@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Footprints, GitCompare, ListChecks, ShieldCheck } from 'lucide-react';
 import { HeroVisual } from '@/components/hero/HeroVisual';
+import { LandingWeather } from '@/features/LandingWeather';
 import { Section } from '@/components/layout/Section';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +49,9 @@ export default function Landing() {
                   <ArrowRight aria-hidden="true" />
                 </Link>
               </Button>
+            </div>
+            <div className="mt-8 max-w-xl">
+              <LandingWeather />
             </div>
           </div>
           <HeroVisual className="aspect-[16/10] w-full" />

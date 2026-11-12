@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from './fixtures';
 
 const PAGES = [
-  { path: '', en: "Navigate Montreal's winter, one better step at a time.", fr: "Traversez l'hiver montréalais, un meilleur pas à la fois." },
+  { path: '', en: "Walk smarter through Montreal's winter.", fr: "Marchez plus malin dans l'hiver montréalais." },
   { path: '/plan', en: 'Plan a winter walk', fr: 'Planifier une marche hivernale' },
   { path: '/winter', en: 'Winter conditions', fr: 'Conditions hivernales' },
   { path: '/reports', en: 'Report a winter issue', fr: 'Signaler un problème hivernal' },

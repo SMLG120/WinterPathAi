@@ -584,6 +584,103 @@ The read-only UI path (update 8) was previously tested only against mocks; it is
 
 **Note for routing/API (no contract change needed):** route `warnings` don't mention that closures weren't considered. The frontend now derives that from `/data-sources`. A server-side warning would also cover non-web clients.
 
+## Update 11 — WinterPath 2.0 Wave 1 (frontend brief in `docs/agents/v2-plan.md`); merge of integration `eaac440`
+**Merge:** `git merge --no-edit integration/winterpath` fast-forwarded to `eaac440` (it contained `bb76eb2`). No contract, fixture or `apps/web` changes. No contract change in this update; only existing v1.7 endpoints are used.
+
+### 1. Map fit after compare (audit problem 8): root cause and fix
+The fit-to-route code already existed. Reproduced on the unchanged build (`docs/screenshots/plan-v1-mobile-390-after-compare.png`): on mobile, the sheet jumped to **85 %** after a compare and covered the fitted route. Enlarging the bottom padding alone would not work: when the padding leaves no room, MapLibre silently skips `fitBounds` and leaves the region view.
+
+Fix (`src/features/plan/mapFit.ts`, `PlannerMap.tsx`):
+- The map fits the **selected** route.
+- The padding reflects what covers the map (the sheet height on mobile) and is clamped so at least 80 px remain (`clampPadding`).
+- The map re-fits on a new comparison, a new selection, recenter, a sheet snap and a panel toggle. A `ResizeObserver` keeps the canvas in sync.
+- Two bugs found while testing, both fixed:
+  - `compare.data?.routes ?? []` produced a new array on every render, which would have restarted the fit endlessly. It is now a stable constant.
+  - An interrupted fit animation's `moveend` was being recorded as the new fit.
+- Observable through `data-map-ready`, `data-map-fit` and `data-map-zoom` (used by e2e and the perf harness). After: `docs/screenshots/plan-v2-mobile-390-after-compare.png` and `plan-v2-desktop-after-compare.png`.
+
+### 2–3. Mobile bottom sheet and collapsible desktop panel
+- **Below `lg`:** full-screen map with a sheet that snaps to peek (76 px handle with a one-line summary of the selected route), half or full.
+  - Drag (with flick), tap to cycle, or ArrowUp/ArrowDown on the handle.
+  - The handle is ≥ 60 px tall; its accessible name includes the visible summary plus the state.
+  - After a compare: half, results scrolled to the top of the sheet, focus on the results heading.
+  - "Pick on map" lowers the sheet to peek and brings it back after the pick.
+- **Compact route cards** (`RouteCards.tsx`): a tappable `aria-pressed` card per route that selects and highlights the path. Each shows:
+  - time and distance;
+  - "No condition data for N % of the route" (icon + text);
+  - known issues on or avoided by the route;
+  - oldest data age with the Stale label.
+
+  The contract has **no route-level risk category**, so none is invented. Full explanations stay below under "Route details".
+- **At `lg` and up:** "Hide panel" collapses the left column; "Show planner" brings it back. Focus moves to the button that remains, and the map re-fits.
+- **Touch targets:** buttons are ≥ 44 px on coarse pointers (`pointer-coarse:`); desktop density is unchanged.
+
+### 4. Landing page
+- Headline "Walk smarter through Montreal's winter." / « Marchez plus malin dans l'hiver montréalais. »; primary action "Plan a walk" / « Planifier une marche ».
+- `LandingWeather`: current Montréal observation from the existing `GET /weather/current`.
+  - Shows temperature, wind and snow depth, the station and observation time, an evidence badge and freshness/Stale.
+  - Missing values show "—". A failure shows a message and **no values**.
+  - Fixed min-height, so there is no layout shift.
+- The 3D hero is unchanged and still loads after the text and the call to action. The weather block doesn't block entry: the e2e test clicks "Plan a walk" during a weather outage.
+
+### 5–6. Small controls; recent destinations
+- **Controls:** swap (existing), **Clear all** (points and results), **Recenter** (route, or pilot area), **Reset layers**. Skeletons, friendly errors and the waking state are unchanged from update 8.
+- **Recent destinations** (`stores/recentDestinations.ts`):
+  - opt-in checkbox, off by default; nothing is stored before opting in;
+  - **destinations only** (never the start point or geolocation), rounded to 4 decimals (≈ 11 m);
+  - at most 5, dropped after 30 days, `localStorage` only;
+  - "Clear" empties the list, and opting out deletes the list and the flag.
+
+  Architecture §9 says "no persistent location tracking". This is user-chosen, opt-in, device-only data, as the brief asks. Please confirm that the reading is acceptable.
+
+### 7. Performance: before vs after
+Method (`apps/web/scripts/perf.mjs`; raw samples in `apps/web/docs/perf/`):
+- Playwright Chromium, 390×844 @3x, mobile emulation, **4× CPU slowdown via CDP** (`Emulation.setCPUThrottlingRate`), no network throttling.
+- Production build against the local real API (fixture graph, memory store) with the stub basemap style; SwiftShader WebGL.
+- A fresh context per run, one discarded warm-up, then **9 runs**; medians with min–max.
+- The machine was shared with other agents (1-min load average 22 → 15 during "before", 11.7 → 14.4 during "after", on 10 CPUs). Treat differences under about 20 % as noise.
+
+| Metric (390 px, 4× CPU) | Before `eaac440` median (min–max) | After median (min–max) |
+|---|---|---|
+| Landing LCP (`h1`) | 1016 ms (732–1780) | 828 ms (780–1144) |
+| Landing TBT | 284 ms (156–561) | 195 ms (128–257) |
+| Planner LCP | 732 ms (628–1236) | 612 ms (556–784) |
+| Planner usable (Compare enabled) | 663 ms (571–960) | 578 ms (530–638) |
+| Planner TBT (incl. MapLibre parse) | 1098 ms (768–4006) | 1206 ms (866–1298) |
+| Map ready | 1368 ms (1244–2567) | 1333 ms (1268–1392) |
+| Compare click → route cards | 856 ms (478–1391) | 451 ms (304–1213) |
+| Compare click → map fitted on route | not observable (no fit signal; mobile route hidden by the sheet) | 1129 ms (876–1846), zoom 17 in 9/9 |
+
+Reading:
+- LCP is well under 2.5 s in both builds **under these conditions** (no network throttling). This is not the earlier Lighthouse figure of about 3 s, which used simulated slow-4G. The two methods are not comparable.
+- I'm claiming no LCP improvement: the medians moved within the noise band.
+- Planner TBT stays about 1.1–1.2 s: MapLibre parsing and initialisation (298 kB gz chunk) on a slowed CPU. Reducing it needs a different map-loading strategy; not done in this wave.
+- Initial JS 149.2 KB gz (was 147.6; budget 250).
+
+### Literal results
+```
+npx tsc -b                     → (no output)
+npm run lint                   → eslint . --max-warnings 0 (exit 0)
+npx vitest run                 →  Test Files  19 passed (19) /  Tests  158 passed (158)
+npx playwright test            →  3 skipped / 131 passed (7.4m)
+  (earlier full run on this branch, before the final fixes: 6 failed / 125 passed. Causes:
+   - label-content-name-mismatch on the sheet handle (×4, fixed);
+   - duplicate "Set both a start…" text (fixed);
+   - fr light /how-it-works axe, which passed on re-run: the known intermittent axe result)
+npm run build && npm run size  → TOTAL initial JS: 149.2 KB gz (budget 250 KB)
+VITE_API_BASE_URL=https://winterpath-api.example.onrender.com/api/v1 VITE_PUBLIC_WRITES=false npm run build:pages
+                               → pages-check env: OK / pages-check dist: OK
+node scripts/perf.mjs … 9      → tables above (apps/web/docs/perf/*.json)
+bash scripts/check-ownership.sh frontend → ownership OK for agent/frontend
+```
+Not done:
+- The real-API e2e suite was not re-run in this update. The perf harness exercised the real API (compare 200 with route cards, 18 loads per build), but that isn't the e2e suite.
+- No manual screen-reader pass of the sheet.
+- No test on a physical phone: touch drag was tested with emulated pointer events only, and the drag gesture itself has no e2e test (tap, keys and flick logic are unit and e2e tested).
+
+### Wave 2 request (contract)
+- **Route-level condition summary:** for example, length share per `risk.level` for each route. The compact cards could then show a risk category without the client computing one from map segments.
+
 ## Acceptance criteria
 | Criterion | Met? | Evidence |
 |---|---|---|

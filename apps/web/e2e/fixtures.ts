@@ -19,8 +19,8 @@ export async function setPoint(page: Page, which: 'origin' | 'destination', p: {
   await expect(page.getByTestId(`point-${which}-value`)).toContainText(Number(p.lat).toFixed(5));
 }
 
-/** On narrow screens the panel is a bottom sheet; expand it so all controls are reachable. */
+/** On narrow screens the panel is a bottom sheet; make sure it is not minimised (peek) so controls are reachable. */
 export async function openSheetIfMobile(page: Page) {
-  const toggle = page.locator('[data-testid="planner-panel"] > button[aria-expanded]');
-  if (await toggle.isVisible() && (await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
+  const handle = page.getByTestId('sheet-handle');
+  if ((await handle.isVisible()) && (await page.getByTestId('planner-panel').getAttribute('data-snap')) === 'peek') await handle.click();
 }
