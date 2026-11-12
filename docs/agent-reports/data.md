@@ -1347,3 +1347,87 @@ $ uv run pytest -q
 .....                                                                    [100%]
 77 passed in 61.69s (0:01:01)
 ```
+
+## Wave 2b (3) — wp_island: closures, 311 aggregates, island-wide sidewalk matching (2026-11-12)
+
+This touches local `wp_island` only. No contract change, no Supabase writes, and `wp_data` is not
+affected.
+
+- **Code:**
+  - New `--region {pilot,island}` (alias `--osm-graph`) on `voirie`, `entraves` and `load`.
+    `pilot` is the default and unchanged: re-running `wp-ingest voirie` / `entraves` gives
+    `noop: true`, so the checksums are the same.
+  - `entraves --region island` keeps permits whose point lies on agglomeration land, from the
+    boundaries product.
+  - `voirie --region island` reads **every** published polygon and matches it to `osm_island` with
+    the unchanged rule (1 m tolerance, ≥ 50% overlap, EPSG:32188). Polygons stay enrichment only and
+    never create connectivity.
+  - `load --region island` loads the island products. Locks use the reserved range 1000 + source
+    (`1001` osm … `1004` 311). 311 and weather are agglomeration-wide and identical for both regions.
+- **Builds:**
+
+  | Step | Result | Wall time | Peak RSS |
+  |---|---|---|---|
+  | `entraves --region island`, cached raw fetched 2026-11-10 | **1,970 of 1,974 permits** on land; blocks passage: true 576, false 1,228, unknown 166; nothing unmapped | 6.7 s | 0.2 GB |
+  | `voirie --region island` | 100,436 polygons (89,249 trottoir + 11,187 îlot), matched to 650,920 edges | 171.7 s | 2.2 GB |
+
+  Match rates (pilot rate for comparison):
+
+  | Edge kind | Matched | Rate | Pilot |
+  |---|---|---|---|
+  | **sidewalk** | 168,004 / 176,124 | **95.39%** | 94.11% |
+  | crossing | 80,964 / 235,626 | 34.36% | |
+  | footway | 20,164 / 110,736 | 18.21% | |
+  | path | 2,026 / 17,478 | 11.59% | |
+  | all | 271,834 / 650,920 | 41.76% | |
+
+- **Loads into `wp_island`** (`/usr/bin/time`):
+
+  | Source | Rows | Wall time | Peak RSS |
+  |---|---|---|---|
+  | mtl-entraves | 1,970 | 4.0 s | |
+  | mtl-311 (agglomeration-wide aggregate from the full build, ends 2026-11-07) | 70,428 | 9.8 s | |
+  | mtl-voirie | 100,436 | 92.0 s | 1.0 GB |
+  | osm reload, needed so `edge.sidewalk_polygon_ids` carries the match | 650,920 edges / 257,542 nodes | **817 s** | 2.7 GB |
+
+  - The osm reload is slower than the first, insert-only load (379 s) because the stage → upsert →
+    prune transaction updates every row.
+  - Check: 271,834 edges carry polygon ids, and 0 reference a missing polygon.
+- **Size deltas** (`pg_total_relation_size` including indexes, after `VACUUM FULL ANALYZE`; MiB):
+
+  | Table | Before (Wave 1) | After | Delta |
+  |---|---|---|---|
+  | `sidewalk_polygon` | 0.02 | **133.4** (idx 7.8) | **+133.4** |
+  | `report_311_cell` | 0.02 | 12.0 (idx 5.1) | +12.0 |
+  | `closure` | 0.03 | 2.6 (idx 0.3) | +2.6 |
+  | `edge` | 301.5 | 303.8 (idx 95.6) | +2.3 (polygon-id arrays) |
+  | `node` | 55.8 | 48.7 | −7.1: compaction by `VACUUM FULL` only, same 257,542 rows |
+  | **whole DB** | **373.5** | **515.8** | **+142.3** |
+
+- **Projection update:** the Wave 1 *projected* island-wide sidewalk size was about 131 MB, and the
+  **measured** size is 133.4 MiB. A hosted island DB with the graph, island sidewalk polygons,
+  closures, 311 and one model's scores therefore comes to **about 555 MiB, over Supabase Free's
+  500 MB**.
+  - Wave 1's options still apply: undirected edges (measured −150 MB, contract change), keeping the
+    graph out of Postgres, or a paid tier.
+  - Also measured here, now that polygon ids are on the edges: `sidewalk_polygon` could stay
+    **local or out of the hosted DB**, since routing needs only `edge.sidewalk_polygon_ids`. That
+    saves 133 MiB and is not a contract change if the API never serves polygons; I haven't checked
+    whether it does, so that's for the coordinator to confirm.
+- **Tests:**
+  - `test_island.py` adds the entraves area predicate overriding the pilot bbox, and region
+    validation for voirie and entraves.
+  - `test_cli` covers `--region` and the `--osm-graph` alias.
+
+```
+$ /usr/bin/time -l uv run wp-ingest entraves --region island → noop false, permits_total 1974, closures 1970; 6.71 real, 198098944 max RSS
+$ /usr/bin/time -l uv run wp-ingest voirie --region island → 171.70 real, 2225979392 max RSS; sidewalk 168004/176124 (0.9539)
+$ DATABASE_URL=…/wp_island wp-ingest load --source mtl-entraves --region island → {"closure": 1970}  real 4.01
+$ DATABASE_URL=…/wp_island wp-ingest load --source mtl-311 --region island → {"report_311_cell": 70428}  real 9.79
+$ DATABASE_URL=…/wp_island wp-ingest load --source mtl-voirie --region island → {"sidewalk_polygon": 100436}  91.99 real, 1028603904 max RSS
+$ DATABASE_URL=…/wp_island wp-ingest load --source osm --region island → {"node": 257542, "edge": 650920}  817.15 real, 2676129792 max RSS
+$ psql …/wp_island (after VACUUM FULL ANALYZE): edge 318537728, sidewalk_polygon 139878400, node 51085312, report_311_cell 12632064, closure 2719744; database 540881379 B
+$ uv run pytest -q
+.......                                                                  [100%]
+79 passed in 62.40s (0:01:02)
+```
