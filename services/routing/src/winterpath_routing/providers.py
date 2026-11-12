@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -179,6 +180,21 @@ def _with_node_crossing(edge: Edge, nodes: dict[str, Node]) -> Edge:
     return replace(edge, crossing_type=ct, kerb=kerb)
 
 
+def route_source_freshness(rows: Iterable[Mapping[str, Any]]) -> dict[str, datetime | None]:
+    """``source_id -> last_success_at`` for the route's ``data_freshness``.
+
+    A registered source that is not ``active`` and has never loaded (e.g. ``mtl-planif-neige``,
+    status ``requires_credentials``, NOT INGESTED) contributes nothing to any route, so it is left
+    out; listing it as ``null`` made every route say its oldest data was "Never". An *active*
+    source that has never loaded stays in as ``null``: routes really lack its data.
+    """
+    return {
+        r["source_id"]: r["last_success_at"]
+        for r in rows
+        if r["last_success_at"] is not None or r.get("status") in (None, "active")
+    }
+
+
 class PostgisGraphProvider:
     """Loads the pilot graph from PostGIS (schema ``wp``, data-model.md v1)."""
 
@@ -195,7 +211,7 @@ class PostgisGraphProvider:
         FROM wp.node n
         WHERE n.geom && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
     """
-    SOURCE_SQL = "SELECT source_id, last_success_at FROM wp.source"
+    SOURCE_SQL = "SELECT source_id, status, last_success_at FROM wp.source"
     #: data-model v1.2 columns; selected only if the applied migrations created them
     OPTIONAL_EDGE_COLS = ("crossing_type", "crossing_kerb", "name")  # v1.2 / v1.3, when migrated
     COLUMNS_SQL = (
@@ -265,7 +281,7 @@ class PostgisGraphProvider:
             edges.append(
                 _with_node_crossing(edge_from_properties(r["edge_id"], coords, props), nodes)
             )
-        freshness = {r["source_id"]: r["last_success_at"] for r in src_rows}
+        freshness = route_source_freshness(src_rows)
         built = max((e.updated_at for e in edges if e.updated_at), default=None)
         return GraphData(
             nodes=nodes,

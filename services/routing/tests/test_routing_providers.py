@@ -178,3 +178,24 @@ def test_postgis_graph_provider_integration() -> None:
     finally:
         with eng.begin() as c:
             delete_pilot_mini_from_postgis(c)
+
+
+def test_route_source_freshness_drops_never_loaded_inactive_sources() -> None:
+    """wp.source rows as in production 2026-11-12: Planif-Neige is registered but NOT INGESTED."""
+    from datetime import UTC, datetime
+
+    from winterpath_routing.providers import route_source_freshness
+
+    t = datetime(2026, 11, 12, 13, 30, tzinfo=UTC)
+
+    def row(sid, status, at):
+        return {"source_id": sid, "status": status, "last_success_at": at}
+
+    rows = [
+        row("osm", "active", t),
+        row("mtl-planif-neige", "requires_credentials", None),  # registered, never ingested
+        row("mtl-new", "active", None),  # active, not yet loaded: kept as an honest null
+        row("mtl-old", "retired", t),  # loaded once: kept
+        {"source_id": "legacy", "last_success_at": None},  # pre-status schema: kept
+    ]
+    assert route_source_freshness(rows) == {"osm": t, "mtl-new": None, "mtl-old": t, "legacy": None}
