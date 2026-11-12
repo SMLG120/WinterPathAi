@@ -181,3 +181,28 @@ Run `npm run gen:api` against v1.8, then build:
 ### platform
 - Contract tests for the v1.8 endpoints.
 - Freshness checks in the integrity-job proposal using `/data-status`: one request per run, no keep-alive.
+
+## Island hosting analysis (2026-11-12, measured; owner decision pending)
+| Constraint | Measured | Free tier | Verdict |
+|---|---|---|---|
+| DB: island graph + closures + 311 + one model's scores, **without** `sidewalk_polygon` (the API never reads it) | ≈ 445 MB (data 0326234, 1d89c7a) | Supabase 500 MB | Fits with ≈ 55 MB headroom. **No room for address search** (RQA 166 MB / Montréal 66 MB) unless `wp.edge` stores each segment once (−150 MB, contract change) |
+| API RAM, compact graph, **prebuilt** artifact (SYNTHETIC ≈ 1M edges; real island has 650,920) | 368–441 MiB without FastAPI/ML (routing 1518956) | Render 512 MB | Probably fits, tight. In-process build (703–773 MiB) does not fit. Re-measure on `wp_island` with the full app |
+| Route latency at 0.1 CPU (SYNTHETIC) | short p50 0.3 s; medium p50 2.0 s / p95 5.6 s; cross-island p50 47 s / p95 113 s | — | **Cross-island unusable on Free.** Search work dominates, not memory |
+
+Render compute plans (`docs/compute-plans`, read 2026-11-12):
+- free 0.1 CPU / 512 MB;
+- 0.5c-512mb ("Starter");
+- 1c-2g ("Standard");
+- 2c-4g ("Pro").
+
+**Prices could not be read:** the pricing page renders client-side, so they were not verified and none are quoted.
+
+Coordinator recommendation:
+1. Free algorithm work first (routing, after the usage reset):
+   - ALT landmarks (admissible because hazard/risk penalties only add cost);
+   - bidirectional search for the shortest variant;
+   - corridor-scoped risk lookup instead of passing all edge ids;
+   - a streaming or prebuilt compact loader.
+2. Re-measure on the real `wp_island` with the full app.
+3. Product decision on a maximum walking route length.
+4. A paid instance only if (1)–(3) cannot reach p95 < 2 s for the supported route lengths. The owner verifies the price in the Render dashboard first.
