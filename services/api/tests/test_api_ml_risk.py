@@ -98,6 +98,27 @@ def test_adapter_normalises_and_caches_per_local_day(graph) -> None:
     assert fake.calls == calls + len(ids)
 
 
+def test_adapter_rechecks_unknown_after_ttl(graph) -> None:
+    """Scores written after the first request of the day must appear without a restart."""
+    fake = FakeCoordProvider(level="unknown")
+    now = [1000.0]
+    a = CoordinateRiskAdapter(fake, _coords(graph), unknown_ttl_s=300, clock=lambda: now[0])
+    ids = list(graph.edges)[:3]
+    assert all(v.is_unknown for v in a.edge_risk(ids, AT_NOV).values())
+    calls = fake.calls
+    now[0] += 299
+    assert all(v.is_unknown for v in a.edge_risk(ids, AT_NOV).values())
+    assert fake.calls == calls  # unknown still cached within the TTL
+    fake.level = "moderate"  # the day's scores land
+    now[0] += 2
+    out = a.edge_risk(ids, AT_NOV)
+    assert {v.level.value for v in out.values()} == {"moderate"}
+    assert fake.calls == calls + len(ids)
+    now[0] += 100_000  # known estimates are kept for the rest of the day
+    a.edge_risk(ids, AT_NOV)
+    assert fake.calls == calls + len(ids)
+
+
 def test_adapter_failure_and_unknown_stay_unknown(graph) -> None:
     ids = list(graph.edges)[:3]
     for fake in (FakeCoordProvider(fail=True), FakeCoordProvider(level="unknown")):

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import time
 from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
@@ -114,11 +115,21 @@ def is_coordinate_provider(obj: Any) -> bool:
 class CoordinateRiskAdapter:
     """Adapts a coordinate-keyed ML provider to the routing ``RiskProvider`` protocol.
 
-    Results are cached per (edge id, Montréal local day): the ML layers are daily score tables,
-    so the estimate for an edge cannot change within a day for a loaded provider.
+    Results are cached per (edge id, Montréal local day). A known estimate is kept for the day:
+    the ML layers are daily score tables. An *unknown* estimate is kept only ``unknown_ttl_s``
+    seconds, because the day's scores may land after the first request (the scoring job runs
+    mid-morning; with ``RISK_SCORE_SOURCE=postgis`` they become visible without a restart).
+    Caching "unknown" for the whole day hid a day's scores until restart (2026-11-12).
     """
 
-    def __init__(self, inner: Any, edge_coords: EdgeCoords, cache_size: int = 200_000) -> None:
+    def __init__(
+        self,
+        inner: Any,
+        edge_coords: EdgeCoords,
+        cache_size: int = 200_000,
+        unknown_ttl_s: float = 300.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self.inner = inner
         self.edge_coords = edge_coords
         try:
@@ -128,8 +139,11 @@ class CoordinateRiskAdapter:
             status = {}
         self._status = dict(status)
         self.risk_layer = _layer(self._status.get("risk_layer"))
-        self._cache: OrderedDict[tuple[str, Any], RiskEstimate] = OrderedDict()
+        # (edge id, local day) -> (estimate, expiry on ``clock``; None = rest of the day)
+        self._cache: OrderedDict[tuple[str, Any], tuple[RiskEstimate, float | None]] = OrderedDict()
         self._cache_size = cache_size
+        self._unknown_ttl_s = unknown_ttl_s
+        self._clock = clock
         self._lock = Lock()
 
     def _one(self, eid: str, at: datetime) -> RiskEstimate:
@@ -150,14 +164,17 @@ class CoordinateRiskAdapter:
         for eid in edge_ids:
             key = (eid, day)
             with self._lock:
-                hit = self._cache.get(key)
-            if hit is None:
-                hit = self._one(eid, at)
-                with self._lock:
-                    self._cache[key] = hit
-                    if len(self._cache) > self._cache_size:
-                        self._cache.popitem(last=False)
-            out[eid] = hit
+                entry = self._cache.get(key)
+            if entry is not None and (entry[1] is None or self._clock() < entry[1]):
+                out[eid] = entry[0]
+                continue
+            est = self._one(eid, at)
+            expires = self._clock() + self._unknown_ttl_s if est.is_unknown else None
+            with self._lock:
+                self._cache[key] = (est, expires)
+                if len(self._cache) > self._cache_size:
+                    self._cache.popitem(last=False)
+            out[eid] = est
         return out
 
     def model_status(self) -> dict[str, Any] | None:
