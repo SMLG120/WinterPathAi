@@ -81,6 +81,10 @@ class Settings:
     #: Wave 1 prototypes, OFF by default (production behaviour unchanged):
     #: ROUTING_COMPACT_GRAPH → array-backed CompactGraph + CompactRoutingEngine (same routes);
     #: ROUTING_STEPS_V2 → merged, named steps (same Step shape, contract unchanged).
+    #: v1.8: live ECCC forecast/alerts in memory (winterpath_ml.weather_live). Off by default
+    #: (tests never call ECCC); the deploy docs turn it on.
+    weather_live_enabled: bool = False
+    weather_live_user_agent: str = "WinterPathAI-API/1.8"
     routing_compact_graph: bool = False
     routing_steps_v2: bool = False
     #: v1.7: SQLAlchemy pool, sized for Supabase's session pooler on a free-tier host. One engine
@@ -114,6 +118,9 @@ class Settings:
             weather_max_age_minutes=int(e.get("WEATHER_MAX_AGE_MINUTES") or 180),
             weather_station_ids=_csv(e.get("WEATHER_STATION_IDS")),
             public_writes=_bool(e.get("API_PUBLIC_WRITES"), True),
+            weather_live_enabled=_bool(e.get("WEATHER_LIVE_ENABLED"), False),
+            weather_live_user_agent=(e.get("WEATHER_LIVE_USER_AGENT") or "").strip()
+            or "WinterPathAI-API/1.8",
             routing_compact_graph=_bool(e.get("ROUTING_COMPACT_GRAPH"), False),
             routing_steps_v2=_bool(e.get("ROUTING_STEPS_V2"), False),
             risk_score_source=_choice(e.get("RISK_SCORE_SOURCE"), "file", ("file", "postgis")),

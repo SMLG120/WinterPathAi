@@ -29,6 +29,9 @@ from .adapters import WeatherUnavailableError
 ECCC_SOURCE_ID = "eccc-geomet"
 LST = timezone(timedelta(hours=-5))  # ECCC climate "Local Standard Time" for Montréal (no DST)
 MIN_HOURS_FOR_FREEZE_THAW = 18
+#: v1.8 freshness: an observation older than this is "delayed" (SWOB is hourly; allow one missed
+#: cycle). The scheduled ingest is best effort, so "delayed" is expected between its runs.
+OBS_CURRENT_MAX = timedelta(minutes=90)
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,7 +107,7 @@ class ObservationWeatherAdapter:
         if freeze is None:
             notes.append("freeze_thaw_24h unknown: insufficient hourly temperatures in prior 24 h.")
 
-        return {
+        out = {
             "station_id": obs.station_id,
             "observed_at": obs.observed_at,
             "temperature_c": obs.temperature_c,
@@ -121,6 +124,34 @@ class ObservationWeatherAdapter:
                 "note": " ".join(notes),
             },
         }
+        # v1.8: freshness and provenance of THIS observation (the primary source of every
+        # observation field). current ≤ OBS_CURRENT_MAX, then delayed until max_age (beyond
+        # max_age nothing is served, above).
+        now = self.clock()
+        state = "current" if age <= OBS_CURRENT_MAX else "delayed"
+        out["freshness"] = {
+            "state": state,
+            "reason": f"observed {age.total_seconds() / 60:.0f} min ago "
+            f"(current ≤ {OBS_CURRENT_MAX.total_seconds() / 60:.0f} min, "
+            f"served ≤ {self.max_age.total_seconds() / 60:.0f} min)",
+            "evaluated_at": now,
+        }
+        if obs.retrieved_at is not None:
+            out["provenance"] = {
+                "provider": ECCC_SOURCE_ID,
+                "product": f"{obs.source_collection}/{obs.station_id}",
+                "source_url": f"https://api.weather.gc.ca/collections/{obs.source_collection}",
+                "issued_at": obs.observed_at,
+                "valid_from": None,
+                "valid_to": None,
+                # ingested by the scheduled job; rows are validated before insert, so the
+                # ingest run time stands for both (the exact validation instant is not stored)
+                "fetched_at": obs.retrieved_at,
+                "validated_at": obs.retrieved_at,
+                "attribution": "Data Source: Environment and Climate Change Canada",
+                "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/",
+            }
+        return out
 
     def _freeze_thaw(self, obs: ObsRow) -> bool | None:
         rows = self.store.obs_between(
