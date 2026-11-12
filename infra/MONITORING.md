@@ -15,7 +15,7 @@
   - A table of PASS / WARN / FAIL with measured values goes to `$GITHUB_STEP_SUMMARY`.
   - **The job fails if any check FAILs.** GitHub then emails "the user who last modified the cron syntax in the workflow file" (GitHub docs), so the owner must enable Actions failure notifications.
   - No third-party service is involved.
-- **API:** at most **one** request per run, `GET /api/v1/health` with a 120 s timeout to allow for cold start. It cross-checks that the deployed API reports `database: ok` and the expected contract version. A single daily wake is negligible, and this is the job's only API contact.
+- **API:** at most **one** request per run: `GET /api/v1/data-status` (contract v1.8), with a 120 s timeout to allow for cold start. The contract says it "never triggers a refresh by itself", so the check observes freshness without changing it. One daily wake is negligible. This is the job's only API contact: no retry loop, and no `/health` call alongside it. A cold-start timeout is reported as A1 FAIL, not retried.
 
 | # | Check (read-only SQL) | WARN | FAIL |
 |---|---|---|---|
@@ -39,14 +39,19 @@
 | G1 | Geometry columns with `ST_SRID(geom) <> 4326` | — | ≥ 1 |
 | G2 | `NOT ST_IsValid(geom)` in `wp.sidewalk_polygon` | ≥ 1 | — |
 | S1 | `pg_database_size(current_database())` against Supabase Free's 500 MB | ≥ 400 MB | ≥ 475 MB |
-| A1 | One `GET /api/v1/health`: `status` and `checks.database` | degraded | no 200 within 120 s |
+| A1 | The single `GET /api/v1/data-status`: 200 and schema-valid `DataStatus` (all 7 product ids) | — | no 200 within 120 s, or schema-invalid |
+| A2 | Per product, from the same response: `freshness.state` | `delayed`, or `unavailable` for a product never loaded | `stale`; `unavailable` for `weather_observations`, `risk_scores` (in season) or `pedestrian_graph` |
+| A3 | Same response vs the SQL checks: API says `current` while F1/F3 FAIL for that product (the API's view and the DB disagree) | — | ≥ 1 |
+| A4 | Same response: `mechanism` per product matches the agreed table (`api_on_demand` forecast/alerts, `scheduled_job` observations/scores, `manual` closures/311/graph) | — | mismatch |
+
+A1–A4 share one HTTP request; A3 is the reason to keep the SQL checks even though `/data-status` exists: the API's in-band freshness is computed by the code under test, the SQL checks read the data directly. `weather_forecast` / `weather_alerts` are `api_on_demand`, so their state reflects the fetch made to answer this request (or its cache), not a scheduled job; A2 reports them but a single `unavailable` is WARN (ECCC outage), not FAIL. The same assertions run in CI against the stub in `tests/integration/test_v18.py`.
 
 All thresholds are drafts; the owners of each table (Data, ML) confirm them. For the v2 island graph, S1 is the gate: Wave 1 measurements decide whether the island fits at all.
 
 ## B. Staleness monitoring without keep-alive
 Layered, cheapest first. Every signal comes from activity that happens anyway.
 
-1. **In-band, user-facing (no extra traffic).** When it is awake, the API computes freshness from the DB on every request: route `data_freshness`, `/weather/*` returns 503 when older than `WEATHER_MAX_AGE_MINUTES`, and Wave 2 adds `/data-status`. The web shows `delayed` / `stale`. Users are never told data is current when it is not. While Render sleeps, nobody is being served stale data.
+1. **In-band, user-facing (no extra traffic).** When it is awake, the API computes freshness from the DB on every request: route `data_freshness`, `/weather/*` returns 503 when older than `WEATHER_MAX_AGE_MINUTES`, and contract v1.8 adds per-product `freshness` and `/data-status` (used by A1–A4). The web shows `delayed` / `stale`. Users are never told data is current when it is not. While Render sleeps, nobody is being served stale data.
 2. **Post-run assertion in `scheduled.yml` (no extra trigger).** After each load, one `SELECT max(observed_at)` over the ETL connection fails the job if the load "succeeded" but freshness did not advance past the F1 FAIL threshold. This catches a silently empty upstream (ECCC returning nothing new).
 3. **Daily integrity job (A).** A second, independent trigger; F1–F8 catch a dead scheduler within 24 h.
 4. **Activity-driven check (no schedule needed).** Run the F-checks on every `push` to `main` as part of CI, using the read-only secret. Secrets are not exposed to pull requests from forks. Whenever anyone works on the repo, staleness is visible in CI.

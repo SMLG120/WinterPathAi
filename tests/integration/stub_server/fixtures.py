@@ -166,6 +166,7 @@ def route_compare(origin: dict[str, float], destination: dict[str, float], reque
         ],
         "risk_layer": "none",
         "computed_at": iso(),
+        "weather_context": None,  # v1.8: stub has no forecast source
         "warnings": [STUB_LABEL, "SIMULATED straight line — not a walkable route"],
     }
 
@@ -182,3 +183,34 @@ def report_receipt(report_id: str) -> dict[str, Any]:
 def in_pilot(lon: float, lat: float) -> bool:
     w, s, e, n = PILOT_BBOX
     return w <= lon <= e and s <= lat <= n
+
+
+# v1.8 /data-status. Mechanisms per docs/agents/v2-plan.md (routing item 3). The stub has no data
+# source, so every product is `unavailable`; it never claims a last success or a cadence.
+DATA_PRODUCT_MECHANISM: dict[str, str] = {
+    "weather_observations": "scheduled_job",
+    "weather_forecast": "api_on_demand",
+    "weather_alerts": "api_on_demand",
+    "closures": "manual",
+    "reports_311": "manual",
+    "risk_scores": "scheduled_job",
+    "pedestrian_graph": "manual",
+}
+
+
+def data_status() -> dict[str, Any]:
+    t = iso()
+    return {
+        "generated_at": t,
+        "products": [
+            {
+                "id": pid,
+                "freshness": {"state": "unavailable", "reason": f"{STUB_LABEL}: no data source connected", "evaluated_at": t},
+                "last_success_at": None,
+                "expected_cadence": None,
+                "mechanism": mech,
+                "notes": STUB_LABEL,
+            }
+            for pid, mech in DATA_PRODUCT_MECHANISM.items()
+        ],
+    }

@@ -5,6 +5,68 @@
 - **Contract:** v1.5.0 (merged; `docs/contracts/` not edited on this branch)
 - **Date (UTC):** 2026-11-11
 
+## v2 Wave 2a — 2026-11-12: contract v1.8 tests, `/data-status` in the integrity proposal
+Base: merge commit 8d64022 (`integration/winterpath` 2e3d4b2 contract v1.8.0 + 47615b4 briefs; no platform-owned paths changed). Brief: `docs/agents/v2-plan.md` Wave 2a → "platform". `integration/winterpath` has since moved to 5c7b5aa (ML merge). I was not told to merge it, so I did not. No contract edits, no deploys, and no API requests to Render.
+
+### Changes
+- **Stub (`tests/integration/stub_server/`):**
+  - `getWeatherAlerts` → **503 UPSTREAM_UNAVAILABLE**, like the other weather endpoints. It is deliberately not `200 {alerts: []}`: per the contract, an empty list means "ECCC reported no alerts", and the stub has no ECCC connection.
+  - `getDataStatus` → all 7 products with `freshness.state = unavailable`, a SIMULATED reason, `last_success_at`/`expected_cadence` null, and mechanisms per the brief (routing item 3).
+  - `compareRoutes` returns `weather_context: null`.
+- **`test_openapi_valid.py`:** operation count 14 → 16 (getWeatherAlerts, getDataStatus). Before the fix, this test and `test_contract.py::test_positive[GET /weather/alerts]` (500 "Undocumented status code" from the stub) were the two failures against v1.8.
+- **New `tests/integration/test_v18.py`** (marker `smoke`, target-agnostic). It checks semantics the schema cannot express:
+  - `/data-status` lists each of the 7 product ids exactly once;
+  - each mechanism matches the agreed table;
+  - each freshness is valid with a non-empty reason;
+  - `current` requires a `last_success_at`;
+  - `/weather/alerts` is either a declared 503, or alerts are present only with provenance (and a non-`unavailable` list carries provenance);
+  - `/weather/current|forecast` freshness is valid when served;
+  - route `weather_context` is null or `used_for: display_only`.
+- **`infra/MONITORING.md`:** the integrity job's single API request is now `GET /api/v1/data-status` (was `/health`). It makes no retry and no second call, and the endpoint never triggers a refresh. New checks A1–A4 come from that one response (schema, per-product state, API-vs-SQL disagreement, mechanism table). The SQL F-checks stay, because the API's freshness is computed by the code under test.
+
+### Commands run and literal results
+```
+$ cd tests/integration && uv sync --locked --quiet && echo "sync --locked ok"
+sync --locked ok
+$ uv run pytest -q          # against the stub
+SKIPPED [7] .venv/lib/python3.12/site-packages/pluggy/_manager.py:183: Impossible to generate negative test cases
+67 passed, 7 skipped in 57.16s
+$ uv run pytest -v test_v18.py
+test_v18.py::test_data_status_lists_every_product_once PASSED            [ 16%]
+test_v18.py::test_data_status_mechanisms_and_freshness PASSED            [ 33%]
+test_v18.py::test_weather_alerts_shape_or_declared_503 PASSED            [ 50%]
+test_v18.py::test_weather_freshness_when_served[/weather/current] PASSED [ 66%]
+test_v18.py::test_weather_freshness_when_served[/weather/forecast] PASSED [ 83%]
+test_v18.py::test_route_weather_context_is_display_only PASSED           [100%]
+============================== 6 passed in 2.99s ===============================
+$ make lint-infra
+../../.github/workflows/scheduled.yml: 3 cron(s), every one guarded, no dangling guards
+compose config OK
+```
+**Negative control:** with the stub's `closures` mechanism temporarily set to `scheduled_job`, the run gave `FAILED test_v18.py::test_data_status_mechanisms_and_freshness - AssertionError: closures` and `1 failed, 5 passed in 3.58s`. After reverting: `6 passed in 2.29s`.
+
+### Not done / blocked
+- **Real API not run against v1.8.** `services/api` has no `/data-status` on this branch, and `agent/routing`'s latest commit is 5635e6b (pre-v1.8). Once Routing's v1.8 lands in integration, `API_BASE_URL=… uv run pytest -q` runs these same tests unchanged.
+- **Cron follow-up (Wave 1 item 1). The first scheduled run has fired.**
+  - The watcher (5-min polls, last at 01:30:43Z) ended with `no schedule run by 01:30Z`.
+  - A read-only check at 03:41Z returned:
+    ```
+    schedule total_count=1
+    43140456539	completed	success	2026-11-12T02:18:16Z
+    state=active updated_at=2026-11-11T14:10:57.000-05:00
+    head_sha=4af5262b6f2d7b5fe9e69ff5e3989009a591f515 run_started_at=2026-11-12T02:18:16Z updated_at=2026-11-12T02:19:37Z
+    weather ingest (ECCC -> wp.weather_obs/daily)	completed	success	2026-11-12T02:18:18Z	2026-11-12T02:19:37Z
+    daily risk scoring (-> wp.risk_cell_score)	completed	skipped	2026-11-12T02:18:17Z	2026-11-12T02:18:16Z
+    ```
+  - What this shows:
+    - The schedule trigger works. The weather guard `'17 */3 * * *'` matched, and scoring was skipped as designed.
+    - Main still carries `0 12`/`0 18` for scoring. My `7 12`/`7 18` change is unpushed.
+  - What it does not show:
+    - **Which slot this was.** 02:18 is not a `17 */3` time: it is either the 00:17 slot about 2 h late, or 03:17 almost 1 h early. The API does not say.
+    - **Whether the 03:17 slot fires.** As of 03:41Z it had not.
+  - Either way, the slots are delayed or merged rather than on time. That supports the F1 WARN at 4 h / FAIL at 6 h thresholds and the off-GitHub dead-man's switch in MONITORING.md B5.
+  - Not yet observed: a scoring run on schedule (next: 12:00 UTC on main).
+
 ## v2 Wave 1 — 2026-11-11/12: cron diagnosis, concurrency, lock scheme, monitoring proposals, benchmark harness
 Merged `integration/winterpath` eaac440 (fast-forward; no platform-owned paths changed). Brief: `docs/agents/v2-plan.md` → "platform (Agent 5)". This wave makes no Supabase writes, no deploys and no contract edits.
 
