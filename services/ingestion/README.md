@@ -16,7 +16,9 @@ uv run wp-ingest load --weather-since 2025-11-01   # same, wp.weather_obs bounde
 uv run wp-ingest load --source eccc-geomet        # one source only (repeatable; canonical source_id)
 uv run wp-ingest boundaries # limadmin + archipel (CC BY 4.0) → data/processed/boundaries (main island, units, islands)
 uv run wp-ingest osm-island # island graph (same PBF + rules as the pilot) → data/processed/osm_island (local only)
-DATABASE_URL=…/wp_island uv run wp-ingest load --source osm --osm-graph island   # local wp_island DB
+uv run wp-ingest entraves --region island            # closures on agglomeration land → data/processed/entraves_island
+uv run wp-ingest voirie --region island              # all sidewalk/îlot polygons matched to osm_island → voirie_island
+DATABASE_URL=…/wp_island uv run wp-ingest load --region island   # local wp_island DB only (osm, voirie, entraves island; 311, weather as-is)
 uv run alembic -c ../../db/alembic.ini upgrade head   # migrations (db/migrations)
 uv run pytest               # unit + PostGIS tests (PostGIS tests skip if unreachable)
 ```
@@ -172,7 +174,7 @@ same `graph.build_graph` rules. The area rule is documented in `osm/island.py`:
 - Label every node `main_island`, `other_island` or `outside_agglomeration_land` (bridge decks,
   the Laval or Longueuil end of a bridge). Nothing outside the agglomeration is labelled island.
 
-Load it into the separate local database `wp_island` with `load --source osm --osm-graph island`.
+Load it into the separate local database `wp_island` with `load --region island` (`--osm-graph` is kept as an alias).
 Never load it into `wp_data` or a hosted DB without a decision; see
 `docs/agent-reports/data.md` → "Island feasibility" for sizes. The QA summary is
 `data/qa/island_feasibility.json`.

@@ -24,7 +24,7 @@ from shapely.geometry import Point
 from ..config import PILOT_BBOX, Settings
 from ..http import download
 from ..osm.pipeline import write_geojson
-from ..runs import RunResult, run_atomic
+from ..runs import RunResult, read_manifest, run_atomic
 
 SOURCE_ID = "mtl-entraves"
 DATASET = "https://donnees.montreal.ca/dataset/info-travaux"
@@ -97,7 +97,8 @@ def _read_csv(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def build_closures(main_rows: list[dict], impact_rows: list[dict], bbox=PILOT_BBOX):
+def build_closures(main_rows: list[dict], impact_rows: list[dict], bbox=PILOT_BBOX, keep=None):
+    """keep(lon, lat) → bool overrides the bbox test (region=island: agglomeration land)."""
     impacts = defaultdict(list)
     for r in impact_rows:
         impacts[r["id_request"]].append(r)
@@ -110,7 +111,10 @@ def build_closures(main_rows: list[dict], impact_rows: list[dict], bbox=PILOT_BB
         except (TypeError, ValueError):
             unmapped["no_coordinates"] += 1
             continue
-        if not (w <= lon <= e and s <= lat <= n):
+        if keep is not None:
+            if not keep(lon, lat):
+                continue
+        elif not (w <= lon <= e and s <= lat <= n):
             continue
         imps = impacts.get(m["id"], [])
         side = [x["sidewalk_blockedtype"].strip() for x in imps]
@@ -169,7 +173,29 @@ def build_closures(main_rows: list[dict], impact_rows: list[dict], bbox=PILOT_BB
     return gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:4326"), unmapped
 
 
-def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> RunResult:
+def run(
+    settings: Settings, *, refresh: bool = False, force: bool = False, region: str = "pilot"
+) -> RunResult:
+    """region=pilot: permits in PILOT_BBOX (unchanged). region=island: permits whose point lies
+    on agglomeration land (boundaries product) → data/processed/entraves_island."""
+    if region not in ("pilot", "island"):
+        raise ValueError(f"unknown region {region!r}")
+    keep, extra = None, ""
+    if region == "island":
+        import shapely
+
+        from .boundaries import load_land
+
+        bm = read_manifest(settings.processed_dir / "boundaries")
+        if bm is None:
+            raise RuntimeError("run `wp-ingest boundaries` first")
+        land = load_land(settings)
+        shapely.prepare(land)
+
+        def keep(lon, lat):
+            return bool(shapely.contains_xy(land, lon, lat))
+
+        extra = f"|region=island|{bm['input_checksum']}"
     d = settings.raw_dir / "entraves"
     main = download(
         MAIN_URL,
@@ -183,11 +209,11 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
         user_agent=settings.user_agent,
         refresh=refresh,
     )
-    checksum = hashlib.sha256(f"{main.sha256}|{imp.sha256}".encode()).hexdigest()
+    checksum = hashlib.sha256(f"{main.sha256}|{imp.sha256}{extra}".encode()).hexdigest()
 
     def build(staging: Path, run_id: str) -> dict:
         main_rows, impact_rows = _read_csv(main.path), _read_csv(imp.path)
-        closures, unmapped = build_closures(main_rows, impact_rows)
+        closures, unmapped = build_closures(main_rows, impact_rows, keep=keep)
         closures["ingest_run_id"] = run_id
         write_geojson(closures, staging / "closures.geojson")
         distinct = {
@@ -207,6 +233,7 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
             "source_id": SOURCE_ID,
             "raw_sha256": {"main": main.sha256, "impacts": imp.sha256},
             "fetched_at": {"main": main.fetched_at, "impacts": imp.fetched_at},
+            "region": region,
             "stats": {
                 "permits_total": len(main_rows),
                 "impact_rows_total": len(impact_rows),
@@ -219,4 +246,5 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
             },
         }
 
-    return run_atomic("entraves", settings.processed_dir, checksum, build, force=force)
+    out_name = "entraves" if region == "pilot" else "entraves_island"
+    return run_atomic(out_name, settings.processed_dir, checksum, build, force=force)

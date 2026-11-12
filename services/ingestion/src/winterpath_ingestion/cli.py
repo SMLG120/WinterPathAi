@@ -50,11 +50,14 @@ def main(argv: list[str] | None = None) -> int:
         "per-source transaction, staging and checksum no-op as a full load",
     )
     ap.add_argument(
-        "--osm-graph",
+        "--region",
+        "--osm-graph",  # Wave 1 name, kept as an alias
+        dest="region",
         choices=["pilot", "island"],
         default="pilot",
-        help="load only: which processed OSM graph the `osm` source loads (default pilot; "
-        "island = data/processed/osm_island, for the local wp_island DB)",
+        help="voirie / entraves / load: pilot bbox (default) or the whole island "
+        "(island products live in data/processed/*_island; load them into the local wp_island "
+        "DB only)",
     )
     ap.add_argument(
         "--wait",
@@ -86,8 +89,8 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--recent requires `load --source mtl-311`")
     if args.wait and args.pipeline != "load":
         ap.error("--wait only applies to `load`")
-    if args.osm_graph != "pilot" and args.pipeline != "load":
-        ap.error("--osm-graph only applies to `load`")
+    if args.region != "pilot" and args.pipeline not in ("load", "voirie", "entraves"):
+        ap.error("--region only applies to `voirie`, `entraves` and `load`")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     s = get_settings()
     if args.pipeline == "load":
@@ -103,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
             which,
             force=args.force,
             weather_since=args.weather_since,
-            osm_graph=args.osm_graph,
+            region=args.region,
             wait=args.wait,
             r311_recent=args.recent,
         ):
@@ -153,7 +156,8 @@ def main(argv: list[str] | None = None) -> int:
             from .osm.island import run
         else:
             from .sources.eccc import run
-        r = run(s, refresh=args.refresh, force=args.force)
+        kw = {"region": args.region} if step in ("voirie", "entraves") else {}
+        r = run(s, refresh=args.refresh, force=args.force, **kw)
         summary = {k: r.manifest.get(k) for k in ("input_checksum", "ingest_run_id")}
         summary["stats"] = r.manifest.get("stats")
         print(

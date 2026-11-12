@@ -181,13 +181,18 @@ def _load(
 
 
 # ------------------------------------------------------------------------------ per source
-OSM_GRAPHS = {"pilot": "osm_pilot", "island": "osm_island"}  # `load --osm-graph`
+# `--region`: which processed products the region-scoped sources load (311 and weather are
+# agglomeration-wide and identical for both). Island = v2 Wave 1/2b, local wp_island only.
+REGION_DIRS = {
+    "pilot": {"osm": "osm_pilot", "voirie": "voirie", "entraves": "entraves"},
+    "island": {"osm": "osm_island", "voirie": "voirie_island", "entraves": "entraves_island"},
+}
 
 
-def _osm(settings: Settings, graph: str = "pilot"):
-    d = settings.processed_dir / OSM_GRAPHS[graph]
+def _osm(settings: Settings, region: str = "pilot"):
+    d = settings.processed_dir / REGION_DIRS[region]["osm"]
     m = read_manifest(d)
-    voirie = settings.processed_dir / "voirie"
+    voirie = settings.processed_dir / REGION_DIRS[region]["voirie"]
     vm = read_manifest(voirie)
     mapping = {}
     if m is not None and vm and vm.get("osm_input_checksum") == m["input_checksum"]:
@@ -339,8 +344,8 @@ def _crossing(c, key: str):
     return c.get(key) if isinstance(c, dict) else None
 
 
-def _voirie(settings: Settings):
-    d = settings.processed_dir / "voirie"
+def _voirie(settings: Settings, region: str = "pilot"):
+    d = settings.processed_dir / REGION_DIRS[region]["voirie"]
     m = read_manifest(d)
 
     def fn(cur, run_id):
@@ -393,8 +398,8 @@ def _voirie(settings: Settings):
     return "mtl-voirie", m, fn
 
 
-def _entraves(settings: Settings):
-    d = settings.processed_dir / "entraves"
+def _entraves(settings: Settings, region: str = "pilot"):
+    d = settings.processed_dir / REGION_DIRS[region]["entraves"]
     m = read_manifest(d)
 
     def fn(cur, run_id):
@@ -605,7 +610,7 @@ def load(
     url: str | None = None,
     force: bool = False,
     weather_since: date | None = None,
-    osm_graph: str = "pilot",
+    region: str = "pilot",
     wait: bool = False,
     r311_recent: bool = False,
 ) -> list[dict]:
@@ -628,25 +633,15 @@ def load(
                 source_id, manifest, fn = _weather(settings, weather_since)
             elif name == "311":
                 source_id, manifest, fn = _r311(settings, recent=r311_recent)
-            elif name == "osm":
-                source_id, manifest, fn = _osm(settings, osm_graph)
-                if osm_graph == "island" and manifest is not None:
-                    results.append(
-                        _load(
-                            conn,
-                            source_id,
-                            manifest,
-                            fn,
-                            force=force,
-                            lock_objid=locks.objid_for("osm", island=True),
-                            wait=wait,
-                        )
-                    )
-                    continue
+            elif name in ("osm", "voirie", "entraves"):
+                source_id, manifest, fn = LOADERS[name](settings, region)
             else:
                 source_id, manifest, fn = LOADERS[name](settings)
             if manifest is None:
                 results.append({"source_id": source_id, "skipped": "no processed output"})
                 continue
-            results.append(_load(conn, source_id, manifest, fn, force=force, wait=wait))
+            objid = locks.objid_for(source_id, island=region == "island")
+            results.append(
+                _load(conn, source_id, manifest, fn, force=force, lock_objid=objid, wait=wait)
+            )
     return results

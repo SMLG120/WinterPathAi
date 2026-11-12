@@ -108,3 +108,40 @@ def test_bbox_clip_unchanged_semantics():
     coords = [(-0.01, 0.05), (0.11, 0.05)]
     assert geofabrik.way_intersects_bbox(coords, bbox)
     assert LineString(coords).intersects(box(*bbox))
+
+
+def test_entraves_keep_predicate_overrides_pilot_bbox():
+    """region=island: closures kept by an area predicate (agglomeration land), not the bbox."""
+    from winterpath_ingestion.sources import entraves
+
+    main = [
+        {"id": "1", "longitude": "0.05", "latitude": "0.05", "currentstatus": "Permis émis"},
+        {
+            "id": "2",
+            "longitude": "0.11",
+            "latitude": "0.01",
+            "currentstatus": "Permis émis",
+        },  # water
+        {"id": "3", "longitude": "x", "latitude": "y"},
+    ]
+    base = {"duration_start_date": "", "duration_end_date": ""}
+    main = [{**base, **m} for m in main]
+    land = shapely.MultiPolygon([MAIN, OTHER])
+    shapely.prepare(land)
+    got, unmapped = entraves.build_closures(
+        main, [], keep=lambda lon, lat: bool(shapely.contains_xy(land, lon, lat))
+    )
+    assert list(got["closure_id"]) == ["entrave:1"]
+    assert unmapped["no_coordinates"] == 1
+    none_in_pilot, _ = entraves.build_closures(main, [])  # synthetic coords are outside the pilot
+    assert len(none_in_pilot) == 0
+
+
+def test_region_validation():
+    from winterpath_ingestion.config import Settings
+    from winterpath_ingestion.sources import entraves, voirie
+
+    s = Settings(data_dir=__import__("pathlib").Path("/nonexistent"), user_agent="t")
+    for mod in (entraves, voirie):
+        with pytest.raises(ValueError):
+            mod.run(s, region="laval")

@@ -138,7 +138,16 @@ def match_rates(edges: gpd.GeoDataFrame, mapping: dict[str, list[str]]) -> dict:
     }
 
 
-def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> RunResult:
+def run(
+    settings: Settings, *, refresh: bool = False, force: bool = False, region: str = "pilot"
+) -> RunResult:
+    """region=pilot: polygons in PILOT_BBOX matched to osm_pilot (unchanged). region=island: every
+    published polygon matched to osm_island with the same rule → data/processed/voirie_island."""
+    if region not in ("pilot", "island"):
+        raise ValueError(f"unknown region {region!r}")
+    graph_dir = "osm_pilot" if region == "pilot" else "osm_island"
+    out_name = "voirie" if region == "pilot" else "voirie_island"
+    read_bbox = PILOT_BBOX if region == "pilot" else None
     raws = {
         layer: download(
             url,
@@ -148,9 +157,9 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
         )
         for layer, (url, _) in RESOURCES.items()
     }
-    osm = read_manifest(settings.processed_dir / "osm_pilot")
+    osm = read_manifest(settings.processed_dir / graph_dir)
     if osm is None:
-        raise RuntimeError("run `wp-ingest osm` first")
+        raise RuntimeError(f"run `wp-ingest {'osm' if region == 'pilot' else 'osm-island'}` first")
     checksum = hashlib.sha256(
         "|".join(
             [
@@ -159,6 +168,7 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
                 osm["input_checksum"],
                 str(MATCH_TOLERANCE_M),
                 str(MIN_OVERLAP_SHARE),
+                *([] if region == "pilot" else ["region=island"]),
             ]
         ).encode()
     ).hexdigest()
@@ -168,13 +178,13 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
         counts = {}
         for layer, (_, member) in RESOURCES.items():
             path = f"/vsizip/{raws[layer].path}/{member}"
-            raw = pyogrio.read_dataframe(path, bbox=PILOT_BBOX)
+            raw = pyogrio.read_dataframe(path, bbox=read_bbox)
             counts[layer] = len(raw)
             frames.append(normalise(raw, layer))
         polys = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs="EPSG:4326")
         polys["ingest_run_id"] = run_id
         write_geojson(polys, staging / "sidewalk_polygons.geojson")
-        edges = read_geojson(settings.processed_dir / "osm_pilot" / "edges.geojson")
+        edges = read_geojson(settings.processed_dir / graph_dir / "edges.geojson")
         mapping = match_edges(edges, polys)
         (staging / "edge_sidewalk_polygons.json").write_text(
             json.dumps(mapping, sort_keys=True, indent=0)
@@ -184,6 +194,7 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
             "source_id": SOURCE_ID,
             "raw_sha256": {k: v.sha256 for k, v in raws.items()},
             "osm_input_checksum": osm["input_checksum"],
+            "region": region,
             "match_rule": {
                 "tolerance_m": MATCH_TOLERANCE_M,
                 "min_overlap_share": MIN_OVERLAP_SHARE,
@@ -196,4 +207,4 @@ def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> Ru
             },
         }
 
-    return run_atomic("voirie", settings.processed_dir, checksum, build, force=force)
+    return run_atomic(out_name, settings.processed_dir, checksum, build, force=force)
