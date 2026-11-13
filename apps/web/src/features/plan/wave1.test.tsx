@@ -7,7 +7,7 @@ import { PILOT_BBOX } from '@/lib/env';
 import { OPT_IN_KEY, RECENT_KEY, RECENT_MAX, RECENT_TTL_MS, useRecentDestinations } from '@/stores/recentDestinations';
 import { clampPadding, fitTarget } from './mapFit';
 import { nextSnap, PEEK_PX, settleSnap, snapHeight } from './sheet';
-import { oldestFreshness } from './routeInfo';
+import { anyConditionStale, oldestFreshness } from './routeInfo';
 import { RouteCards } from './RouteCards';
 
 const routes = () => {
@@ -104,6 +104,13 @@ describe('compact route cards', () => {
     const r = routes()[0]!;
     expect(oldestFreshness({ ...r, data_freshness: { a: '2026-11-10T00:00:00Z', b: '2026-11-01T00:00:00Z' } })).toBe('2026-11-01T00:00:00Z');
     expect(oldestFreshness({ ...r, data_freshness: { a: '2026-11-10T00:00:00Z', b: null } })).toBeNull();
+    // static map data is not a condition source; each condition source has its own limit
+    const now = Date.parse('2026-11-13T17:00:00Z');
+    const live = { osm: '2026-11-01T00:00:00Z', 'mtl-voirie': null, 'mtl-311': '2026-11-12T13:00:00Z', 'eccc-geomet': '2026-11-13T16:00:00Z' };
+    expect(oldestFreshness({ ...r, data_freshness: live })).toBe('2026-11-12T13:00:00Z');
+    expect(anyConditionStale({ ...r, data_freshness: live }, now)).toBe(false);
+    expect(anyConditionStale({ ...r, data_freshness: { ...live, 'eccc-geomet': '2026-11-13T10:00:00Z' } }, now)).toBe(true);
+    expect(anyConditionStale({ ...r, data_freshness: { ...live, 'mtl-311': '2026-11-05T00:00:00Z' } }, now)).toBe(true);
   });
   it('time, distance, unknown share as text + icon; selecting a card reports its variant', async () => {
     const onSelect = vi.fn();
@@ -111,7 +118,7 @@ describe('compact route cards', () => {
     const sel = screen.getByTestId('route-card-winter_aware');
     expect(sel).toHaveAttribute('aria-pressed', 'true');
     expect(within(sel).getByTestId('card-unknown')).toHaveTextContent(/No condition data for .* of the route/);
-    expect(within(sel).getByText('Oldest data', { exact: false })).toBeInTheDocument();
+    expect(within(sel).getByText('Oldest condition data', { exact: false })).toBeInTheDocument();
     await userEvent.click(screen.getByTestId('route-card-shortest'));
     expect(onSelect).toHaveBeenCalledWith('shortest');
   });

@@ -6,7 +6,7 @@ import { formatDistance, formatDuration, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { RouteVariant } from '@/stores/planner-types';
 import { ROUTE_STYLE } from './mapStyle';
-import { oldestFreshness } from './routeInfo';
+import { anyConditionStale, oldestFreshness } from './routeInfo';
 
 /**
  * Compact, tappable summaries (bottom sheet / panel top). Only fields the API returns: time,
@@ -69,7 +69,7 @@ export function RouteCards({ routes, selected, onSelect }: { routes: Route[]; se
                     {t('results.hazardsAvoided', { count: avoided })}
                   </span>
                 )}
-                <Freshness at={oldestFreshness(r)} label={t('cards.oldest')} />
+                <Freshness at={oldestFreshness(r)} stale={anyConditionStale(r)} label={t('cards.oldest')} />
               </span>
             </button>
           </li>

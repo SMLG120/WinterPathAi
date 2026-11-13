@@ -204,7 +204,7 @@
     "label": "Route summaries",
     "unknown": "No condition data for {{pct}} of the route",
     "known": "Condition data along the whole route",
-    "oldest": "Oldest data"
+    "oldest": "Oldest condition data"
   },
   "recent": {
     "optIn": "Remember recent destinations on this device",

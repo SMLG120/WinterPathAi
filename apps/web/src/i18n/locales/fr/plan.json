@@ -207,7 +207,7 @@
     "label": "Résumés des itinéraires",
     "unknown": "Aucune donnée d'état pour {{pct}} de l'itinéraire",
     "known": "Données d'état sur tout l'itinéraire",
-    "oldest": "Donnée la plus ancienne"
+    "oldest": "Donnée d'état la plus ancienne"
   },
   "recent": {
     "optIn": "Mémoriser les destinations récentes sur cet appareil",

@@ -3,10 +3,11 @@ import { formatDateTime, isStale } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 /** Last-refresh timestamp, with an amber "Stale" badge past the threshold. */
-export function Freshness({ at, className, label }: { at: string | null | undefined; className?: string; label?: string }) {
+/** `stale` overrides the default 6-hour rule when the caller knows the source's own limit. */
+export function Freshness({ at, className, label, stale: staleProp }: { at: string | null | undefined; className?: string; label?: string; stale?: boolean }) {
   const { t, i18n } = useTranslation('common');
   const formatted = formatDateTime(at, i18n.language);
-  const stale = isStale(at);
+  const stale = staleProp ?? isStale(at);
   return (
     <span className={cn('inline-flex flex-wrap items-center gap-2 text-xs text-muted-foreground', className)}>
       <span>
