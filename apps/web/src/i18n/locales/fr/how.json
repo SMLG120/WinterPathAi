@@ -81,7 +81,7 @@
   },
   "coverage": {
     "title": "Couverture",
-    "pilot": "Zone pilote",
+    "pilot": "Zone couverte",
     "bbox": "Rectangle englobant (O, S, E, N)",
     "graph": "Réseau piétonnier",
     "nodes": "Nœuds",
@@ -90,7 +90,7 @@
     "snapshot": "Instantané OpenStreetMap",
     "gaps": "Lacunes connues",
     "noGaps": "Aucune lacune signalée.",
-    "schematic": "Schéma de la zone pilote (sans les rues, pas à l'échelle)."
+    "schematic": "Schéma de la zone couverte (sans les rues, pas à l'échelle)."
   },
   "privacy": {
     "title": "Vie privée (Loi 25 du Québec)",
@@ -110,7 +110,7 @@
       "Les requêtes 311 sont des signalements, pas des obstacles confirmés. Bien des conditions ne sont jamais signalées.",
       "Les plans de chargement de la neige ne certifient pas qu'un trottoir a été déneigé.",
       "Des travaux routiers ne signifient pas que le trottoir est fermé, sauf si les données du permis l'indiquent.",
-      "La couverture se limite à la zone pilote ; les lacunes du réseau sont signalées, pas devinées."
+      "La couverture se limite à l'île de Montréal ; les lacunes du réseau et les données hivernales manquantes sont signalées, pas devinées."
     ]
   }
 }

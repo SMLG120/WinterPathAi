@@ -81,7 +81,7 @@
   },
   "coverage": {
     "title": "Coverage",
-    "pilot": "Pilot area",
+    "pilot": "Coverage area",
     "bbox": "Bounding box (W, S, E, N)",
     "graph": "Pedestrian network",
     "nodes": "Nodes",
@@ -90,7 +90,7 @@
     "snapshot": "OpenStreetMap snapshot",
     "gaps": "Known gaps",
     "noGaps": "No gaps reported.",
-    "schematic": "Schematic of the pilot area (not to scale with streets)."
+    "schematic": "Schematic of the coverage area (not to scale with streets)."
   },
   "privacy": {
     "title": "Privacy (Québec Law 25)",
@@ -110,7 +110,7 @@
       "311 requests are reports, not confirmed obstacles. Many conditions are never reported.",
       "Snow-loading plans do not certify that a sidewalk has been cleared.",
       "Roadwork does not mean the sidewalk is closed unless the permit data says so.",
-      "Coverage is limited to the pilot area; network gaps are reported, not guessed."
+      "Coverage is limited to the Island of Montréal; network gaps and missing winter data are reported, not guessed."
     ]
   }
 }

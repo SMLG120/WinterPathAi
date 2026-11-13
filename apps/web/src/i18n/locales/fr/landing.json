@@ -1,6 +1,6 @@
 {
   "hero": {
-    "eyebrow": "Projet pilote à Montréal · McGill / centre-ville",
+    "eyebrow": "Projet pilote à Montréal · île de Montréal",
     "title": "Marchez plus malin dans l'hiver montréalais.",
     "subtitle": "Comparez le trajet le plus court avec une option adaptée à l'hiver. Voyez les fermetures confirmées, les signalements non vérifiés et les lacunes de nos données — chacun clairement identifié.",
     "cta": "Planifier une marche",
@@ -58,7 +58,7 @@
     "points": [
       "Votre position n'est utilisée que si vous l'autorisez, et seulement pour le trajet demandé. Nous ne vous suivons pas et ne conservons pas d'historique de trajets.",
       "Les requêtes 311 sont des signalements, pas des obstacles confirmés. Les plans de chargement de la neige ne nous disent pas si un trottoir est déneigé.",
-      "La couverture se limite à la zone pilote McGill / centre-ville. À l'extérieur, nous n'affichons rien plutôt que de deviner."
+      "La couverture correspond à l'île de Montréal. Les données sur les conditions hivernales n'atteignent pas encore toutes les rues ; là où elles manquent, le trajet l'indique au lieu de deviner."
     ]
   },
   "partners": {
@@ -93,7 +93,7 @@
       },
       {
         "q": "Où le service fonctionne-t-il ?",
-        "a": "Pour l'instant, seulement dans la zone pilote McGill / centre-ville de Montréal. Les demandes à l'extérieur reçoivent un message clair « hors de la zone pilote »."
+        "a": "Pour l'instant, sur l'île de Montréal. Les demandes à l'extérieur reçoivent un message clair « hors de la zone couverte », et les données sur les conditions hivernales manquent encore dans certains secteurs de l'île."
       },
       {
         "q": "Prédisez-vous la glace ?",
@@ -111,7 +111,7 @@
   },
   "ctaBand": {
     "title": "Prêt à essayer ?",
-    "body": "Planifiez une marche dans la zone pilote et comparez les deux trajets.",
+    "body": "Planifiez une marche sur l'île de Montréal et comparez les deux trajets.",
     "cta": "Planifiez votre marche hivernale"
   },
   "weather": {

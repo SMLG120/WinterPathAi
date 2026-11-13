@@ -1,6 +1,6 @@
 {
   "hero": {
-    "eyebrow": "Montréal pilot · McGill / Downtown",
+    "eyebrow": "Montréal pilot · Island of Montréal",
     "title": "Walk smarter through Montreal's winter.",
     "subtitle": "Compare the shortest walk with a winter-aware alternative. See confirmed closures, unverified reports and the gaps in our data — each one clearly labelled.",
     "cta": "Plan a walk",
@@ -58,7 +58,7 @@
     "points": [
       "Your location is used only if you allow it, and only for the route you ask for. We don't track you or store your route history.",
       "311 requests are reports, not confirmed obstacles. Snow-loading plans don't tell us whether a sidewalk is cleared.",
-      "Coverage is limited to the McGill / Downtown pilot area. Outside it, we show nothing rather than guess."
+      "Coverage is the Island of Montréal. Winter-condition data does not reach every street yet; where it is missing, the route says so instead of guessing."
     ]
   },
   "partners": {
@@ -93,7 +93,7 @@
       },
       {
         "q": "Where does it work?",
-        "a": "Only in the McGill / Downtown Montréal pilot area for now. Requests outside it return a clear \"outside pilot area\" message."
+        "a": "On the Island of Montréal for now. Requests outside it return a clear \"outside coverage area\" message, and winter-condition data is still missing in parts of the island."
       },
       {
         "q": "Do you predict ice?",
@@ -111,7 +111,7 @@
   },
   "ctaBand": {
     "title": "Ready to try it?",
-    "body": "Plan a walk in the pilot area and compare both routes.",
+    "body": "Plan a walk on the Island of Montréal and compare both routes.",
     "cta": "Plan your winter walk"
   },
   "weather": {
