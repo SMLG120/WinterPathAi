@@ -1,4 +1,5 @@
-import { MAX_BBOX_AREA_DEG2, PILOT_BBOX } from './env';
+import { getCoverage } from './coverage';
+import { MAX_BBOX_AREA_DEG2 } from './env';
 import type { LonLat } from '@/api/types';
 
 export type Bbox = [minLon: number, minLat: number, maxLon: number, maxLat: number];
@@ -7,14 +8,11 @@ export function bboxArea([w, s, e, n]: Bbox): number {
   return Math.max(0, e - w) * Math.max(0, n - s);
 }
 
-/** Clip a viewport bbox to the pilot area; returns null when they don't intersect. */
+/** Clip a viewport bbox to the coverage area; returns null when they don't intersect.
+ *  (Named for the v1 pilot; the area is whatever GET /coverage declares.) */
 export function clipToPilot([w, s, e, n]: Bbox): Bbox | null {
-  const c: Bbox = [
-    Math.max(w, PILOT_BBOX.west),
-    Math.max(s, PILOT_BBOX.south),
-    Math.min(e, PILOT_BBOX.east),
-    Math.min(n, PILOT_BBOX.north),
-  ];
+  const box = getCoverage().box;
+  const c: Bbox = [Math.max(w, box.west), Math.max(s, box.south), Math.min(e, box.east), Math.min(n, box.north)];
   return c[0] < c[2] && c[1] < c[3] ? c : null;
 }
 
@@ -29,7 +27,8 @@ export function formatBbox(b: Bbox): string {
 }
 
 export function isInPilot(p: LonLat): boolean {
-  return p.lon >= PILOT_BBOX.west && p.lon <= PILOT_BBOX.east && p.lat >= PILOT_BBOX.south && p.lat <= PILOT_BBOX.north;
+  const box = getCoverage().box;
+  return p.lon >= box.west && p.lon <= box.east && p.lat >= box.south && p.lat <= box.north;
 }
 
 export function isValidLonLat(p: { lon: number; lat: number }): boolean {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AttributionControl,
@@ -14,7 +14,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import type { Geometry, LineString } from 'geojson';
 import type { HazardFeature, LonLat, Route, SegmentFeature } from '@/api/types';
-import { MAP_STYLE_URL, PILOT_BBOX } from '@/lib/env';
+import { getCoverage, outsideMask, subscribeCoverage } from '@/lib/coverage';
+import { MAP_STYLE_URL } from '@/lib/env';
 import type { Bbox } from '@/lib/geo';
 import type { PointKey } from '@/stores/planner';
 import type { RouteVariant } from '@/stores/planner-types';
@@ -45,33 +46,6 @@ const DEFAULT_PADDING: Padding = { top: 60, right: 60, bottom: 60, left: 60 };
 setWorkerUrl(maplibreWorkerUrl);
 
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
-const { west: W, south: S, east: E, north: N } = PILOT_BBOX;
-
-/** World polygon with the pilot bbox punched out → hatched "outside coverage" mask. */
-const OUTSIDE_MASK = {
-  type: 'Feature' as const,
-  properties: {},
-  geometry: {
-    type: 'Polygon' as const,
-    coordinates: [
-      [
-        [-180, -85],
-        [180, -85],
-        [180, 85],
-        [-180, 85],
-        [-180, -85],
-      ],
-      [
-        [W, S],
-        [W, N],
-        [E, N],
-        [E, S],
-        [W, S],
-      ],
-    ],
-  },
-};
-
 function hatchImage(size = 12) {
   const data = new Uint8Array(size * size * 4);
   for (let y = 0; y < size; y++) {
@@ -115,7 +89,7 @@ export default function PlannerMap(props: PlannerMapProps) {
       map = new MlMap({
         container: container.current,
         style: MAP_STYLE_URL,
-        bounds: [W, S, E, N] as LngLatBoundsLike,
+        bounds: ((b) => [b.west, b.south, b.east, b.north])(getCoverage().box) as LngLatBoundsLike,
         fitBoundsOptions: { padding: 20 },
         maxZoom: 19,
         attributionControl: false,
@@ -154,7 +128,7 @@ export default function PlannerMap(props: PlannerMapProps) {
 
     map.on('load', () => {
       map.addImage('hatch', hatchImage());
-      map.addSource('outside', { type: 'geojson', data: OUTSIDE_MASK });
+      map.addSource('outside', { type: 'geojson', data: outsideMask() });
       map.addLayer({ id: 'outside-fill', type: 'fill', source: 'outside', paint: { 'fill-pattern': 'hatch' } });
       map.addLayer({ id: 'outside-line', type: 'line', source: 'outside', paint: { 'line-color': '#101B2C', 'line-width': 1.5 } });
 
@@ -319,6 +293,15 @@ export default function PlannerMap(props: PlannerMapProps) {
     }
   }, [ready, props.routes, props.selected]);
 
+  // Coverage arrives from GET /coverage after the map exists: redraw the mask, and re-fit (below)
+  // when no route is shown, so the first view is the whole served area.
+  const coverage = useSyncExternalStore(subscribeCoverage, getCoverage, getCoverage);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    (map.getSource('outside') as GeoJSONSource | undefined)?.setData(outsideMask(coverage));
+  }, [ready, coverage]);
+
   // Fit to the selected route: on a new comparison, a new selection, or an explicit request.
   const fitCount = useRef(0);
   const pendingFit = useRef<(() => void) | null>(null);
@@ -359,7 +342,7 @@ export default function PlannerMap(props: PlannerMapProps) {
     };
     pendingFit.current = done;
     map.once('moveend', done);
-  }, [ready, props.routes, props.selected, props.fitRequest]);
+  }, [ready, props.routes, props.selected, props.fitRequest, coverage]);
 
   // Keep the canvas in step with its box (sheet drag, panel collapse); MapLibre only tracks window resizes reliably.
   useEffect(() => {

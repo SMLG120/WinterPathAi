@@ -4,7 +4,7 @@
   "retryAfter": "Réessayez dans {{seconds}} secondes.",
   "codes": {
     "VALIDATION_ERROR": "Certains renseignements envoyés ne sont pas valides.",
-    "OUTSIDE_COVERAGE": "Cet emplacement est hors de la zone pilote.",
+    "OUTSIDE_COVERAGE": "Cet emplacement est hors de la zone couverte.",
     "OFF_NETWORK": "Ce point est trop loin du réseau piétonnier cartographié.",
     "BBOX_TOO_LARGE": "La zone de la carte est trop grande. Zoomez.",
     "NO_ROUTE": "Aucun trajet trouvé avec ces paramètres.",

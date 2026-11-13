@@ -18,6 +18,7 @@ The output also carries, for the API:
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import importlib
 import inspect
 import json
@@ -130,6 +131,12 @@ def main(argv: list[str] | None = None) -> int:
         info["risk_cells"] = {"params": _jsonable(params), "sampler": args.risk_sampler}
         print(f"risk-cell index: {len(index.cells)} cells, {len(index.idx)} refs", file=sys.stderr)
 
+    # A source that never loaded is not an input of this graph (same rule as
+    # providers.route_source_freshness); a null would be shown to users as "updated: never".
+    g.metadata = dataclasses.replace(
+        g.metadata,
+        source_freshness={k: v for k, v in g.metadata.source_freshness.items() if v is not None},
+    )
     compact_io.save(g, args.out, extras=extras, info=info)
     out = {
         "path": args.out,

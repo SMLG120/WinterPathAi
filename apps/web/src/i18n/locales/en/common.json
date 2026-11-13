@@ -51,7 +51,7 @@
     "stale": "Stale",
     "staleDesc": "Last refreshed more than 6 hours ago.",
     "offline": "You appear to be offline. Data shown may be out of date.",
-    "outsidePilot": "Outside pilot area",
+    "outsidePilot": "Outside coverage area",
     "updated": "Updated {{time}}",
     "never": "Never",
     "notAvailable": "Not available"

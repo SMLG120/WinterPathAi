@@ -1,6 +1,6 @@
 {
   "title": "Report a winter issue",
-  "intro": "Tell us about snow, ice or an obstruction in the pilot area. Reports are reviewed by a moderator before anyone sees them, and they expire automatically.",
+  "intro": "Tell us about snow, ice or an obstruction in the coverage area. Reports are reviewed by a moderator before anyone sees them, and they expire automatically.",
   "form": {
     "category": "What did you see?",
     "categories": {
@@ -28,7 +28,7 @@
   "validation": {
     "category": "Choose a category.",
     "coords": "Enter a valid latitude and longitude.",
-    "outside": "This location is outside the pilot area.",
+    "outside": "This location is outside the coverage area.",
     "consent": "You need to consent to sending the location.",
     "tooLong": "Keep the description to 280 characters or fewer."
   },

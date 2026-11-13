@@ -42,9 +42,9 @@ describe('RouteError', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('No route found');
     expect(screen.getByRole('alert')).toHaveTextContent(/step-free/);
   });
-  it('OUTSIDE_COVERAGE points to the pilot area', () => {
+  it('OUTSIDE_COVERAGE points to the coverage area', () => {
     render(<RouteError error={new ApiRequestError(422, { code: 'OUTSIDE_COVERAGE', message: 'x' }, null)} />);
-    expect(screen.getByRole('alert')).toHaveTextContent('Outside the pilot area');
+    expect(screen.getByRole('alert')).toHaveTextContent('Outside the coverage area');
   });
   it('OFF_NETWORK names the point and the snap distance', () => {
     render(
@@ -54,14 +54,14 @@ describe('RouteError', () => {
     );
     const a = screen.getByRole('alert');
     expect(a).toHaveTextContent('Too far from the walking network');
-    expect(a).toHaveTextContent('Your destination is inside the pilot area but more than 75 m');
+    expect(a).toHaveTextContent('Your destination is inside the coverage area but more than 75 m');
     expect(a).toHaveTextContent('about 412 m away');
   });
   it('legacy snap error (OUTSIDE_COVERAGE + snap details) gets the same network copy', () => {
     render(
       <RouteError error={new ApiRequestError(422, { code: 'OUTSIDE_COVERAGE', message: 'x', details: { which: 'origin', max_snap_distance_m: 75 } }, null)} />,
     );
-    expect(screen.getByRole('alert')).toHaveTextContent('Your start is inside the pilot area');
+    expect(screen.getByRole('alert')).toHaveTextContent('Your start is inside the coverage area');
   });
   it('RATE_LIMITED shows Retry-After', () => {
     render(<RouteError error={new ApiRequestError(429, { code: 'RATE_LIMITED', message: 'x' }, '30')} />);

@@ -1,6 +1,6 @@
 {
   "title": "Signaler un problème hivernal",
-  "intro": "Signalez-nous de la neige, de la glace ou un obstacle dans la zone pilote. Les signalements sont examinés par une personne modératrice avant d'être visibles, et ils expirent automatiquement.",
+  "intro": "Signalez-nous de la neige, de la glace ou un obstacle dans la zone couverte. Les signalements sont examinés par une personne modératrice avant d'être visibles, et ils expirent automatiquement.",
   "form": {
     "category": "Qu'avez-vous constaté ?",
     "categories": {
@@ -28,7 +28,7 @@
   "validation": {
     "category": "Choisissez une catégorie.",
     "coords": "Entrez une latitude et une longitude valides.",
-    "outside": "Cet emplacement est hors de la zone pilote.",
+    "outside": "Cet emplacement est hors de la zone couverte.",
     "consent": "Vous devez consentir à l'envoi de l'emplacement.",
     "tooLong": "La description doit compter 280 caractères ou moins."
   },

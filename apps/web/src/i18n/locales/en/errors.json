@@ -4,7 +4,7 @@
   "retryAfter": "Try again in {{seconds}} seconds.",
   "codes": {
     "VALIDATION_ERROR": "Some of the information sent was invalid.",
-    "OUTSIDE_COVERAGE": "This location is outside the pilot area.",
+    "OUTSIDE_COVERAGE": "This location is outside the coverage area.",
     "OFF_NETWORK": "This point is too far from the mapped walking network.",
     "BBOX_TOO_LARGE": "The map area is too large. Zoom in.",
     "NO_ROUTE": "No route was found with these settings.",

@@ -51,7 +51,7 @@
     "stale": "Périmé",
     "staleDesc": "Dernière mise à jour il y a plus de 6 heures.",
     "offline": "Vous semblez hors ligne. Les données affichées pourraient ne pas être à jour.",
-    "outsidePilot": "Hors de la zone pilote",
+    "outsidePilot": "Hors de la zone couverte",
     "updated": "Mis à jour {{time}}",
     "never": "Jamais",
     "notAvailable": "Non disponible"

@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownUp, Eraser, Layers, LocateFixed, PanelLeftClose, PanelLeftOpen, Route as RouteIcon, Search } from 'lucide-react';
-import { useCompareRoutes, useHazards, useSegments } from '@/api/queries';
+import { useCompareRoutes, useCoverage, useHazards, useSegments } from '@/api/queries';
+import { setCoverage } from '@/lib/coverage';
 import { useBackendStore } from '@/stores/backend';
 import type { HazardFeature, Route, RouteCompareRequest, SegmentFeature } from '@/api/types';
 import { DemoBadge } from '@/components/evidence/DemoBadge';
@@ -45,6 +46,12 @@ export default function Plan() {
   const lang = useLang();
   useDocumentTitle(t('title'));
   const s = usePlannerStore();
+  // The served area comes from the API (pilot bbox or the whole island); the map, the mask and
+  // the "outside coverage" hints follow it. Until it answers, the build-time default applies.
+  const coverageQuery = useCoverage();
+  useEffect(() => {
+    if (coverageQuery.data) setCoverage(coverageQuery.data.bbox, coverageQuery.data.area);
+  }, [coverageQuery.data]);
   const compare = useCompareRoutes();
   const waking = useBackendStore((st) => st.waking > 0);
   const [lastReq, setLastReq] = useState<RouteCompareRequest | null>(null);

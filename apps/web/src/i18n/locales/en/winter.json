@@ -1,6 +1,6 @@
 {
   "title": "Winter conditions",
-  "intro": "Weather and alerts from Environment and Climate Change Canada for the pilot area, and the status of our risk layer.",
+  "intro": "Weather and alerts from Environment and Climate Change Canada for Montréal, and the status of our risk layer.",
   "current": {
     "title": "Current observation",
     "temperature": "Temperature",

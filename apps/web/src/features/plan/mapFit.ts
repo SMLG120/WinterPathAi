@@ -1,8 +1,6 @@
 import type { Route } from '@/api/types';
-import { PILOT_BBOX } from '@/lib/env';
+import { getCoverage } from '@/lib/coverage';
 import type { RouteVariant } from '@/stores/planner-types';
-
-const { west: W, south: S, east: E, north: N } = PILOT_BBOX;
 
 export type Padding = { top: number; right: number; bottom: number; left: number };
 const MIN_VISIBLE = 80;
@@ -23,10 +21,13 @@ export function clampPadding(p: Padding, width: number, height: number): Padding
   return { top, right, bottom, left };
 }
 
-/** Bounds of the route to show (selected, else first), or the pilot area when there is none. */
+/** Bounds of the route to show (selected, else first), or the coverage area when there is none. */
 export function fitTarget(routes: Route[], selected: RouteVariant): [[number, number], [number, number]] {
   const r = routes.find((x) => x.variant === selected) ?? routes[0];
-  if (!r || r.geometry.coordinates.length === 0) return [[W, S], [E, N]];
+  if (!r || r.geometry.coordinates.length === 0) {
+    const { west: W, south: S, east: E, north: N } = getCoverage().box;
+    return [[W, S], [E, N]];
+  }
   const c = r.geometry.coordinates as [number, number][];
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
   for (const [x, y] of c) {

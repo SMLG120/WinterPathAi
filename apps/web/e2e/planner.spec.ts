@@ -52,12 +52,12 @@ test('outside coverage shows helpful 422 copy', async ({ page }) => {
   await page.goto('/en/plan');
   await openSheetIfMobile(page);
   await setPoint(page, 'origin', OUTSIDE);
-  await expect(page.getByTestId('point-origin')).toContainText('outside the pilot area');
+  await expect(page.getByTestId('point-origin')).toContainText('outside the coverage area');
   await setPoint(page, 'destination', IN_B);
   await page.getByTestId('compare').click();
   const err = page.getByTestId('route-error');
   await expect(err).toHaveAttribute('data-code', 'OUTSIDE_COVERAGE');
-  await expect(err).toContainText('Outside the pilot area');
+  await expect(err).toContainText('Outside the coverage area');
 });
 
 test('point off the mapped network → 422 OFF_NETWORK copy names the point', async ({ page }) => {
@@ -69,7 +69,7 @@ test('point off the mapped network → 422 OFF_NETWORK copy names the point', as
   const err = page.getByTestId('route-error');
   await expect(err).toHaveAttribute('data-code', 'OFF_NETWORK');
   await expect(err).toContainText('Trop loin du réseau piétonnier');
-  await expect(err).toContainText('Votre arrivée est dans la zone pilote');
+  await expect(err).toContainText('Votre arrivée est dans la zone couverte');
 });
 
 test('step-free profile in demo → 404 NO_ROUTE copy', async ({ page }) => {

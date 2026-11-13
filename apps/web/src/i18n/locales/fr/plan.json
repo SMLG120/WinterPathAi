@@ -1,6 +1,6 @@
 {
   "title": "Planifier une marche hivernale",
-  "intro": "Choisissez un départ et une arrivée dans la zone pilote, puis comparez les trajets.",
+  "intro": "Choisissez un départ et une arrivée dans la zone couverte, puis comparez les trajets.",
   "points": {
     "origin": "Départ",
     "destination": "Arrivée",
@@ -16,7 +16,7 @@
     "lon": "Longitude",
     "apply": "Définir : {{point}}",
     "invalid": "Entrez une latitude entre −90 et 90 et une longitude entre −180 et 180.",
-    "outsideHint": "Ce point est hors de la zone pilote ; le calcul d'itinéraire sera refusé."
+    "outsideHint": "Ce point est hors de la zone couverte ; le calcul d'itinéraire sera refusé."
   },
   "search": {
     "label": "Rechercher une adresse",
@@ -87,8 +87,8 @@
       "body": "Il n'existe aucun chemin piétonnier permis avec ces paramètres. Avec le profil sans marche, tout chemin non vérifié comme tel est exclu. Essayez le profil standard ou d'autres points."
     },
     "OUTSIDE_COVERAGE": {
-      "title": "Hors de la zone pilote",
-      "body": "Les deux points doivent se trouver dans la zone pilote McGill / centre-ville (hachurée à l'extérieur). Déplacez votre départ ou votre arrivée à l'intérieur."
+      "title": "Hors de la zone couverte",
+      "body": "Les deux points doivent se trouver dans la zone couverte (hachurée à l'extérieur). Déplacez votre départ ou votre arrivée à l'intérieur."
     },
     "RATE_LIMITED": {
       "title": "Trop de demandes",
@@ -100,7 +100,7 @@
     },
     "OFF_NETWORK": {
       "title": "Trop loin du réseau piétonnier",
-      "body": "Votre {{point}} est dans la zone pilote, mais à plus de {{max}} m de tout chemin piétonnier cartographié ; il ne peut donc pas être relié à un trajet. Rapprochez-le d'un trottoir ou d'un sentier.",
+      "body": "Votre {{point}} est dans la zone couverte, mais à plus de {{max}} m de tout chemin piétonnier cartographié ; il ne peut donc pas être relié à un trajet. Rapprochez-le d'un trottoir ou d'un sentier.",
       "nearest": "Chemin cartographié le plus proche : environ {{nearest}} m."
     },
     "WAKE_TIMEOUT": {
@@ -127,7 +127,7 @@
     "segments": "État des trottoirs",
     "hazards": "Fermetures et signalements",
     "zoomIn": "Zoomez pour charger les couches.",
-    "outsidePilot": "Cette vue est hors de la zone pilote.",
+    "outsidePilot": "Cette vue est hors de la zone couverte.",
     "loading": "Chargement des couches…",
     "error": "Impossible de charger les couches.",
     "inView": "Problèmes dans la vue",
@@ -160,7 +160,7 @@
     "riskTitle": "Estimation de l'état des trottoirs",
     "hazardTitle": "Fermetures et signalements",
     "routeTitle": "Trajets",
-    "outside": "Hors de la zone pilote (hachuré)"
+    "outside": "Hors de la zone couverte (hachuré)"
   },
   "hazard": {
     "kind": {
@@ -184,7 +184,7 @@
     "loadError": "Le fond de carte n'a pas pu se charger. Vous pouvez quand même entrer des coordonnées et lire le trajet sous forme de liste.",
     "hint": "La carte est facultative : toutes les actions sont aussi offertes dans le panneau.",
     "recenterRoute": "Recentrer sur l'itinéraire",
-    "recenterArea": "Recentrer sur la zone pilote"
+    "recenterArea": "Afficher toute la zone couverte"
   },
   "sheet": {
     "toggle": "Panneau du planificateur : {{state}}. Touchez pour redimensionner, ou utilisez les flèches.",

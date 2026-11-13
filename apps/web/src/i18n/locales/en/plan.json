@@ -1,6 +1,6 @@
 {
   "title": "Plan a winter walk",
-  "intro": "Set a start and destination inside the pilot area, then compare routes.",
+  "intro": "Set a start and destination inside the coverage area, then compare routes.",
   "points": {
     "origin": "Start",
     "destination": "Destination",
@@ -16,7 +16,7 @@
     "lon": "Longitude",
     "apply": "Set {{point}}",
     "invalid": "Enter a latitude between −90 and 90 and a longitude between −180 and 180.",
-    "outsideHint": "This point is outside the pilot area; routing will be refused."
+    "outsideHint": "This point is outside the coverage area; routing will be refused."
   },
   "search": {
     "label": "Search an address",
@@ -85,8 +85,8 @@
       "body": "There's no legal pedestrian path with these settings. With the step-free profile, any path not verified as step-free is excluded. Try the standard profile or different points."
     },
     "OUTSIDE_COVERAGE": {
-      "title": "Outside the pilot area",
-      "body": "Both points must be inside the McGill / Downtown pilot area (hatched outside). Move your start or destination inside it."
+      "title": "Outside the coverage area",
+      "body": "Both points must be inside the coverage area (hatched outside). Move your start or destination inside it."
     },
     "RATE_LIMITED": {
       "title": "Too many requests",
@@ -98,7 +98,7 @@
     },
     "OFF_NETWORK": {
       "title": "Too far from the walking network",
-      "body": "Your {{point}} is inside the pilot area but more than {{max}} m from any mapped walkway, so it can't be connected to a route. Move it closer to a sidewalk or path.",
+      "body": "Your {{point}} is inside the coverage area but more than {{max}} m from any mapped walkway, so it can't be connected to a route. Move it closer to a sidewalk or path.",
       "nearest": "Nearest mapped walkway: about {{nearest}} m away."
     },
     "WAKE_TIMEOUT": {
@@ -125,7 +125,7 @@
     "segments": "Sidewalk conditions",
     "hazards": "Closures & reports",
     "zoomIn": "Zoom in to load map layers.",
-    "outsidePilot": "This view is outside the pilot area.",
+    "outsidePilot": "This view is outside the coverage area.",
     "loading": "Loading layers…",
     "error": "Couldn't load map layers.",
     "inView": "Issues in view",
@@ -158,7 +158,7 @@
     "riskTitle": "Sidewalk condition estimate",
     "hazardTitle": "Closures & reports",
     "routeTitle": "Routes",
-    "outside": "Outside pilot area (hatched)"
+    "outside": "Outside coverage area (hatched)"
   },
   "hazard": {
     "kind": {
@@ -181,7 +181,7 @@
     "loadError": "The basemap couldn't load. You can still enter coordinates and read the route as a list.",
     "hint": "Map is optional: every action is also available in the panel.",
     "recenterRoute": "Recenter on the route",
-    "recenterArea": "Recenter on the pilot area"
+    "recenterArea": "Show the whole coverage area"
   },
   "sheet": {
     "toggle": "Planner panel: {{state}}. Tap to resize, or use the arrow keys.",
