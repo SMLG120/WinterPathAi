@@ -44,7 +44,7 @@ on:
     # incremental run. Needed because upstream edits to days older than the 14-day window are only
     # picked up by a full rebuild (services/ingestion/README.md, "Daily 311 refresh").
     - cron: "47 10 * * 0"
-    # Closures (Ville de Montréal "Entraves et travaux en cours", pilot bbox, ~1.7 MB per run).
+    # Closures (Ville de Montréal "Entraves et travaux en cours", Island of Montréal, ~1.7 MB per run).
     # The portal publishes daily (CKAN update_frequency "daily"; files dated ~07:00 on
     # 2026-11-12, time zone not stated), so two runs bracket both readings of that time:
     # 09:37 UTC and 15:37 UTC. The API reads wp.closure on every request (no restart needed).
@@ -282,7 +282,7 @@ jobs:
         run: uv run --locked wp-ingest load --source mtl-311
 
   closures-refresh:
-    name: closures refresh (Entraves -> wp.closure, pilot bbox)
+    name: closures refresh (Entraves -> wp.closure, island)
     if: >-
       (github.event_name == 'schedule' && (github.event.schedule == '37 9 * * *' || github.event.schedule == '37 15 * * *')) ||
       (github.event_name == 'workflow_dispatch' && inputs.job == 'closures')
@@ -321,11 +321,14 @@ jobs:
       - name: install (locked)
         if: steps.gate.outputs.configured == 'true'
         run: uv sync --locked --no-dev
-      - name: download Entraves + impacts and build pilot closures (no database access)
+      - name: download agglomeration boundaries (island land polygon; no database access)
         if: steps.gate.outputs.configured == 'true'
-        run: uv run --locked wp-ingest entraves --refresh
+        run: uv run --locked wp-ingest boundaries
+      - name: download Entraves + impacts and build island closures (no database access)
+        if: steps.gate.outputs.configured == 'true'
+        run: uv run --locked wp-ingest entraves --refresh --region island
       - name: load closures (lock WPET,3; staged merge, prunes permits no longer published; contention -> skip, exit 0)
         if: steps.gate.outputs.configured == 'true'
         env:
           DATABASE_URL: ${{ secrets.WP_ETL_DATABASE_URL }}
-        run: uv run --locked wp-ingest load --source mtl-entraves
+        run: uv run --locked wp-ingest load --source mtl-entraves --region island
