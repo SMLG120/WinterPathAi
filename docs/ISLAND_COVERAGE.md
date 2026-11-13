@@ -63,11 +63,12 @@ Image built from `infra/docker/api.Dockerfile` with the release asset; productio
 - Example (2026-11-13 scores): Downtown → Anjou 0 % unknown; Downtown → Pointe-Claire 42–43 % unknown; a Pointe-Claire map view is 100 % unknown.
 - Closures and 311 aggregates in production are still loaded for the pilot bbox only. The island sets exist locally (`--region island`: 1,970 closures, 576 blocking).
 
-## Before this can go live
-1. ~~Measure memory and latency in Docker with `--cpus=0.1 --memory=512m`.~~ Done, see above.
-2. ~~Host the graph file and verify it at build time.~~ Done: GitHub Release `graph-island-v1` (188,554,501 bytes), downloaded by the image build when `ROUTING_GRAPH_ARTIFACT_URL` and `ROUTING_GRAPH_ARTIFACT_SHA256` are set; a wrong checksum fails the build (tested).
-3. Switch the 311 and closures jobs to `--region island`, and set the Render variables in `docs/ENVIRONMENT_VARIABLES.md`.
-4. Deploy API and web together, then run the live checks. Landing and "How it works" copy still says "pilot area" and must change in the same release.
+## Live since 2026-11-13
+- API (Render, commit `fa4fdbe`) serves the island graph from the `graph-island-v1` release file, memory-mapped. Web (Cloudflare Pages, commit `60d5660`) built with `VITE_COVERAGE_BBOX=-73.97,45.401,-73.477,45.707`.
+- Live checks at 16:30 UTC: ten district routes (Downtown, NDG, Saint-Laurent, Pointe-Claire, Lachine, Anjou, Pointe-aux-Trembles) all `200`, 5.6–39.2 km, 1.3–4.4 s warm; two requests after idle took 11–13 s. Render reported 257 MiB memory after these checks and no restart.
+- Closures job now loads the island set (`--region island`): 1,729 closures on the first run. Entraves is a Ville de Montréal dataset; linked cities such as Pointe-Claire publish nothing there. 311 aggregates were already agglomeration-wide.
+- Share of each route without winter-condition data in these checks: 0 % (Downtown → Anjou) to 70 % (Pointe-Claire → Lachine). The cards state the percentage.
+- Not measured: behaviour with several simultaneous users on Render.
 
 ## Known limits
 - No address search: no permitted geocoder is configured (public Nominatim is not allowed). Points are set on the map, by coordinates, or by "Use my location".

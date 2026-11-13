@@ -16,12 +16,12 @@ Names are defined in `.env.example` (names only; never commit values). Real valu
 | `ROUTING_WORKERS` | `4` | `1` (0.1 CPU) | no |
 | `ROUTING_STEPS_V2` | `false` | **`true`** since 2026-11-12 (merged, named steps; same Step shape; route geometry unchanged) | no |
 | `ROUTING_COMPACT_GRAPH` | `false` | `false` (prototype) | no |
-| `ROUTING_GRAPH_SOURCE` = `artifact` | — | not yet used. Island: loads the prebuilt graph file below instead of PostGIS (see `docs/ISLAND_COVERAGE.md`) | no |
-| `ROUTING_GRAPH_ARTIFACT` / `ROUTING_GRAPH_ARTIFACT_SHA256` | unset | not yet used. Path of the `.npz` built by `python -m winterpath_api.graph_artifact`, and its pinned SHA-256 (a mismatch leaves routing unavailable) | no |
-| `ROUTING_GRAPH_ARTIFACT_URL` (Docker build arg) | unset | not yet used. With `ROUTING_GRAPH_ARTIFACT_SHA256`, `infra/docker/api.Dockerfile` downloads the graph file over HTTPS to `/app/data/graph/graph.npz` and fails the build if the SHA-256 differs. Island v1: the `graph-island-v1` GitHub Release asset. Render passes service env vars to the build as args | no |
-| `ROUTING_GRAPH_ARTIFACT_MMAP` | `false` | not yet used. Island: `true` — graph arrays stay on disk (read-only memory map) instead of being copied into RAM; needs an uncompressed artifact | no |
-| `ROUTING_FAST_SEARCH` | `false` | not yet used. `true` = compiled (SciPy) search for the compact engine; same optimal cost | no |
-| `HAZARD_CACHE_SECONDS` | `0` | not yet used. Island: `60` (closures / 311 list reused between requests) | no |
+| `ROUTING_GRAPH_SOURCE` = `artifact` | — | **in production since 2026-11-13.** Island: loads the prebuilt graph file below instead of PostGIS (see `docs/ISLAND_COVERAGE.md`) | no |
+| `ROUTING_GRAPH_ARTIFACT` / `ROUTING_GRAPH_ARTIFACT_SHA256` | unset | set in production (island). Path of the `.npz` built by `python -m winterpath_api.graph_artifact`, and its pinned SHA-256 (a mismatch leaves routing unavailable) | no |
+| `ROUTING_GRAPH_ARTIFACT_URL` (Docker build arg) | unset | set in production (island). With `ROUTING_GRAPH_ARTIFACT_SHA256`, `infra/docker/api.Dockerfile` downloads the graph file over HTTPS to `/app/data/graph/graph.npz` and fails the build if the SHA-256 differs. Island v1: the `graph-island-v1` GitHub Release asset. Render passes service env vars to the build as args | no |
+| `ROUTING_GRAPH_ARTIFACT_MMAP` | `false` | set in production (island). Island: `true` — graph arrays stay on disk (read-only memory map) instead of being copied into RAM; needs an uncompressed artifact | no |
+| `ROUTING_FAST_SEARCH` | `false` | set in production (island). `true` = compiled (SciPy) search for the compact engine; same optimal cost | no |
+| `HAZARD_CACHE_SECONDS` | `0` | set in production (island). Island: `60` (closures / 311 list reused between requests) | no |
 | `API_STORE_BACKEND` | `memory` | **`postgis`**: routing must read confirmed closures and 311 aggregates from `wp.closure` / `wp.report_311_cell`. With `memory`, production loads no hazards at all. This requires the API build in which writes-off keeps the community and pilot stores in memory, because `wp_reader` has no SELECT on `community_report` / `pilot_request` (PII). Before that build, `postgis` makes `/hazards` and `/routes/compare` return 503. Shipped in `8252f2e` (merged `129ffb7`); production runs `postgis` since 2026-11-11. | no |
 | `API_PUBLIC_WRITES` | `true` | **`false`** (POST /reports, /pilot-requests → 503 `WRITES_DISABLED`) | no |
 | `API_CORS_ORIGINS` | `http://localhost:5174` | exact production `https://<project>.pages.dev` (+ the specific preview alias if used); never `*` | no |
