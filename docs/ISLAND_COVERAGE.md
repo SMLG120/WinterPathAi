@@ -80,6 +80,8 @@ Render restarted the instance three times after `/health` timed out. Route-only 
 
 Docker at 0.1 CPU / 512 MB, before → after (warm-up not included in this run): `/map/segments` 19–32 s → 1.3–2.5 s; first route after boot 46–67 s → 15.6 s; repeat route 2 s → 1.4 s; non-reclaimable memory after these requests 319 MiB. A mixed browser-like load test of the final build was **not completed** (Docker Desktop was paused).
 
+Fix deployed 2026-11-13 18:33 UTC (commit `62fd988`, `HAZARD_CACHE_SECONDS=300`, `ROUTING_WARMUP=true`). Live mixed load right after (14 rounds of route + segments + hazards in parallel, `/health` every 5 s): all `200`; route p50 4.4 s / max 7.0 s, segments 1.7 / 2.6 s, hazards 2.1 / 3.0 s, health 1.1 / 2.4 s (Render's limit is 5 s). No restart in the three minutes observed; memory 344 MiB and still rising at the end of the run. Longer-term stability is **not yet observed**.
+
 ## Known limits
 - No address search: no permitted geocoder is configured (public Nominatim is not allowed). Points are set on the map, by coordinates, or by "Use my location".
 - A point more than 75 m from the walkable network is refused (`OFF_NETWORK`), which is more common in parks and large lots.
