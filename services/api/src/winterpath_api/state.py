@@ -197,7 +197,7 @@ def build_state(
         reports = PostgisReportRepository(pii_db) if pii_db else InMemoryReportRepository()
     if hazards is None:
         hazards = (
-            PostgisHazardRepository(store_db, reports)
+            PostgisHazardRepository(store_db, reports, cache_ttl_s=settings.hazard_cache_s)
             if store_db
             else InMemoryHazardRepository(reports)
         )

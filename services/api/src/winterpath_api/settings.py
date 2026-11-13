@@ -95,6 +95,8 @@ class Settings:
     graph_artifact_sha256: str = ""
     #: compiled Dijkstra for the compact engine (same optimal cost; ties may differ)
     routing_fast_search: bool = False
+    #: seconds the PostGIS hazard list / source freshness are reused (0 = every request)
+    hazard_cache_s: int = 0
     #: served coverage when no artifact defines one
     coverage_bbox: tuple[float, float, float, float] = PILOT_BBOX
     coverage_name: str = PILOT_NAME
@@ -139,6 +141,7 @@ class Settings:
             else None,
             graph_artifact_sha256=(e.get("ROUTING_GRAPH_ARTIFACT_SHA256") or "").strip().lower(),
             routing_fast_search=_bool(e.get("ROUTING_FAST_SEARCH"), False),
+            hazard_cache_s=_int(e.get("HAZARD_CACHE_SECONDS"), 0),
             risk_score_source=_choice(e.get("RISK_SCORE_SOURCE"), "file", ("file", "postgis")),
             db_pool_size=_int(e.get("DATABASE_POOL_SIZE"), 3, minimum=1),
             db_max_overflow=_int(e.get("DATABASE_MAX_OVERFLOW"), 2),

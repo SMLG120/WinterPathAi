@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
@@ -162,16 +163,42 @@ def closure_hazard(m) -> Hazard:
 
 class PostgisHazardRepository:
     def __init__(
-        self, engine, reports: ReportRepository, report_311_table: str = "wp.report_311_cell"
+        self,
+        engine,
+        reports: ReportRepository,
+        report_311_table: str = "wp.report_311_cell",
+        cache_ttl_s: float = 0.0,
+        clock=time.monotonic,
     ) -> None:
         self.engine = engine
         self.reports = reports
+        #: > 0: closures / 311 aggregates and source freshness are re-read at most this often
+        #: (they change a few times a day). The cached list holds the SAME Hazard objects, which
+        #: lets the routing engine reuse its hazard → edge matching between requests. Community
+        #: reports are never cached. 0 = read on every request.
+        self._ttl = cache_ttl_s
+        self._clock = clock
+        self._lists: dict[datetime, tuple[float, list[Hazard]]] = {}
+        self._fresh: tuple[float, dict[str, datetime | None]] | None = None
         self.report_311_table = report_311_table  # constant (tests may point it at a temp table)
         self._has_active_fn: bool | None = None
         self._has_nature: bool | None = None
 
     def list(self, at: datetime) -> list[Hazard]:
+        if self._ttl <= 0:
+            return [*self._db_hazards(at), *self._community(at)]
+        key = at.replace(second=0, microsecond=0)
+        hit = self._lists.get(key)
+        if hit is None or self._clock() >= hit[0]:
+            if len(self._lists) >= 16:
+                self._lists.clear()
+            hit = self._lists[key] = (self._clock() + self._ttl, self._db_hazards(key))
+        return [*hit[1], *self._community(at)]
 
+    def _community(self, at: datetime) -> list[Hazard]:
+        return [community_hazard(r) for r in self.reports.approved_active(at)]
+
+    def _db_hazards(self, at: datetime) -> list[Hazard]:
         import h3
         from sqlalchemy import text
 
@@ -217,10 +244,16 @@ class PostgisHazardRepository:
                         report_count=int(m["n"]),
                     )
                 )
-        out.extend(community_hazard(r) for r in self.reports.approved_active(at))
         return out
 
     def freshness(self) -> dict[str, datetime | None]:
+        if self._ttl > 0 and self._fresh is not None and self._clock() < self._fresh[0]:
+            return dict(self._fresh[1])
+        out = self._db_freshness()
+        self._fresh = (self._clock() + self._ttl, out)
+        return dict(out)
+
+    def _db_freshness(self) -> dict[str, datetime | None]:
         from sqlalchemy import text
         from winterpath_routing.providers import route_source_freshness
 

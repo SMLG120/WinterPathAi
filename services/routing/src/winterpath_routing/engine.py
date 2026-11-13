@@ -48,6 +48,8 @@ MIN_OD_SEPARATION_M = 2.0
 #: Up to this many per-request cost overrides are applied eagerly to a copy of the static
 #: weights; beyond it weights are computed lazily, only for edges the search reaches.
 _MAX_EAGER_OVERRIDES = 2048
+#: hazard → matched edges entries kept per engine (see ``_edges_near_hazard``)
+_HAZARD_MEMO_MAX = 20_000
 
 
 class RoutingError(Exception):
@@ -247,30 +249,50 @@ class RoutingEngine:
         dict[str, list[str]], dict[str, list[str]], dict[str, list[str]], dict[str, list[str]]
     ]:
         """(closures, disruptions, possible closures, reports) for hazards active at req.at."""
-        g, cfg = self.graph, self.config
+        cfg = self.config
         closures: dict[str, list[str]] = {}
         disruptions: dict[str, list[str]] = {}
         possible: dict[str, list[str]] = {}
         reports: dict[str, list[str]] = {}
+        near = self._edges_near_hazard
         for hz in hazards:
             if not hz.active_at(req.at):
                 continue
-            geom = geojson_to_metric(hz.geometry)
             if hz.is_hard_closure:
-                eids = g.edges_near_metric(geom, cfg.closure_match_tolerance_m)
+                eids = near(hz, cfg.closure_match_tolerance_m)
                 if eids:
                     closures[hz.hazard_id] = eids
             elif hz.is_possible_closure:
-                for eid in g.edges_near_metric(geom, cfg.closure_match_tolerance_m):
+                for eid in near(hz, cfg.closure_match_tolerance_m):
                     possible.setdefault(eid, []).append(hz.hazard_id)
             elif hz.evidence.state is EvidenceState.CONFIRMED:
-                for eid in g.edges_near_metric(geom, cfg.closure_match_tolerance_m):
+                for eid in near(hz, cfg.closure_match_tolerance_m):
                     disruptions.setdefault(eid, []).append(hz.hazard_id)
             elif hz.evidence.state is EvidenceState.UNVERIFIED_REPORT:
-                for eid in g.edges_near_metric(geom, cfg.report_match_tolerance_m):
+                for eid in near(hz, cfg.report_match_tolerance_m):
                     reports.setdefault(eid, []).append(hz.hazard_id)
             # other evidence states (unknown/model/simulated hazards) do not affect routing
         return closures, disruptions, possible, reports
+
+    def _edges_near_hazard(self, hz: Hazard, tolerance_m: float) -> list[str]:
+        """Edges within ``tolerance_m`` of a hazard, remembered per hazard OBJECT.
+
+        The graph never changes and ``Hazard`` is immutable, so the answer for one object is
+        fixed. A caller that passes the same objects again (the API's cached hazard list) pays
+        for the projection and the spatial query once, not on every request.
+        """
+        memo: dict[tuple[int, float], tuple[Hazard, list[str]]] = self.__dict__.setdefault(
+            "_hazard_memo", {}
+        )
+        key = (id(hz), tolerance_m)
+        hit = memo.get(key)
+        if hit is not None and hit[0] is hz:
+            return hit[1]
+        eids = self.graph.edges_near_metric(geojson_to_metric(hz.geometry), tolerance_m)
+        if len(memo) >= _HAZARD_MEMO_MAX:
+            memo.clear()
+        memo[key] = (hz, eids)  # keeps ``hz`` alive, so its id cannot be reused meanwhile
+        return eids
 
     def _context(
         self, req: RouteRequest, risk_provider: RiskProvider, hazards: Iterable[Hazard]
