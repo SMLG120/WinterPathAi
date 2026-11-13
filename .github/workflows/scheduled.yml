@@ -7,6 +7,10 @@
 # the owner/service role). It is passed only to the steps that connect, never to third-party
 # actions, and GitHub masks it in logs.
 #
+# PRIMARY TRIGGER (2026-11-13): Cloudflare Worker winterpath-scheduler (infra/cron-worker/) calls
+# workflow_dispatch at the same UTC times, because these `schedule:` events mostly never fired for
+# this repo. Keep both in sync; the crons below remain a best-effort backup.
+#
 # Schedules are UTC (GitHub cron has no time zones). Scheduled runs only fire on the default
 # branch, are best effort (delayed or dropped under GitHub load or incidents — e.g. the 21:17 UTC
 # weather slot on 2026-11-11 fell inside an Actions outage), and in a PUBLIC repository are

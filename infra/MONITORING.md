@@ -57,7 +57,7 @@ Layered, cheapest first. Every signal comes from activity that happens anyway.
 4. **Activity-driven check (no schedule needed).** Run the F-checks on every `push` to `main` as part of CI, using the read-only secret. Secrets are not exposed to pull requests from forks. Whenever anyone works on the repo, staleness is visible in CI.
 5. **Dead-man's switch for "the scheduler never fired" (owner).** A scheduler that does not fire cannot report itself, and checks 2–4 share GitHub as their trigger. The only robust signal is outside GitHub. Two options:
    - **(a) Outbound heartbeat**, e.g. the healthchecks.io free tier. Each scheduled job sends one outbound HTTPS success ping at its end; the service emails the owner when an expected ping is missing (3 h grace for weather). This contacts a third-party monitor, **not Render**, so it is not a keep-alive. It needs an account and the owner's approval.
-   - **(b) Move the trigger off GitHub cron**, e.g. Cloudflare Workers Cron Triggers (Cloudflare already hosts the web). A Worker calls GitHub's `workflow_dispatch` API on schedule. It needs a fine-grained token stored in Cloudflare and the owner's approval. This replaces the unreliable scheduler rather than watching it.
+   - **(b) Move the trigger off GitHub cron** — **chosen by the owner 2026-11-13, implemented in `infra/cron-worker/`** — e.g. Cloudflare Workers Cron Triggers (Cloudflare already hosts the web). A Worker calls GitHub's `workflow_dispatch` API on schedule. It needs a fine-grained token stored in Cloudflare and the owner's approval. This replaces the unreliable scheduler rather than watching it.
 
    Recommendation: (a) first, because it is smallest and reversible. Choose (b) if dropped runs recur after the top-of-hour fix.
 

@@ -1,0 +1,30 @@
+# WinterPath scheduler: Cloudflare Workers Cron Triggers that start the GitHub Actions jobs in
+# .github/workflows/scheduled.yml through workflow_dispatch. GitHub's own `schedule:` events for
+# this repo were mostly dropped or 1.5-3 h late (2026-11-11..13: scoring, 311 and closures never
+# fired), so this Worker is the primary trigger and the GitHub crons stay as a best-effort backup.
+# Duplicate runs are safe: per-job concurrency groups, ETL advisory locks, idempotent loads.
+#
+# Not a keep-alive: it only starts the real data jobs at their real cadence, and never calls the
+# API or the database. Cron times are UTC. Free plan: at most 5 cron triggers per account.
+name = "winterpath-scheduler"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false   # no public URL; the Worker has no fetch handler
+preview_urls = false
+
+[triggers]
+# Keep in sync with JOBS in src/index.js (test/index.test.mjs checks this file).
+crons = [
+  "17 */3 * * *",   # weather
+  "7 12,18 * * *",  # scoring
+  "27 11 * * *",    # 311 daily (14-day window)
+  "47 10 * * SUN",  # 311 weekly full rebuild
+  "37 9,15 * * *",  # closures
+]
+
+[vars]
+GITHUB_REPO = "SMLG120/WinterPathAi"
+GITHUB_WORKFLOW = "scheduled.yml"
+GITHUB_REF = "main"
+# Secret (wrangler secret put GITHUB_DISPATCH_TOKEN): fine-grained PAT, this repository only,
+# permission "Actions: Read and write". Never committed.

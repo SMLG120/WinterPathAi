@@ -40,6 +40,13 @@ Names are defined in `.env.example` (names only; never commit values). Real valu
 | `WP_ETL_DATABASE_URL` | Supabase session pooler URL, login role `wp_etl` (member of `wp_writer`). Used by weather ingest and scoring. |
 | `HTTP_USER_AGENT` (variable, not secret) | identifying User-Agent for ECCC / Ville de Montréal downloads |
 
+## Scheduler (Cloudflare Worker `winterpath-scheduler`, `infra/cron-worker/`)
+
+| Name | Value | Secret |
+|---|---|---|
+| `GITHUB_REPO` / `GITHUB_WORKFLOW` / `GITHUB_REF` | `SMLG120/WinterPathAi` / `scheduled.yml` / `main` (`wrangler.toml` vars) | no |
+| `GITHUB_DISPATCH_TOKEN` | fine-grained PAT: this repository only, **Actions: Read and write**, nothing else; set with `wrangler secret put` | **yes** |
+
 Migrations are run manually by the coordinator with the `wp_migrate` role (never from the API or scheduled jobs).
 
 ## Web (`apps/web`, Cloudflare Pages)

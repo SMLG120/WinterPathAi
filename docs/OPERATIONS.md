@@ -3,9 +3,11 @@
 Deploy steps: `docs/DEPLOYMENT.md`. Incidents: `docs/RECOVERY.md`. Local runbook: `infra/RUNBOOK.md`.
 
 ## Routine
+**Trigger:** the Cloudflare Worker `winterpath-scheduler` (`infra/cron-worker/`, Workers Cron Triggers, UTC) starts each job below through GitHub `workflow_dispatch`. GitHub's own `schedule:` crons in `scheduled.yml` stay as a best-effort backup: from 2026-11-11 to 11-13 they fired only some weather slots (6 of about 16, 1.5–3 h late) and never fired scoring, 311 or closures. Duplicate runs are safe (concurrency groups, ETL locks, idempotent loads). Worker runs: Cloudflare dashboard → Workers → winterpath-scheduler → Logs / Cron events.
+
 | What | How | Frequency |
 |---|---|---|
-| Weather ingest (ECCC) | `scheduled.yml`, weather job (GitHub Actions cron) | every 3 h at :17 UTC |
+| Weather ingest (ECCC) | `scheduled.yml`, weather job | every 3 h at :17 UTC |
 | Daily risk scoring | `scheduled.yml`, scoring job: downloads 311 (`--fetch-311`), writes `wp.risk_cell_score` (`--write-db`) | 12:07 and 18:07 UTC |
 | 311 cell aggregates | `scheduled.yml`, `report-311-daily` (14-day window) and `report-311-weekly-full` | daily 11:27 UTC; full rebuild Sunday 10:47 UTC |
 | Closures (Entraves, pilot bbox) | `scheduled.yml`, `closures-refresh`: `wp-ingest entraves --refresh`, then `load --source mtl-entraves` (lock WPET,3) | 09:37 and 15:37 UTC; manual: `gh workflow run scheduled.yml -f job=closures` |
@@ -13,7 +15,7 @@ Deploy steps: `docs/DEPLOYMENT.md`. Incidents: `docs/RECOVERY.md`. Local runbook
 | Database size check | Supabase dashboard, or `select pg_size_pretty(pg_database_size(current_database()))` | weekly |
 | Logical backup | `pg_dump` (see RECOVERY) | before each migration or bulk load |
 | Render free hours | Render dashboard → Billing (750 h/month shared with the workspace's other free services) | monthly |
-| Credential expiry | Cloudflare API token: check its TTL in the dashboard (the old token expired 2026-11-19); rotate the Supabase and Render tokens yearly | — |
+| Credential expiry | `GITHUB_DISPATCH_TOKEN` (Worker secret, fine-grained PAT, this repo only, Actions read/write): renew before its expiry date or every scheduled job stops. Cloudflare API token: check its TTL in the dashboard (the old token expired 2026-11-19); rotate the Supabase and Render tokens yearly | — |
 
 ## Health checks
 - `GET https://winterpath-api.onrender.com/api/v1/health` reports four checks: `graph`, `database`, `risk` (layer and score source), and `weather` (latest observation time).
@@ -34,7 +36,7 @@ Deploy steps: `docs/DEPLOYMENT.md`. Incidents: `docs/RECOVERY.md`. Local runbook
 - **None external yet.** There is no uptime monitor or alerting. Any monitor added must respect Render's free-tier policy: no artificial keep-alive pings.
 
 ## Known operational limits
-- GitHub Actions cron is best-effort: scheduled runs can be delayed or skipped (the 21:17 UTC weather run on 2026-11-11 never fired). If `/health` shows weather `degraded`, run `gh workflow run scheduled.yml -f job=weather`.
+- GitHub Actions cron is best-effort and, for this repo, mostly did not fire (see Routine), hence the Worker trigger. If the Worker or its token fails, jobs stop: if `/health` shows weather `degraded` or routes show 100% unknown risk after 12:30 UTC, check the Worker's cron events and run `gh workflow run scheduled.yml -f job=weather` (or `job=scoring`).
 - Render Free sleeps after 15 min idle, so the first request takes about a minute.
 - Supabase Free pauses after 1 week of inactivity. The scheduled jobs are real database activity.
 - Supabase Free has no backups.
