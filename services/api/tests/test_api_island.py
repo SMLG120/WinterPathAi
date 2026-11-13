@@ -233,3 +233,33 @@ def test_shipped_index_with_other_sampler_params_is_rebuilt(graph) -> None:
     snap = adapter.edge_risk_snapshot(AT)  # small graph: rebuilt at start-up, not trusted
     ref = normalise_estimate(inner.edge_risk(graph.edge_at(0).coords, AT))
     assert snap.estimate(0).is_unknown == ref.is_unknown
+
+
+def test_warmup_runs_one_route_at_startup_and_never_fails(make_client, monkeypatch) -> None:
+    c = make_client(routing_warmup=True)
+    engine = c.app.state.wp.engine
+    calls = []
+    real = engine.compare
+
+    def spy(*a, **kw):
+        calls.append(1)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(engine, "compare", spy)
+    with c:
+        assert calls == [1]
+        assert c.get("/api/v1/health").status_code == 200
+    # a broken hazard store must not stop the server from starting
+    c2 = make_client(routing_warmup=True)
+
+    def boom(at):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(c2.app.state.wp.hazards, "list", boom)
+    with c2:
+        assert c2.get("/api/v1/coverage").status_code == 200
+    # off by default
+    c3 = make_client()
+    monkeypatch.setattr(c3.app.state.wp.engine, "compare", spy)
+    with c3:
+        assert calls == [1]

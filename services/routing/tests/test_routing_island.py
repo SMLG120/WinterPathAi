@@ -194,3 +194,28 @@ def test_snapshot_for_another_graph_is_ignored(cases) -> None:
     a, b = _outcome(engine, req, risk, hazards), _outcome(engine, req, provider, hazards)
     assert provider.id_calls == 1
     assert (a if isinstance(a, type) else _plain(a)) == (b if isinstance(b, type) else _plain(b))
+
+
+# ----------------------------------------------------------------------------- hazard memo
+def test_refreshed_hazard_list_reuses_matches(cases, monkeypatch) -> None:
+    """A re-read hazard list (new objects, same geometry) must not redo the spatial matching."""
+    _cid, engine, req, risk, hazards = next(c for c in cases if c[4])
+    engine = CompactRoutingEngine(engine.graph, engine.config)
+    calls = []
+    real = type(engine.graph).edges_near_metric
+
+    def counting(self, geom, tol):
+        calls.append(tol)
+        return real(self, geom, tol)
+
+    monkeypatch.setattr(type(engine.graph), "edges_near_metric", counting)
+    first = _outcome(engine, req, risk, list(hazards))
+    n = len(calls)
+    assert n > 0
+    again = [dataclasses.replace(h) for h in hazards]  # what a cache refresh hands the engine
+    assert all(a is not b for a, b in zip(again, hazards, strict=True))
+    second = _outcome(engine, req, risk, again)
+    assert len(calls) == n
+    assert (first if isinstance(first, type) else _plain(first)) == (
+        second if isinstance(second, type) else _plain(second)
+    )

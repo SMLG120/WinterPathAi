@@ -87,6 +87,10 @@ class Settings:
     weather_live_user_agent: str = "WinterPathAI-API/1.8"
     routing_compact_graph: bool = False
     routing_steps_v2: bool = False
+    #: ROUTING_WARMUP=true: compute one short route during start-up, so the one-time work of a
+    #: large graph (matching every closure to its edges, the first risk snapshot) is paid before
+    #: the server accepts traffic instead of by the first visitor.
+    routing_warmup: bool = False
     #: v2 (island): ROUTING_GRAPH_SOURCE=artifact loads a prebuilt compact graph file
     #: (``python -m winterpath_api.graph_artifact``; NumPy arrays, no pickle). The file's
     #: SHA-256 must equal ROUTING_GRAPH_ARTIFACT_SHA256 when that is set. The artifact also
@@ -139,6 +143,7 @@ class Settings:
             or "WinterPathAI-API/1.8",
             routing_compact_graph=_bool(e.get("ROUTING_COMPACT_GRAPH"), False),
             routing_steps_v2=_bool(e.get("ROUTING_STEPS_V2"), False),
+            routing_warmup=_bool(e.get("ROUTING_WARMUP"), False),
             graph_artifact=Path(e["ROUTING_GRAPH_ARTIFACT"])
             if e.get("ROUTING_GRAPH_ARTIFACT")
             else None,

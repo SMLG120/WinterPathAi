@@ -41,6 +41,8 @@ from .models import GraphMetadata
 FORMAT = "winterpath-compact-graph"
 FORMAT_VERSION = 1
 EXTRA_PREFIX = "x_"
+#: mmap load: unaligned arrays up to this size are copied into memory (see ``_Mapped``)
+_COPY_UNALIGNED_MAX = 16 << 20
 
 
 class ArtifactError(ValueError):
@@ -231,7 +233,13 @@ class _Mapped:
             shape=shape,
             order="F" if fortran else "C",
         )
-        return np.asarray(mm)
+        arr = np.asarray(mm)
+        if not arr.flags.aligned and arr.nbytes <= _COPY_UNALIGNED_MAX:
+            # np.savez does not align members. NumPy copies an unaligned array on every
+            # searchsorted (measured: 659 us instead of 2 us on the island grid index), so the
+            # small ones are read into memory; only the large coordinate blocks stay mapped.
+            return np.array(arr)
+        return arr
 
 
 def load(

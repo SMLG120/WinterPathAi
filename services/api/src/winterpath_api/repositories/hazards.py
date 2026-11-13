@@ -187,7 +187,11 @@ class PostgisHazardRepository:
     def list(self, at: datetime) -> list[Hazard]:
         if self._ttl <= 0:
             return [*self._db_hazards(at), *self._community(at)]
-        key = at.replace(second=0, microsecond=0)
+        # One list per TTL-sized time bucket (at least a minute): a per-minute key would re-read
+        # the tables every minute whatever the TTL. A closure starting inside the bucket is seen
+        # at the next bucket; the engine still filters every hazard by the request's own time.
+        step = max(60, int(self._ttl))
+        key = datetime.fromtimestamp(int(at.timestamp()) // step * step, tz=at.tzinfo)
         hit = self._lists.get(key)
         if hit is None or self._clock() >= hit[0]:
             if len(self._lists) >= 16:

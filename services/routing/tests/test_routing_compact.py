@@ -90,6 +90,9 @@ def test_spatial_queries_identical(graphs) -> None:
         assert cg.edges_in_bbox(lon, lat, lon + dx, lat + dy) == pg.edges_in_bbox(
             lon, lat, lon + dx, lat + dy
         )
+        assert cg.edges_in_bbox(lon, lat, lon + dx, lat + dy, foot_legal_only=True) == [
+            e for e in pg.edges_in_bbox(lon, lat, lon + dx, lat + dy) if pg.edges[e].foot_legal
+        ]
 
 
 def test_static_costs_equal_edge_cost_bit_for_bit(graphs) -> None:

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import heapq
 import itertools
+import json
 import math
 from collections.abc import Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -288,7 +289,19 @@ class RoutingEngine:
         hit = memo.get(key)
         if hit is not None and hit[0] is hz:
             return hit[1]
-        eids = self.graph.edges_near_metric(geojson_to_metric(hz.geometry), tolerance_m)
+        # A refreshed hazard list brings new objects with (mostly) the same geometry. The match
+        # depends only on geometry and tolerance, so a second memo keyed by the exact geometry
+        # text answers those without redoing the projection and the spatial query.
+        geo_memo: dict[tuple[str, float], list[str]] = self.__dict__.setdefault(
+            "_hazard_geo_memo", {}
+        )
+        gkey = (json.dumps(hz.geometry, sort_keys=True, separators=(",", ":")), tolerance_m)
+        eids = geo_memo.get(gkey)
+        if eids is None:
+            eids = self.graph.edges_near_metric(geojson_to_metric(hz.geometry), tolerance_m)
+            if len(geo_memo) >= _HAZARD_MEMO_MAX:
+                geo_memo.clear()
+            geo_memo[gkey] = eids
         if len(memo) >= _HAZARD_MEMO_MAX:
             memo.clear()
         memo[key] = (hz, eids)  # keeps ``hz`` alive, so its id cannot be reused meanwhile

@@ -265,3 +265,39 @@ def build_state(
         coverage_name=coverage_name,
         coverage_area=cov.get("area"),
     )
+
+
+def warm_up(state: AppState) -> None:
+    """One short real route at start-up (ROUTING_WARMUP). Never fatal: a failure is logged and
+    the first request simply pays the cost instead."""
+    import time
+    from datetime import UTC, datetime
+
+    from winterpath_routing import Profile, RouteRequest, RoutingError
+
+    engine = state.engine
+    if engine is None:
+        return
+    t0 = time.perf_counter()
+    try:
+        at = datetime.now(UTC)
+        hazards = state.hazards.list(at)
+        g = engine.graph
+        coords = None
+        for n, eid in enumerate(g.main_component_edge_ids):
+            e = g.edges[eid]
+            if e.length_m >= 30.0 or n >= 200:
+                coords = e.coords
+                break
+        if coords is None:
+            return
+        req = RouteRequest(
+            origin=tuple(coords[0]), destination=tuple(coords[-1]), at=at, profile=Profile.STANDARD
+        )
+        try:
+            engine.compare(req, state.risk, hazards, state.hazards.freshness())
+        except RoutingError as exc:  # no route on this edge: logged, not fatal
+            log.info("warmup_route_skipped", reason=type(exc).__name__)
+        log.info("warmup_done", seconds=round(time.perf_counter() - t0, 1), hazards=len(hazards))
+    except Exception as exc:
+        log.warning("warmup_failed", reason=type(exc).__name__)

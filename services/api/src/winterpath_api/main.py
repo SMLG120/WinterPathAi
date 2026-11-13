@@ -17,7 +17,7 @@ from .logs import configure_logging
 from .routers import map as map_router
 from .routers import reports, routing, system
 from .settings import Settings
-from .state import AppState, build_state
+from .state import AppState, build_state, warm_up
 
 API_PREFIX = "/api/v1"
 log = structlog.get_logger("winterpath_api.access")
@@ -39,6 +39,8 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        if settings.routing_warmup:
+            warm_up(app.state.wp)
         yield
         shutdown_state(app.state.wp)
 

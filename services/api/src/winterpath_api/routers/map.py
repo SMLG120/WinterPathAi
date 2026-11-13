@@ -110,7 +110,10 @@ def list_segments(
         raise ApiError(503, "UPSTREAM_UNAVAILABLE", "No pedestrian graph is loaded.")
     g = state.engine.graph
     # Non-walkable edges (foot_access no/private) are never presented as pedestrian segments.
-    ids = [eid for eid in g.edges_in_bbox(*box) if g.edges[eid].foot_legal]
+    if hasattr(g, "legal"):  # compact graph: filter on its array, no Edge object per candidate
+        ids = g.edges_in_bbox(*box, foot_legal_only=True)
+    else:
+        ids = [eid for eid in g.edges_in_bbox(*box) if g.edges[eid].foot_legal]
     page, nxt = paginate_by_id(ids, lambda x: x, limit, cursor)
     risk = state.risk.edge_risk(page, datetime.now(UTC)) if page else {}
     feats = []

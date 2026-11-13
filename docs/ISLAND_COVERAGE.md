@@ -70,6 +70,16 @@ Image built from `infra/docker/api.Dockerfile` with the release asset; productio
 - Share of each route without winter-condition data in these checks: 0 % (Downtown → Anjou) to 70 % (Pointe-Claire → Lachine). The cards state the percentage.
 - Not measured: behaviour with several simultaneous users on Render.
 
+## Instability found after go-live (2026-11-13, 16:40–16:55 UTC)
+Render restarted the instance three times after `/health` timed out. Route-only tests had not shown it; a browser also loads overlays, and the island closures (1,729) had just been loaded. Causes and fixes:
+
+- **Closures re-matched every minute.** The hazard list was cached per clock minute and matches were remembered per object, so each new minute redid all spatial matching (35–65 s at 0.1 CPU). Now: one list per `HAZARD_CACHE_SECONDS` period, and matches are remembered by geometry.
+- **Unaligned memory-mapped arrays.** `np.savez` does not align members; NumPy copied the whole grid index on every lookup (659 µs instead of 2 µs). Now arrays up to 16 MiB that are unaligned are read into memory; the large coordinate blocks stay mapped.
+- **Segments overlay built an `Edge` for every street in view** to test walkability (about 45,000 for a downtown view) before returning 500. Now filtered on the graph's array.
+- **First request after a restart** paid for the initial matching. `ROUTING_WARMUP=true` does it before the server accepts traffic.
+
+Docker at 0.1 CPU / 512 MB, before → after (warm-up not included in this run): `/map/segments` 19–32 s → 1.3–2.5 s; first route after boot 46–67 s → 15.6 s; repeat route 2 s → 1.4 s; non-reclaimable memory after these requests 319 MiB. A mixed browser-like load test of the final build was **not completed** (Docker Desktop was paused).
+
 ## Known limits
 - No address search: no permitted geocoder is configured (public Nominatim is not allowed). Points are set on the map, by coordinates, or by "Use my location".
 - A point more than 75 m from the walkable network is refused (`OFF_NETWORK`), which is more common in parks and large lots.

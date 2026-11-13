@@ -609,11 +609,23 @@ class CompactGraph:
     def edges_near_metric(self, geom: BaseGeometry, tolerance_m: float) -> list[str]:
         return [self._eids.name(int(i)) for i in self._near_idx(geom, tolerance_m)]
 
-    def edges_in_bbox(self, west: float, south: float, east: float, north: float) -> list[str]:
+    def edges_in_bbox(
+        self,
+        west: float,
+        south: float,
+        east: float,
+        north: float,
+        *,
+        foot_legal_only: bool = False,
+    ) -> list[str]:
+        """``foot_legal_only`` filters on the ``legal`` array (same rule as ``Edge.foot_legal``)
+        without building an ``Edge`` per candidate."""
         bb = self.wbox
         cand = np.flatnonzero(
             (bb[:, 0] <= east) & (bb[:, 2] >= west) & (bb[:, 1] <= north) & (bb[:, 3] >= south)
         )
+        if foot_legal_only:
+            cand = cand[self.legal[cand]]
         if len(cand):
             s, t = self.voff[cand], self.voff[cand + 1]
             cnt = t - s
