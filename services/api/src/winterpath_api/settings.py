@@ -93,6 +93,9 @@ class Settings:
     #: carries the coverage area, which then replaces the pilot bbox below.
     graph_artifact: Path | None = None
     graph_artifact_sha256: str = ""
+    #: ROUTING_GRAPH_ARTIFACT_MMAP=true: keep the artifact's arrays on disk (memory-mapped,
+    #: read-only) instead of copying them into process memory.
+    graph_artifact_mmap: bool = False
     #: compiled Dijkstra for the compact engine (same optimal cost; ties may differ)
     routing_fast_search: bool = False
     #: seconds the PostGIS hazard list / source freshness are reused (0 = every request)
@@ -140,6 +143,7 @@ class Settings:
             if e.get("ROUTING_GRAPH_ARTIFACT")
             else None,
             graph_artifact_sha256=(e.get("ROUTING_GRAPH_ARTIFACT_SHA256") or "").strip().lower(),
+            graph_artifact_mmap=_bool(e.get("ROUTING_GRAPH_ARTIFACT_MMAP"), False),
             routing_fast_search=_bool(e.get("ROUTING_FAST_SEARCH"), False),
             hazard_cache_s=_int(e.get("HAZARD_CACHE_SECONDS"), 0),
             risk_score_source=_choice(e.get("RISK_SCORE_SOURCE"), "file", ("file", "postgis")),

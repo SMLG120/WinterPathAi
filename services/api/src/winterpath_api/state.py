@@ -95,7 +95,7 @@ def _load_artifact(settings: Settings) -> tuple[RoutingEngine | None, str | None
             log.warning("graph_artifact_sha256_mismatch", path=str(path))
             return None, "graph artifact SHA-256 does not match the pinned value", {}, {}
     try:
-        graph, extras, info = compact_io.load(path)
+        graph, extras, info = compact_io.load(path, mmap=settings.graph_artifact_mmap)
     except compact_io.ArtifactError as exc:
         log.warning("graph_unavailable", reason=str(exc))
         return None, str(exc), {}, {}
@@ -106,6 +106,7 @@ def _load_artifact(settings: Settings) -> tuple[RoutingEngine | None, str | None
         simulated=graph.metadata.simulated,
         compact=True,
         artifact=path.name,
+        mmap=settings.graph_artifact_mmap,
         fast_search=settings.routing_fast_search,
         steps_v2=settings.routing_steps_v2,
     )

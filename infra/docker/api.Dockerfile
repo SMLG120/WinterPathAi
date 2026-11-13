@@ -18,6 +18,22 @@ RUN set -eu; \
     [ -f services/api/uv.lock ] || { echo "ERROR: services/api/uv.lock missing" >&2; exit 1; }; \
     cd services/api && uv sync --frozen --no-dev --no-editable --python /usr/local/bin/python3.12
 
+# Optional prebuilt routing graph (docs/ISLAND_COVERAGE.md). With both build args set, the file is
+# downloaded over HTTPS and must match the SHA-256 or the build fails; with neither, the stage is
+# empty and the image behaves as before. Render passes service env vars as build args, so the same
+# ROUTING_GRAPH_ARTIFACT_SHA256 pins the file at build time and again when the API loads it.
+FROM python:3.12-slim AS graph
+ARG ROUTING_GRAPH_ARTIFACT_URL=""
+ARG ROUTING_GRAPH_ARTIFACT_SHA256=""
+RUN set -eu; mkdir -p /graph; \
+    if [ -n "$ROUTING_GRAPH_ARTIFACT_URL" ]; then \
+      [ -n "$ROUTING_GRAPH_ARTIFACT_SHA256" ] || { echo "ERROR: ROUTING_GRAPH_ARTIFACT_URL set without ROUTING_GRAPH_ARTIFACT_SHA256" >&2; exit 1; }; \
+      case "$ROUTING_GRAPH_ARTIFACT_URL" in https://*) ;; *) echo "ERROR: graph URL must be https" >&2; exit 1;; esac; \
+      python -c "import sys,urllib.request; urllib.request.urlretrieve(sys.argv[1], '/graph/graph.npz')" "$ROUTING_GRAPH_ARTIFACT_URL"; \
+      echo "$ROUTING_GRAPH_ARTIFACT_SHA256  /graph/graph.npz" | sha256sum -c -; \
+      chmod 0444 /graph/graph.npz; \
+    fi
+
 FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     VIRTUAL_ENV=/opt/venv PATH=/opt/venv/bin:$PATH \
@@ -38,6 +54,9 @@ ENV MODEL_REGISTRY_PATH=/app/models/registry.json \
 # relative to the source tree, which does not exist inside an installed venv, so set it explicitly.
 COPY --chown=root:root data/fixtures/pilot_mini/ /app/data/fixtures/pilot_mini/
 ENV ROUTING_FIXTURE_DIR=/app/data/fixtures/pilot_mini
+# Empty unless the graph build args were given; then use ROUTING_GRAPH_SOURCE=artifact and
+# ROUTING_GRAPH_ARTIFACT=/app/data/graph/graph.npz. Derived from OpenStreetMap (ODbL).
+COPY --from=graph --chown=root:root /graph/ /app/data/graph/
 USER 10001:10001
 EXPOSE 10000
 # Contract v1.7: bind 0.0.0.0:$PORT. Render injects PORT (default 10000); the default matches it.

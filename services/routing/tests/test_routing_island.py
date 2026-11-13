@@ -50,13 +50,14 @@ def graphs(cases):
 
 
 # ----------------------------------------------------------------------------- artifact
-def test_artifact_round_trip_is_exact(cases, graphs, tmp_path) -> None:
+@pytest.mark.parametrize("mmap", [False, True])
+def test_artifact_round_trip_is_exact(cases, graphs, tmp_path, mmap) -> None:
     loaded = {}
     for k, g in enumerate(graphs):
         path = tmp_path / f"g{k}.npz"
         extra = np.arange(5, dtype=np.int32)
         compact_io.save(g, path, extras={"demo": extra}, info={"coverage": {"name": "TEST"}})
-        g2, extras, info = compact_io.load(path)
+        g2, extras, info = compact_io.load(path, mmap=mmap)
         assert info == {"coverage": {"name": "TEST"}} and np.array_equal(extras["demo"], extra)
         assert g2.metadata == g.metadata
         assert list(g2.edges) == list(g.edges) and list(g2.nodes) == list(g.nodes)
@@ -83,6 +84,10 @@ def test_artifact_rejects_foreign_files(tmp_path) -> None:
     junk.write_bytes(b"not a zip")
     with pytest.raises(compact_io.ArtifactError):
         compact_io.load(junk)
+    with pytest.raises(compact_io.ArtifactError):
+        compact_io.load(junk, mmap=True)
+    with pytest.raises(compact_io.ArtifactError):
+        compact_io.load(bad, mmap=True)
     assert len(compact_io.sha256_file(junk)) == 64
 
 

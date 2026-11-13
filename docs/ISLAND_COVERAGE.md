@@ -37,8 +37,26 @@ Built by the data pipeline (`wp-ingest`, `osm/island.py`) from the Geofabrik Qu�
 - The 4 failures were `OFF_NETWORK`: a random node outside the main component.
 - All 21 pairs between Downtown, NDG, Saint-Laurent, Pointe-Claire, Lachine, Anjou and Pointe-aux-Trembles routed (5.6 km to 39.2 km).
 - Same optimum as the reference search on 126 island pairs and on the golden test cases.
-- API memory on macOS: about 400 MiB resident after load tests. **Not measured under a 512 MB limit** (Docker was paused).
-- Render Free has about a tenth of a CPU. An earlier Docker measurement of this graph found CPU-bound work roughly 13× slower there, which would put cross-island trips at about 3–4 s. **That is an estimate, not a measurement.**
+- API memory on macOS: about 400 MiB resident after load tests.
+
+### Docker, Render-Free-sized (`--cpus=0.1 --memory=512m`, 2026-11-13)
+Image built from `infra/docker/api.Dockerfile` with the release asset; production scores read-only; 160 paced random trips (40 per class), one worker.
+
+| | arrays copied into RAM | `ROUTING_GRAPH_ARTIFACT_MMAP=true` |
+|---|---|---|
+| Graph loaded after container start | 31 s | 25 s (first `200` from `/health` at 47 s) |
+| Non-reclaimable memory, idle → after load test | 345 → 409 MiB | 178 → 239 MiB |
+| Peak container memory | 512 MiB (at the limit) | 374 MiB |
+| OOM kills | 0 | 0 |
+| Short 0.3–1.5 km, p50 / p95 / max | 0.65 / 2.6 / 7.4 s | 0.64 / 1.6 / 12.8 s |
+| Medium 2–5 km | 1.3 / 2.1 / 3.8 s | 1.3 / 3.2 / 4.1 s |
+| Long 8–15 km | 3.6 / 6.5 / 8.1 s | 3.1 / 5.4 / 6.3 s |
+| Cross-island 20–40 km | 4.6 / 8.3 / 12.0 s | 5.1 / 7.2 / 8.1 s |
+
+- 156 of 160 trips routed in both runs; the other 4 were `OFF_NETWORK` (random point more than 75 m from the network).
+- Without the memory map the container reached its limit, so the island is only viable on 512 MB with `ROUTING_GRAPH_ARTIFACT_MMAP=true`.
+- The 12.8 s maximum was the first request after boot. The web client times out at 15 s.
+- This is a local container, not Render: disk speed, CPU throttling and concurrent users there are **not measured**.
 
 ## Winter-risk coverage
 - Risk scores exist for 2,930 H3 cells; the island network touches 4,268. Edges outside scored cells are reported as unknown, never as low risk.
@@ -46,8 +64,8 @@ Built by the data pipeline (`wp-ingest`, `osm/island.py`) from the Geofabrik Qu�
 - Closures and 311 aggregates in production are still loaded for the pilot bbox only. The island sets exist locally (`--region island`: 1,970 closures, 576 blocking).
 
 ## Before this can go live
-1. Measure memory and latency in Docker with `--cpus=0.1 --memory=512m`.
-2. Decide where the 180 MB graph file is hosted (it cannot live in Git) and add the download + SHA-256 check to the image build.
+1. ~~Measure memory and latency in Docker with `--cpus=0.1 --memory=512m`.~~ Done, see above.
+2. ~~Host the graph file and verify it at build time.~~ Done: GitHub Release `graph-island-v1` (188,554,501 bytes), downloaded by the image build when `ROUTING_GRAPH_ARTIFACT_URL` and `ROUTING_GRAPH_ARTIFACT_SHA256` are set; a wrong checksum fails the build (tested).
 3. Switch the 311 and closures jobs to `--region island`, and set the Render variables in `docs/ENVIRONMENT_VARIABLES.md`.
 4. Deploy API and web together, then run the live checks. Landing and "How it works" copy still says "pilot area" and must change in the same release.
 

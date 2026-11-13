@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import struct
+import zipfile
 from array import array
 from datetime import datetime
 from pathlib import Path
@@ -170,11 +172,79 @@ def _id_index(sorted_ids: np.ndarray, perm: np.ndarray, rank: np.ndarray) -> _Id
     return ix
 
 
-def load(path: str | Path) -> tuple[CompactGraph, dict[str, np.ndarray], dict[str, Any]]:
-    """``(graph, extras, info)``. Raises :class:`ArtifactError` on a foreign or damaged file."""
+class _Mapped:
+    """Read-only view of an uncompressed ``.npz`` whose arrays stay on disk (``np.memmap``).
+
+    The arrays are then file-backed pages the kernel can drop and re-read, instead of private
+    memory: on a 512 MB instance that is the difference between fitting with room and not.
+    Members that cannot be mapped (compressed, empty, object dtype) are refused or read normally;
+    nothing is unpickled either way.
+    """
+
+    def __init__(self, path: str | Path) -> None:
+        self._path = str(path)
+        self._members: dict[str, zipfile.ZipInfo] = {}
+        with zipfile.ZipFile(self._path) as zf:
+            for zi in zf.infolist():
+                name = zi.filename[:-4] if zi.filename.endswith(".npy") else zi.filename
+                self._members[name] = zi
+        self.files = list(self._members)
+
+    def __enter__(self) -> _Mapped:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+    def __getitem__(self, name: str) -> np.ndarray:
+        zi = self._members[name]  # KeyError -> "missing" in load()
+        if zi.compress_type != zipfile.ZIP_STORED:
+            raise ArtifactError("graph artifact is compressed; it cannot be memory-mapped")
+        with open(self._path, "rb") as f:
+            f.seek(zi.header_offset)
+            local = f.read(30)
+            if len(local) != 30 or local[:4] != b"PK\x03\x04":
+                raise ArtifactError("graph artifact has a damaged zip entry")
+            name_len, extra_len = struct.unpack("<HH", local[26:30])
+            data_start = zi.header_offset + 30 + name_len + extra_len
+            f.seek(data_start)
+            major, _minor = np.lib.format.read_magic(f)
+            read_header = (
+                np.lib.format.read_array_header_1_0
+                if major == 1
+                else np.lib.format.read_array_header_2_0
+            )
+            shape, fortran, dtype = read_header(f)
+            offset = f.tell()
+        if dtype.hasobject:
+            raise ArtifactError("graph artifact contains an object array")
+        count = int(np.prod(shape, dtype=np.int64)) if shape else 1
+        if count == 0:
+            return np.zeros(shape, dtype=dtype)
+        if offset + count * dtype.itemsize > data_start + zi.file_size:
+            raise ArtifactError("graph artifact array runs past its zip entry")
+        mm = np.memmap(
+            self._path,
+            dtype=dtype,
+            mode="r",
+            offset=offset,
+            shape=shape,
+            order="F" if fortran else "C",
+        )
+        return np.asarray(mm)
+
+
+def load(
+    path: str | Path, *, mmap: bool = False
+) -> tuple[CompactGraph, dict[str, np.ndarray], dict[str, Any]]:
+    """``(graph, extras, info)``. Raises :class:`ArtifactError` on a foreign or damaged file.
+
+    ``mmap=True`` leaves the arrays on disk (read-only, uncompressed files only); the file must
+    then stay in place and unchanged for the life of the process.
+    """
     try:
-        z = np.load(str(path), allow_pickle=False)
-    except (OSError, ValueError) as exc:
+        z = _Mapped(path) if mmap else np.load(str(path), allow_pickle=False)
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
         raise ArtifactError(f"cannot read graph artifact {path}: {exc}") from exc
     with z:
         try:
@@ -214,6 +284,8 @@ def load(path: str | Path) -> tuple[CompactGraph, dict[str, np.ndarray], dict[st
             extras = {k[len(EXTRA_PREFIX) :]: z[k] for k in z.files if k.startswith(EXTRA_PREFIX)}
         except KeyError as exc:
             raise ArtifactError(f"graph artifact is missing {exc}") from exc
+        except (OSError, ValueError, struct.error) as exc:
+            raise ArtifactError(f"graph artifact is damaged: {exc}") from exc
     n, e = len(g._nids), len(g._eids)
     if not (
         len(g.node_lon) == n
