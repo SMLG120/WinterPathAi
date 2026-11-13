@@ -82,6 +82,12 @@ Docker at 0.1 CPU / 512 MB, before → after (warm-up not included in this run):
 
 Fix deployed 2026-11-13 18:33 UTC (commit `62fd988`, `HAZARD_CACHE_SECONDS=300`, `ROUTING_WARMUP=true`). Live mixed load right after (14 rounds of route + segments + hazards in parallel, `/health` every 5 s): all `200`; route p50 4.4 s / max 7.0 s, segments 1.7 / 2.6 s, hazards 2.1 / 3.0 s, health 1.1 / 2.4 s (Render's limit is 5 s). No restart in the three minutes observed; memory 344 MiB and still rising at the end of the run. Longer-term stability is **not yet observed**.
 
+## Aligned graph file (v2, built 2026-11-13, not yet published or deployed)
+`compact_io.save` now writes every array on a 64-byte file offset (still an ordinary `.npz`, byte-for-byte reproducible). The v1 island graph re-saved this way: 188,557,261 bytes, SHA-256 `2f40b5e4b540d162a95e11d5c878373e7e1b25fe8cf17592a8baad0e22c06bb9`, all 49 members identical to v1.
+
+- Memory: with v1 the memory-mapped load copies 61 MiB of unaligned arrays into RAM; with v2 it copies none.
+- Start-up: the graph load itself goes from about 27 ms to 12 ms on the development Mac. **It does not shorten cold starts in any way a visitor would notice.** The 43 s cold start measured on Render at 19:35 UTC was: about 23 s before the graph was loaded (Render waking the instance, Python imports), 8 s to open the server, 4.6 s warm-up, 6.6 s before the first answer.
+
 ## Known limits
 - No address search: no permitted geocoder is configured (public Nominatim is not allowed). Points are set on the map, by coordinates, or by "Use my location".
 - A point more than 75 m from the walkable network is refused (`OFF_NETWORK`), which is more common in parks and large lots.

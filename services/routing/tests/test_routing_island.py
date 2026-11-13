@@ -58,6 +58,15 @@ def test_artifact_round_trip_is_exact(cases, graphs, tmp_path, mmap) -> None:
         extra = np.arange(5, dtype=np.int32)
         compact_io.save(g, path, extras={"demo": extra}, info={"coverage": {"name": "TEST"}})
         g2, extras, info = compact_io.load(path, mmap=mmap)
+        if mmap:  # save() aligns every member, so nothing had to be copied out of the map
+            z = compact_io._Mapped(path)
+            assert all(z[n].flags.aligned for n in z.files)
+            assert not g2.grid_keys.flags.owndata and not g2.wgs.flags.owndata
+        other = tmp_path / f"again{k}.npz"
+        compact_io.save(g, other, extras={"demo": extra}, info={"coverage": {"name": "TEST"}})
+        assert compact_io.sha256_file(other) == compact_io.sha256_file(path)  # deterministic
+        with np.load(path, allow_pickle=False) as plain:  # still an ordinary .npz
+            assert np.array_equal(plain["x_demo"], extra)
         assert info == {"coverage": {"name": "TEST"}} and np.array_equal(extras["demo"], extra)
         assert g2.metadata == g.metadata
         assert list(g2.edges) == list(g.edges) and list(g2.nodes) == list(g.nodes)

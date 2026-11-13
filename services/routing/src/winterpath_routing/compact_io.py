@@ -15,6 +15,7 @@ there. They are returned by :func:`load` and never interpreted here.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import struct
 import zipfile
@@ -165,7 +166,41 @@ def save(
         arrays[f"ecode_{a}"] = g._ecodes[a]
     for k, v in (extras or {}).items():
         arrays[EXTRA_PREFIX + k] = np.asarray(v)
-    (np.savez_compressed if compressed else np.savez)(str(path), **arrays)
+    if compressed:
+        np.savez_compressed(str(path), **arrays)
+    else:
+        _write_aligned(path, arrays)
+
+
+_ALIGN = 64
+_PAD_EXTRA_ID = 0xA11E  # private zip extra-field id; readers skip unknown ids
+
+
+def _write_aligned(path: str | Path, arrays: dict[str, np.ndarray]) -> None:
+    """An ordinary uncompressed ``.npz`` (``np.load`` reads it) whose array data each start on a
+    64-byte file offset, so a memory map of any member is an aligned array. ``np.savez`` leaves
+    the offsets to chance, and NumPy copies an unaligned array on every ``searchsorted``.
+    Padding goes in a zip extra field of the local header. Timestamps are fixed, so the same
+    graph always produces the same bytes."""
+    out = Path(str(path))
+    if out.suffix != ".npz":
+        out = out.with_name(out.name + ".npz")  # what np.savez does
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED, allowZip64=True) as zf:
+        for name, value in arrays.items():
+            arr = np.asanyarray(value)
+            buf = io.BytesIO()
+            np.lib.format.write_array(buf, arr, allow_pickle=False)
+            data = buf.getvalue()
+            fname = name + ".npy"
+            npy_header = len(data) - arr.nbytes
+            pad = -(zf.start_dir + 30 + len(fname.encode()) + npy_header) % _ALIGN
+            if pad < 4:
+                pad += _ALIGN
+            zi = zipfile.ZipInfo(fname, date_time=(1980, 1, 1, 0, 0, 0))
+            zi.compress_type = zipfile.ZIP_STORED
+            zi.external_attr = 0o644 << 16
+            zi.extra = struct.pack("<HH", _PAD_EXTRA_ID, pad - 4) + b"\0" * (pad - 4)
+            zf.writestr(zi, data)
 
 
 def _id_index(sorted_ids: np.ndarray, perm: np.ndarray, rank: np.ndarray) -> _IdIndex:
