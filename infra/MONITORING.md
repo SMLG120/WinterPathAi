@@ -42,7 +42,7 @@
 | A1 | The single `GET /api/v1/data-status`: 200 and schema-valid `DataStatus` (all 7 product ids) | — | no 200 within 120 s, or schema-invalid |
 | A2 | Per product, from the same response: `freshness.state` | `delayed`, or `unavailable` for a product never loaded | `stale`; `unavailable` for `weather_observations`, `risk_scores` (in season) or `pedestrian_graph` |
 | A3 | Same response vs the SQL checks: API says `current` while F1/F3 FAIL for that product (the API's view and the DB disagree) | — | ≥ 1 |
-| A4 | Same response: `mechanism` per product matches the agreed table (`api_on_demand` forecast/alerts, `scheduled_job` observations/scores, `manual` closures/311/graph) | — | mismatch |
+| A4 | Same response: `mechanism` per product matches the agreed table (`api_on_demand` forecast/alerts, `scheduled_job` observations/scores, `scheduled_job` closures/311 since 2026-11-12, `manual` graph) | — | mismatch |
 
 A1–A4 share one HTTP request; A3 is the reason to keep the SQL checks even though `/data-status` exists: the API's in-band freshness is computed by the code under test, the SQL checks read the data directly. `weather_forecast` / `weather_alerts` are `api_on_demand`, so their state reflects the fetch made to answer this request (or its cache), not a scheduled job; A2 reports them but a single `unavailable` is WARN (ECCC outage), not FAIL. The same assertions run in CI against the stub in `tests/integration/test_v18.py`.
 
@@ -66,5 +66,5 @@ Layered, cheapest first. Every signal comes from activity that happens anyway.
 |---|---|---|---|
 | Weather observations | every 3 h (`17 */3`) | 4 h | 6 h |
 | Risk scores | 12:07 + 18:07 UTC | today missing after 18:30 UTC | yesterday missing |
-| 311 aggregates | **not scheduled** (audit problem 4) | 3 d | 7 d |
-| Closures (entraves) | **not scheduled** | 26 h | 72 h |
+| 311 aggregates | daily `27 11` + weekly full `47 10 * * 0` | 3 d | 7 d |
+| Closures (entraves) | `37 9` + `37 15` UTC | 26 h | 72 h |

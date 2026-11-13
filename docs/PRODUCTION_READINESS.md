@@ -14,7 +14,7 @@ States: **Deployed** (live and verified by request), **Configured** (set up and 
 | Weather (ECCC) | Deployed and scheduled | Latest observation served live. GitHub skipped the 21:17 UTC cron on 2026-11-11 (health went `degraded` for weather until a manual run 43116467754); cron is best-effort |
 | Daily risk scores | Deployed and scheduled | Run 43086426247 wrote 2,930 heuristic scores for 2026-11-11 from a GitHub runner |
 | Risk model | Heuristic only | Labelled as a heuristic, not probabilities (API warning on every route). No trained model is deployed |
-| 311 / closure refresh | Manual | `wp.report_311_cell` currently ends 2026-11-07 |
+| 311 / closure refresh | Scheduled | 311: daily 11:27 UTC + weekly full rebuild (Platform d212375). Closures: 09:37 and 15:37 UTC (`closures-refresh`, added 2026-11-12). GitHub cron is best effort. The street graph (OSM, voirie) is still refreshed manually |
 | Web app (Cloudflare Pages) | Deployed | `https://winterpath.pages.dev`; live bundle scanned (no source maps, no mock code, no localhost, none of the deploy secrets, gitleaks clean); browser test passed: basemap, layers, route comparison, FR, 390 px mobile; no console/CSP errors |
 | Security headers on the live site | Deployed | CSP, HSTS, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, COOP verified via `curl -D -` |
 | Secrets hygiene | Configured | gitleaks clean on the repo history and on `dist/`; secrets only in Render env, a GitHub secret, and `.env.deploy` (mode 600) |
@@ -28,6 +28,6 @@ States: **Deployed** (live and verified by request), **Configured** (set up and 
 1. Paid or always-on hosting for the API, so it never sleeps. Requires owner approval and cost.
 2. Database backups (Supabase Pro, or scheduled dumps to private storage).
 3. External uptime monitoring and alerting.
-4. A scheduled refresh for closures and 311 aggregates.
+4. A scheduled refresh for the street graph (closures and 311 are scheduled since 2026-11-12).
 5. Legal and privacy review (above).
 6. A validated risk model, if the product will claim more than a heuristic.

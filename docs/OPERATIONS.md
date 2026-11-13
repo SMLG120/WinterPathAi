@@ -6,8 +6,10 @@ Deploy steps: `docs/DEPLOYMENT.md`. Incidents: `docs/RECOVERY.md`. Local runbook
 | What | How | Frequency |
 |---|---|---|
 | Weather ingest (ECCC) | `scheduled.yml`, weather job (GitHub Actions cron) | every 3 h at :17 UTC |
-| Daily risk scoring | `scheduled.yml`, scoring job: downloads 311 (`--fetch-311`), writes `wp.risk_cell_score` (`--write-db`) | 12:00 and 18:00 UTC |
-| Closures / 311 cell aggregates / graph refresh | **Manual**: operator runs `wp-ingest` with `wp_etl`, then `load` | as needed (not scheduled yet) |
+| Daily risk scoring | `scheduled.yml`, scoring job: downloads 311 (`--fetch-311`), writes `wp.risk_cell_score` (`--write-db`) | 12:07 and 18:07 UTC |
+| 311 cell aggregates | `scheduled.yml`, `report-311-daily` (14-day window) and `report-311-weekly-full` | daily 11:27 UTC; full rebuild Sunday 10:47 UTC |
+| Closures (Entraves, pilot bbox) | `scheduled.yml`, `closures-refresh`: `wp-ingest entraves --refresh`, then `load --source mtl-entraves` (lock WPET,3) | 09:37 and 15:37 UTC; manual: `gh workflow run scheduled.yml -f job=closures` |
+| Graph refresh (OSM, voirie) | **Manual**: operator runs `wp-ingest` with `wp_etl`, then `load` | as needed (not scheduled) |
 | Database size check | Supabase dashboard, or `select pg_size_pretty(pg_database_size(current_database()))` | weekly |
 | Logical backup | `pg_dump` (see RECOVERY) | before each migration or bulk load |
 | Render free hours | Render dashboard → Billing (750 h/month shared with the workspace's other free services) | monthly |

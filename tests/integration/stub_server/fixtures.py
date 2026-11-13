@@ -191,8 +191,8 @@ DATA_PRODUCT_MECHANISM: dict[str, str] = {
     "weather_observations": "scheduled_job",
     "weather_forecast": "api_on_demand",
     "weather_alerts": "api_on_demand",
-    "closures": "manual",
-    "reports_311": "manual",
+    "closures": "scheduled_job",
+    "reports_311": "scheduled_job",
     "risk_scores": "scheduled_job",
     "pedestrian_graph": "manual",
 }

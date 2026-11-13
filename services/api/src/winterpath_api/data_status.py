@@ -156,14 +156,14 @@ def data_status(state, now: datetime | None = None) -> dict[str, Any]:
     products.append(
         _product(
             "closures",
-            "manual",
+            "scheduled_job",
             now,
             at,
             2 * D,
             7 * D,
-            cadence=None,
-            notes="Ville de Montréal entraves (permits), loaded by a manual ingest. Delayed after "
-            "2 days, stale after 7.",
+            cadence="PT12H",
+            notes="Ville de Montréal entraves (permits), refreshed by a scheduled job twice a day "
+            "(GitHub Actions cron, best effort). Delayed after 2 days, stale after 7.",
             missing=why,
         )
     )
@@ -171,15 +171,16 @@ def data_status(state, now: datetime | None = None) -> dict[str, Any]:
     products.append(
         _product(
             "reports_311",
-            "manual",
+            "scheduled_job",
             now,
             at,
             2 * D,
             7 * D,
-            cadence=None,
+            cadence="P1D",
             notes="Ville de Montréal 311 requests (reports, not confirmed obstacles), aggregated "
-            "by ingest. Delayed after 2 days, stale after 7. last_success_at is the ingest time, "
-            "not the date of the latest request.",
+            "by a daily scheduled job (best effort) plus a weekly full rebuild. Delayed after 2 "
+            "days, stale after 7. last_success_at is the ingest time, not the date of the latest "
+            "request.",
             missing=why,
         )
     )

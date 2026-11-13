@@ -28,8 +28,8 @@ EXPECTED_MECHANISM = {
     "weather_alerts": "api_on_demand",
     "weather_observations": "scheduled_job",
     "risk_scores": "scheduled_job",
-    "closures": "manual",
-    "reports_311": "manual",
+    "closures": "scheduled_job",  # closures-refresh job, 2026-11-12
+    "reports_311": "scheduled_job",  # report-311-daily job (Platform d212375)
     "pedestrian_graph": "manual",
 }
 FRESHNESS_STATES = {"current", "delayed", "stale", "unavailable"}

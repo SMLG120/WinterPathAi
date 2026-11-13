@@ -261,9 +261,9 @@ def test_data_status_lists_every_product_and_never_refreshes(env) -> None:
     assert prods["weather_alerts"]["mechanism"] == "api_on_demand"
     assert prods["weather_observations"]["mechanism"] == "scheduled_job"
     assert prods["risk_scores"]["mechanism"] == "scheduled_job"
-    assert {prods[k]["mechanism"] for k in ("closures", "reports_311", "pedestrian_graph")} == {
-        "manual"
-    }
+    assert prods["closures"]["mechanism"] == "scheduled_job"
+    assert prods["reports_311"]["mechanism"] == "scheduled_job"
+    assert prods["pedestrian_graph"]["mechanism"] == "manual"
     assert prods["weather_forecast"]["freshness"]["state"] == "unavailable"  # never fetched yet
     assert up.calls == {"citypage": 0, "alerts": 0}
     c.get("/api/v1/weather/forecast")
