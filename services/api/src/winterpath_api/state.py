@@ -39,9 +39,10 @@ from .repositories.sources import (
     StaticSourceRepository,
 )
 from .security import ClientHasher, RateLimiter
-from .settings import PILOT_BBOX, Settings
+from .settings import PILOT_BBOX, PILOT_NAME, Settings
 
 log = structlog.get_logger("winterpath_api.state")
+MAX_REPORTED_GAPS = 200
 
 
 @dataclass
@@ -58,9 +59,60 @@ class AppState:
     #: v1.8: live ECCC forecast/alerts (one provider per process); None when disabled
     live_weather: Any = None
     db_engine: Any = None
+    #: served coverage: the pilot bbox, or what the loaded graph artifact declares
+    coverage_bbox: tuple[float, float, float, float] = PILOT_BBOX
+    coverage_name: str = PILOT_NAME
+    #: GeoJSON Polygon/MultiPolygon of the coverage (None → the bbox rectangle)
+    coverage_area: dict[str, Any] | None = None
+    _gaps: list[Any] | None = field(default=None, repr=False)
+
+    def graph_gaps(self) -> list[Any]:
+        """Disconnected sub-networks, largest first, computed once (the graph never changes).
+
+        Capped at ``MAX_REPORTED_GAPS``: an island-sized graph has thousands of tiny ones.
+        """
+        if self._gaps is None:
+            gaps = self.engine.graph.gaps() if self.engine is not None else []
+            self._gaps = sorted(gaps, key=lambda g: -g.edge_count)[:MAX_REPORTED_GAPS]
+        return self._gaps
+
     limiter: RateLimiter = field(default_factory=RateLimiter)
     client_hash: ClientHasher = field(default_factory=ClientHasher)
     compute: ComputePool = field(default_factory=ComputePool)
+
+
+def _load_artifact(settings: Settings) -> tuple[RoutingEngine | None, str | None, dict, dict]:
+    """ROUTING_GRAPH_SOURCE=artifact: a prebuilt compact graph (no database, no pickle)."""
+    from winterpath_routing import compact_io
+    from winterpath_routing.compact_engine import CompactRoutingEngine
+
+    path = settings.graph_artifact
+    if path is None or not path.is_file():
+        return None, f"ROUTING_GRAPH_ARTIFACT not found: {path}", {}, {}
+    if settings.graph_artifact_sha256:
+        digest = compact_io.sha256_file(path)
+        if digest != settings.graph_artifact_sha256:
+            log.warning("graph_artifact_sha256_mismatch", path=str(path))
+            return None, "graph artifact SHA-256 does not match the pinned value", {}, {}
+    try:
+        graph, extras, info = compact_io.load(path)
+    except compact_io.ArtifactError as exc:
+        log.warning("graph_unavailable", reason=str(exc))
+        return None, str(exc), {}, {}
+    log.info(
+        "graph_loaded",
+        nodes=len(graph.nodes),
+        edges=len(graph.edges),
+        simulated=graph.metadata.simulated,
+        compact=True,
+        artifact=path.name,
+        fast_search=settings.routing_fast_search,
+        steps_v2=settings.routing_steps_v2,
+    )
+    engine = CompactRoutingEngine(
+        graph, steps_v2=settings.routing_steps_v2, fast_search=settings.routing_fast_search
+    )
+    return engine, None, extras, info
 
 
 def _load_graph(
@@ -104,7 +156,9 @@ def _load_graph(
     if settings.routing_compact_graph:
         from winterpath_routing.compact_engine import CompactRoutingEngine
 
-        return CompactRoutingEngine(graph, steps_v2=settings.routing_steps_v2), None
+        return CompactRoutingEngine(
+            graph, steps_v2=settings.routing_steps_v2, fast_search=settings.routing_fast_search
+        ), None
     return RoutingEngine(graph, steps_v2=settings.routing_steps_v2), None
 
 
@@ -120,7 +174,15 @@ def build_state(
     weather: WeatherAdapter | None = None,
     live_weather: Any = None,
 ) -> AppState:
-    engine, graph_error = _load_graph(settings, graph_provider)
+    extras: dict[str, Any] = {}
+    info: dict[str, Any] = {}
+    if graph_provider is None and settings.graph_source == "artifact":
+        engine, graph_error, extras, info = _load_artifact(settings)
+    else:
+        engine, graph_error = _load_graph(settings, graph_provider)
+    cov = info.get("coverage") or {}
+    coverage_bbox = tuple(cov["bbox"]) if cov.get("bbox") else settings.coverage_bbox
+    coverage_name = cov.get("name") or settings.coverage_name
 
     # One pooled engine per process, shared by every PostGIS-backed component.
     db_engine = create_db_engine(settings) if needs_db(settings) else None
@@ -160,6 +222,8 @@ def build_state(
                 edge_coords,
                 engine=db_engine,
                 score_source=settings.risk_score_source,
+                graph=engine.graph if engine is not None else None,
+                risk_cells=(extras, info.get("risk_cells")),
             )
         except (ImportError, AttributeError) as exc:
             log.warning("risk_provider_unavailable", error_type=type(exc).__name__)
@@ -196,4 +260,7 @@ def build_state(
         weather=weather,
         live_weather=live_weather,
         db_engine=db_engine,
+        coverage_bbox=coverage_bbox,  # type: ignore[arg-type]
+        coverage_name=coverage_name,
+        coverage_area=cov.get("area"),
     )

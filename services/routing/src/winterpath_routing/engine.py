@@ -158,6 +158,8 @@ class _Context:
     #: allowed edges whose cost may differ from the static default (hazard or known risk)
     overrides: frozenset[str]
     _costs: dict[str, EdgeCost] = field(default_factory=dict)
+    #: array-backed risk for this request (CompactRoutingEngine + EdgeRiskSnapshot), else None
+    risk_snapshot: Any = None
 
 
 @dataclass(frozen=True, slots=True)

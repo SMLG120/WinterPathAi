@@ -71,7 +71,7 @@ def list_hazards(
     cursor: str | None = Query(None),
     state: AppState = Depends(get_state),
 ) -> HazardCollection:
-    box = parse_bbox(bbox)
+    box = parse_bbox(bbox, state.coverage_bbox)
     kinds = _parse_kinds(kind)
     now = datetime.now(UTC)
     try:
@@ -105,7 +105,7 @@ def list_segments(
     cursor: str | None = Query(None),
     state: AppState = Depends(get_state),
 ) -> SegmentCollection:
-    box = parse_bbox(bbox)
+    box = parse_bbox(bbox, state.coverage_bbox)
     if state.engine is None:
         raise ApiError(503, "UPSTREAM_UNAVAILABLE", "No pedestrian graph is loaded.")
     g = state.engine.graph

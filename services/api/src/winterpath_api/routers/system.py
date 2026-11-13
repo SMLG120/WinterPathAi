@@ -24,7 +24,6 @@ from ..schemas import (
     WeatherCurrent,
     WeatherForecast,
 )
-from ..settings import PILOT_BBOX, PILOT_NAME
 from ..state import AppState
 
 router = APIRouter()
@@ -82,8 +81,11 @@ def get_health(state: AppState = Depends(get_state)) -> Health:
     "/coverage", response_model=Coverage, response_model_exclude_unset=True, tags=["system"]
 )
 def get_coverage(state: AppState = Depends(get_state)) -> Coverage:
-    w, s, e, n = PILOT_BBOX
-    area = {"type": "Polygon", "coordinates": [[[w, s], [e, s], [e, n], [w, n], [w, s]]]}
+    w, s, e, n = state.coverage_bbox
+    area = state.coverage_area or {
+        "type": "Polygon",
+        "coordinates": [[[w, s], [e, s], [e, n], [w, n], [w, s]]],
+    }
     gaps: list[dict] = []
     if state.engine is None:
         graph = {"node_count": 0, "edge_count": 0, "built_at": None, "osm_snapshot": None}
@@ -110,7 +112,7 @@ def get_coverage(state: AppState = Depends(get_state)) -> Coverage:
                     "geometry": None,
                 }
             )
-        for gap in g.gaps():
+        for gap in state.graph_gaps():
             gaps.append(
                 {
                     "description": gap.description,
@@ -122,8 +124,8 @@ def get_coverage(state: AppState = Depends(get_state)) -> Coverage:
             )
     return Coverage.model_validate(
         {
-            "pilot_name": PILOT_NAME,
-            "bbox": list(PILOT_BBOX),
+            "pilot_name": state.coverage_name,
+            "bbox": list(state.coverage_bbox),
             "area": area,
             "graph": graph,
             "known_gaps": gaps,

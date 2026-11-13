@@ -87,6 +87,17 @@ class Settings:
     weather_live_user_agent: str = "WinterPathAI-API/1.8"
     routing_compact_graph: bool = False
     routing_steps_v2: bool = False
+    #: v2 (island): ROUTING_GRAPH_SOURCE=artifact loads a prebuilt compact graph file
+    #: (``python -m winterpath_api.graph_artifact``; NumPy arrays, no pickle). The file's
+    #: SHA-256 must equal ROUTING_GRAPH_ARTIFACT_SHA256 when that is set. The artifact also
+    #: carries the coverage area, which then replaces the pilot bbox below.
+    graph_artifact: Path | None = None
+    graph_artifact_sha256: str = ""
+    #: compiled Dijkstra for the compact engine (same optimal cost; ties may differ)
+    routing_fast_search: bool = False
+    #: served coverage when no artifact defines one
+    coverage_bbox: tuple[float, float, float, float] = PILOT_BBOX
+    coverage_name: str = PILOT_NAME
     #: v1.7: SQLAlchemy pool, sized for Supabase's session pooler on a free-tier host. One engine
     #: is shared by every repository and the weather store; the graph load uses its own
     #: short-lived connection at startup and releases it.
@@ -123,6 +134,11 @@ class Settings:
             or "WinterPathAI-API/1.8",
             routing_compact_graph=_bool(e.get("ROUTING_COMPACT_GRAPH"), False),
             routing_steps_v2=_bool(e.get("ROUTING_STEPS_V2"), False),
+            graph_artifact=Path(e["ROUTING_GRAPH_ARTIFACT"])
+            if e.get("ROUTING_GRAPH_ARTIFACT")
+            else None,
+            graph_artifact_sha256=(e.get("ROUTING_GRAPH_ARTIFACT_SHA256") or "").strip().lower(),
+            routing_fast_search=_bool(e.get("ROUTING_FAST_SEARCH"), False),
             risk_score_source=_choice(e.get("RISK_SCORE_SOURCE"), "file", ("file", "postgis")),
             db_pool_size=_int(e.get("DATABASE_POOL_SIZE"), 3, minimum=1),
             db_max_overflow=_int(e.get("DATABASE_MAX_OVERFLOW"), 2),

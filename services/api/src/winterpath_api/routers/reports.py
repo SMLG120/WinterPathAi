@@ -23,7 +23,6 @@ from ..schemas import (
     ReportReceipt,
 )
 from ..security import check_admin, sha256_hex
-from ..settings import PILOT_BBOX
 from ..state import AppState
 
 router = APIRouter()
@@ -68,12 +67,12 @@ def create_report(
 ) -> ReportReceipt:
     client = state.client_hash(request)
     state.limiter.check("reports", client, min(10, state.settings.rate_limit_per_minute))
-    if not in_coverage(body.location.lon, body.location.lat):
+    if not in_coverage(body.location.lon, body.location.lat, state.coverage_bbox):
         raise ApiError(
             422,
             "OUTSIDE_COVERAGE",
-            "Report location is outside the pilot area.",
-            {"coverage_bbox": list(PILOT_BBOX)},
+            "Report location is outside the coverage area.",
+            {"coverage_bbox": list(state.coverage_bbox)},
         )
     token = secrets.token_urlsafe(32)  # 43 chars; only its hash is stored
     r = state.reports.create(

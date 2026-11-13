@@ -129,9 +129,26 @@ class CoordinateRiskAdapter:
         cache_size: int = 200_000,
         unknown_ttl_s: float = 300.0,
         clock: Callable[[], float] = time.monotonic,
+        graph: Any = None,
+        risk_cells: Any = None,
     ) -> None:
         self.inner = inner
         self.edge_coords = edge_coords
+        #: whole-graph snapshots (compact graphs only); None → per-edge lookups below
+        self._snapshots: Any = None
+        self._graph = graph
+        if graph is not None:
+            from . import risk_cells as rc
+
+            index = rc.index_for(graph, inner, risk_cells)
+            if index is not None:
+                self._snapshots = rc.SnapshotSource(
+                    index,
+                    self._cell,
+                    lambda at: at.astimezone(LOCAL_TZ).date(),
+                    ttl_s=unknown_ttl_s,
+                    clock=clock,
+                )
         try:
             status = inner.status() or {}
         except Exception as exc:
@@ -146,6 +163,19 @@ class CoordinateRiskAdapter:
         self._clock = clock
         self._lock = Lock()
 
+    def _cell(self, cell: str, at: datetime) -> RiskEstimate:
+        try:
+            return normalise_estimate(self.inner.cell_risk(cell, at))
+        except Exception as exc:
+            log.warning("risk_provider_failed", error_type=type(exc).__name__)
+            return RiskEstimate.unknown("Risk provider failed for this cell.")
+
+    def edge_risk_snapshot(self, at: datetime) -> Any:
+        """``winterpath_routing.EdgeRiskSnapshot`` for the loaded compact graph, or ``None``."""
+        if self._snapshots is None or self.risk_layer == "none":
+            return None
+        return self._snapshots.at(at)
+
     def _one(self, eid: str, at: datetime) -> RiskEstimate:
         coords = self.edge_coords(eid)
         if not coords or len(coords) < 2:
@@ -159,6 +189,14 @@ class CoordinateRiskAdapter:
     def edge_risk(self, edge_ids: Sequence[str], at: datetime) -> Mapping[str, RiskEstimate]:
         if self.risk_layer == "none":
             return NullRiskProvider().edge_risk(edge_ids, at)
+        snap = self.edge_risk_snapshot(at)
+        if snap is not None:  # same source as routing uses, so map and routes always agree
+            index_of = self._graph.edge_index
+            unknown = RiskEstimate.unknown("Segment unknown to the risk layer.")
+            return {
+                eid: (snap.estimate(i) if (i := index_of(eid)) >= 0 else None) or unknown
+                for eid in edge_ids
+            }
         day = at.astimezone(LOCAL_TZ).date()
         out: dict[str, RiskEstimate] = {}
         for eid in edge_ids:
@@ -203,6 +241,8 @@ def load_risk_provider(
     *,
     engine: Any = None,
     score_source: str | None = None,
+    graph: Any = None,
+    risk_cells: Any = None,
 ) -> RiskProvider:
     """``none`` → NullRiskProvider; ``pkg.module:factory`` → factory() wrapped for normalisation.
 
@@ -229,7 +269,7 @@ def load_risk_provider(
         if edge_coords is None:
             log.warning("risk_provider_without_graph")
             return NullRiskProvider()
-        return CoordinateRiskAdapter(inner, edge_coords)
+        return CoordinateRiskAdapter(inner, edge_coords, graph=graph, risk_cells=risk_cells)
     return NormalisingRiskProvider(inner)
 
 

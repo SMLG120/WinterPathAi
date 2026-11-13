@@ -15,7 +15,7 @@ BBOX_RE = re.compile(r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$
 Bbox = tuple[float, float, float, float]
 
 
-def parse_bbox(raw: str | None) -> Bbox:
+def parse_bbox(raw: str | None, coverage: Bbox = PILOT_BBOX) -> Bbox:
     if not raw or not BBOX_RE.match(raw):
         raise ApiError(400, "VALIDATION_ERROR", "bbox must be 'minLon,minLat,maxLon,maxLat'.")
     w, s, e, n = (float(x) for x in raw.split(","))
@@ -31,19 +31,19 @@ def parse_bbox(raw: str | None) -> Bbox:
             f"bbox area {area:.5f} deg² exceeds {MAX_BBOX_AREA_DEG2} deg².",
             {"max_area_deg2": MAX_BBOX_AREA_DEG2},
         )
-    pw, ps, pe, pn = PILOT_BBOX
+    pw, ps, pe, pn = coverage
     if e < pw or w > pe or n < ps or s > pn:
         raise ApiError(
             422,
             "OUTSIDE_COVERAGE",
-            "bbox does not intersect the pilot area.",
-            {"coverage_bbox": list(PILOT_BBOX)},
+            "bbox does not intersect the coverage area.",
+            {"coverage_bbox": list(coverage)},
         )
     return w, s, e, n
 
 
-def in_coverage(lon: float, lat: float) -> bool:
-    w, s, e, n = PILOT_BBOX
+def in_coverage(lon: float, lat: float, coverage: Bbox = PILOT_BBOX) -> bool:
+    w, s, e, n = coverage
     return w <= lon <= e and s <= lat <= n
 
 

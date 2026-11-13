@@ -19,7 +19,6 @@ from ..deps import get_state
 from ..errors import ApiError
 from ..params import in_coverage
 from ..schemas import RouteCompareRequest, RouteCompareResponse
-from ..settings import PILOT_BBOX
 from ..state import AppState
 
 router = APIRouter(tags=["routing"])
@@ -35,12 +34,12 @@ async def compare_routes(
     state.limiter.check("routes", state.client_hash(request), state.settings.rate_limit_per_minute)
 
     for which, p in (("origin", body.origin), ("destination", body.destination)):
-        if not in_coverage(p.lon, p.lat):
+        if not in_coverage(p.lon, p.lat, state.coverage_bbox):
             raise ApiError(
                 422,
                 "OUTSIDE_COVERAGE",
-                f"{which} is outside the pilot coverage area.",
-                {"which": which, "coverage_bbox": list(PILOT_BBOX)},
+                f"{which} is outside the coverage area.",
+                {"which": which, "coverage_bbox": list(state.coverage_bbox)},
             )
     engine = state.engine
     if engine is None:

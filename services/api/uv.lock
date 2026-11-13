@@ -872,7 +872,7 @@ dependencies = [
     { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "winterpath-ml" },
-    { name = "winterpath-routing", extra = ["postgis"] },
+    { name = "winterpath-routing", extra = ["fast", "postgis"] },
 ]
 
 [package.dev-dependencies]
@@ -896,7 +896,7 @@ requires-dist = [
     { name = "structlog", specifier = ">=24.4" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
     { name = "winterpath-ml", editable = "../ml" },
-    { name = "winterpath-routing", extras = ["postgis"], editable = "../routing" },
+    { name = "winterpath-routing", extras = ["postgis", "fast"], editable = "../routing" },
 ]
 
 [package.metadata.requires-dev]
@@ -953,6 +953,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+fast = [
+    { name = "scipy" },
+]
 postgis = [
     { name = "psycopg", extra = ["binary"] },
     { name = "sqlalchemy" },
@@ -963,13 +966,15 @@ requires-dist = [
     { name = "networkx", specifier = ">=3.3" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgis'", specifier = ">=3.2" },
     { name = "pyproj", specifier = ">=3.6" },
+    { name = "scipy", marker = "extra == 'fast'", specifier = ">=1.13" },
     { name = "shapely", specifier = ">=2.0" },
     { name = "sqlalchemy", marker = "extra == 'postgis'", specifier = ">=2.0" },
 ]
-provides-extras = ["postgis"]
+provides-extras = ["postgis", "fast"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.6" },
+    { name = "scipy", specifier = ">=1.13" },
 ]
