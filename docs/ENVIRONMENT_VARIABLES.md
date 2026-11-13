@@ -26,7 +26,7 @@ Names are defined in `.env.example` (names only; never commit values). Real valu
 | `RISK_SCORE_SOURCE` | `file` | `postgis` (`wp.risk_cell_score`) | no |
 | `MODEL_ARTIFACT_DIR` / `MODEL_REGISTRY_PATH` | local artifacts | image defaults (registry + committed coverage list only) | no |
 | `WEATHER_SOURCE` | `none` | `postgis` | no |
-| `WEATHER_MAX_AGE_MINUTES` | `180` | `180` | no |
+| `WEATHER_MAX_AGE_MINUTES` | `180` | **`300`** since 2026-11-13: the 3-h cron plus ~1 h ECCC publication lag plus GitHub delays left observations 3–4 h old, so health flapped `degraded` at 180 | no |
 | `WEATHER_STATION_IDS` | empty | `7025251,702S006` (priority order) | no |
 | `WEATHER_LIVE_ENABLED` | `false` | `true` (v1.8: live ECCC forecast/alerts in API memory) | no |
 | `WEATHER_LIVE_USER_AGENT` | `WinterPathAI-API/1.8` | default (generic, no personal contact) | no |
