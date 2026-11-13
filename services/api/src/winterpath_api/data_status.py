@@ -77,6 +77,17 @@ def _latest_obs(state) -> tuple[Any, str]:
     return obs, "no ECCC observation ingested"
 
 
+def _weather_max_age_minutes(state) -> int:
+    """WEATHER_MAX_AGE_MINUTES (the /health limit); 180 like Settings when unavailable."""
+    v = getattr(getattr(state, "settings", None), "weather_max_age_minutes", None)
+    return v if isinstance(v, int) and v > 0 else 180
+
+
+def _hm(d: timedelta) -> str:
+    m = int(d.total_seconds() // 60)
+    return f"{m // 60} h" if m % 60 == 0 else f"{m // 60} h {m % 60:02d} min"
+
+
 def _latest_scores(state) -> tuple[datetime | None, str]:
     if state.db_engine is None:
         return None, "no database configured in this deployment"
@@ -98,17 +109,22 @@ def data_status(state, now: datetime | None = None) -> dict[str, Any]:
 
     # ---- weather observations (scheduled ingest into wp.weather_obs)
     obs, why = _latest_obs(state)
+    # "delayed" uses the same limit as /health (WEATHER_MAX_AGE_MINUTES, 300 in production since
+    # 2026-11-13), so the two endpoints never disagree; a 3-h cron + ~1 h ECCC lag routinely
+    # exceeds 90 min. "stale" stays at 6 h, and is always at least 1 h after "delayed".
+    obs_delayed = timedelta(minutes=_weather_max_age_minutes(state))
+    obs_stale = max(6 * H, obs_delayed + H)
     products.append(
         _product(
             "weather_observations",
             "scheduled_job",
             now,
             obs.observed_at if obs else None,
-            timedelta(minutes=90),
-            6 * H,
+            obs_delayed,
+            obs_stale,
             cadence="PT3H",
             notes="ECCC SWOB observations ingested by the scheduled job (best effort); age is the "
-            "observation time. Delayed after 90 min, stale after 6 h.",
+            f"observation time. Delayed after {_hm(obs_delayed)}, stale after {_hm(obs_stale)}.",
             missing=why,
             last_success_at=getattr(obs, "retrieved_at", None) if obs else None,
         )

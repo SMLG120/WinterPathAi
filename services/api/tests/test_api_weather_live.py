@@ -300,3 +300,39 @@ def test_weather_context_from_cached_forecast_only(env) -> None:
     assert ctx["freshness"]["state"] == "current"
     assert _compare(c, T0 + timedelta(days=5))["weather_context"] is None  # outside the range
     assert up.calls["citypage"] == 1
+
+
+def test_data_status_obs_delayed_threshold_follows_weather_max_age() -> None:
+    """/data-status "delayed" uses WEATHER_MAX_AGE_MINUTES, the same limit as /health."""
+    from datetime import UTC, datetime, timedelta
+    from types import SimpleNamespace
+
+    from winterpath_api.data_status import data_status
+
+    now = datetime(2026, 11, 13, 4, 0, tzinfo=UTC)
+
+    def state(max_age, age_h):
+        obs = SimpleNamespace(observed_at=now - timedelta(hours=age_h), retrieved_at=now)
+        store = SimpleNamespace(latest_obs=lambda ids: obs)
+        return SimpleNamespace(
+            settings=SimpleNamespace(weather_max_age_minutes=max_age),
+            weather=SimpleNamespace(store=store, station_ids=[]),
+            live_weather=None,
+            sources=SimpleNamespace(list=lambda: []),
+            db_engine=None,
+            engine=None,
+            graph_error=None,
+        )
+
+    def obs_state(max_age, age_h):
+        prods = {p["id"]: p for p in data_status(state(max_age, age_h), now)["products"]}
+        return prods["weather_observations"]
+
+    p = obs_state(300, 3.1)  # production 2026-11-13: 3.1 h old was "delayed" at 90 min
+    assert p["freshness"]["state"] == "current"
+    assert "Delayed after 5 h, stale after 6 h" in p["notes"]
+    assert obs_state(300, 5.5)["freshness"]["state"] == "delayed"
+    assert obs_state(300, 6.5)["freshness"]["state"] == "stale"
+    assert obs_state(180, 3.1)["freshness"]["state"] == "delayed"
+    assert obs_state(480, 8.5)["freshness"]["state"] == "delayed"  # stale >= delayed + 1 h
+    assert obs_state(480, 9.5)["freshness"]["state"] == "stale"
