@@ -101,6 +101,7 @@ Published as GitHub Release `graph-island-v2` (downloaded copy matches the SHA-2
   | 2 clients, 80 rounds | 215 → 283 MiB | 213 → 255 MiB |
 
   Speed is unchanged: with 2 clients segments p50 2.5–2.7 s, max 6.5–6.9 s before and after. With 6 clients the 0.1 CPU is saturated either way (segments p50 6–10 s; `/health` up to 10.7 s before and 17.1 s after, one segments request 55.6 s after), so heavy simultaneous panning can still exceed Render's 5 s health check. That is a CPU limit of the free instance and is not fixed.
+- **Live after the fix** (Render deploy `dep-dbrsenqfngtc73b0p9ag` of `4674383`, live 02:31 UTC): mixed load all 200 (route p50 3.7 s / max 5.0 s, segments 1.6 / 3.0 s); then one paced panning session of 70 segment + 70 hazard requests (68 × 200 each, 2 × 422 for boxes outside coverage; segments p50 0.9 s / max 5.6 s, health max 3.1 s). Memory on Render afterwards: 296 MiB (446 MiB after the 00:26–00:35 session on the previous build, which made about 190 segment requests). No restarts. Several simultaneous users have not been observed live.
 - Rollback to v1: set `ROUTING_GRAPH_ARTIFACT_URL` / `ROUTING_GRAPH_ARTIFACT_SHA256` back to the `graph-island-v1` values and redeploy.
 
 ## Known limits
