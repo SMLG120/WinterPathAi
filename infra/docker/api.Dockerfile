@@ -37,7 +37,10 @@ RUN set -eu; mkdir -p /graph; \
 FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     VIRTUAL_ENV=/opt/venv PATH=/opt/venv/bin:$PATH \
-    API_APP=winterpath_api.main:app API_ROOT_PATH=""
+    API_APP=winterpath_api.main:app API_ROOT_PATH="" \
+    MALLOC_ARENA_MAX=2
+# MALLOC_ARENA_MAX=2: glibc otherwise gives each request thread its own heap arena and keeps
+# freed memory in every one of them; measured on the 512 MiB instance (docs/ISLAND_COVERAGE.md).
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app
 COPY --from=build /opt/venv /opt/venv
 WORKDIR /app

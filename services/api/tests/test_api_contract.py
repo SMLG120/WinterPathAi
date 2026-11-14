@@ -612,3 +612,36 @@ def test_311_titles_cover_every_canonical_category() -> None:
         "311 reports: snow dumping (alley)",
         "Requêtes 311 : dépôt de neige (ruelle)",
     )
+
+
+def test_segments_responses_are_built_at_most_two_at_a_time(client, monkeypatch) -> None:
+    """Segment pages are large; building many at once exhausted the 512 MiB instance."""
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    from winterpath_api.routers import map as map_router
+
+    real = map_router._segments
+    lock = threading.Lock()
+    running = 0
+    peak = 0
+
+    def slow(*args, **kwargs):
+        nonlocal running, peak
+        with lock:
+            running += 1
+            peak = max(peak, running)
+        try:
+            time.sleep(0.05)
+            return real(*args, **kwargs)
+        finally:
+            with lock:
+                running -= 1
+
+    monkeypatch.setattr(map_router, "_segments", slow)
+    url = f"/api/v1/map/segments?bbox={BBOX_OK}&limit=5"
+    with ThreadPoolExecutor(8) as ex:
+        codes = list(ex.map(lambda _: client.get(url).status_code, range(8)))
+    assert codes == [200] * 8
+    assert 1 <= peak <= map_router.SEGMENTS_MAX_CONCURRENT

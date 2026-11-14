@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,6 +16,13 @@ from ..schemas import HazardCollection, SegmentCollection
 from ..state import AppState
 
 router = APIRouter(tags=["map"])
+
+#: At most this many /map/segments responses are built at once; the rest wait their turn.
+#: A segments page is hundreds of features, so each one in flight holds several MiB of
+#: short-lived objects. On the 0.1-CPU / 512 MiB instance, six at once left ~160 MiB of freed
+#: heap unreturned and starved /health; running them in parallel gains nothing there anyway.
+SEGMENTS_MAX_CONCURRENT = 2
+_segments_slots = threading.BoundedSemaphore(SEGMENTS_MAX_CONCURRENT)
 
 CROSSING_TYPES = {"marked", "traffic_signals", "unmarked", "uncontrolled"}
 KERBS = {"lowered", "flush", "raised"}
@@ -108,6 +116,13 @@ def list_segments(
     box = parse_bbox(bbox, state.coverage_bbox)
     if state.engine is None:
         raise ApiError(503, "UPSTREAM_UNAVAILABLE", "No pedestrian graph is loaded.")
+    with _segments_slots:
+        return _segments(state, box, limit, cursor)
+
+
+def _segments(
+    state: AppState, box: tuple[float, float, float, float], limit: int, cursor: str | None
+) -> SegmentCollection:
     g = state.engine.graph
     # Non-walkable edges (foot_access no/private) are never presented as pedestrian segments.
     if hasattr(g, "legal"):  # compact graph: filter on its array, no Edge object per candidate
