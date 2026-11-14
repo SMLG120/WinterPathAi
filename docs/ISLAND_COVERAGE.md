@@ -82,11 +82,18 @@ Docker at 0.1 CPU / 512 MB, before → after (warm-up not included in this run):
 
 Fix deployed 2026-11-13 18:33 UTC (commit `62fd988`, `HAZARD_CACHE_SECONDS=300`, `ROUTING_WARMUP=true`). Live mixed load right after (14 rounds of route + segments + hazards in parallel, `/health` every 5 s): all `200`; route p50 4.4 s / max 7.0 s, segments 1.7 / 2.6 s, hazards 2.1 / 3.0 s, health 1.1 / 2.4 s (Render's limit is 5 s). No restart in the three minutes observed; memory 344 MiB and still rising at the end of the run. Longer-term stability is **not yet observed**.
 
-## Aligned graph file (v2, built 2026-11-13, not yet published or deployed)
+## Aligned graph file (v2, built 2026-11-13, in production since 2026-11-14 01:14 UTC)
 `compact_io.save` now writes every array on a 64-byte file offset (still an ordinary `.npz`, byte-for-byte reproducible). The v1 island graph re-saved this way: 188,557,261 bytes, SHA-256 `2f40b5e4b540d162a95e11d5c878373e7e1b25fe8cf17592a8baad0e22c06bb9`, all 49 members identical to v1.
 
 - Memory: with v1 the memory-mapped load copies 61 MiB of unaligned arrays into RAM; with v2 it copies none.
 - Start-up: the graph load itself goes from about 27 ms to 12 ms on the development Mac. **It does not shorten cold starts in any way a visitor would notice.** The 43 s cold start measured on Render at 19:35 UTC was: about 23 s before the graph was loaded (Render waking the instance, Python imports), 8 s to open the server, 4.6 s warm-up, 6.6 s before the first answer.
+
+Published as GitHub Release `graph-island-v2` (downloaded copy matches the SHA-256). Render deploy `dep-dbrrarmk1f9s73ff2lfg` of `cdd9514`: `graph_loaded` with 257,542 nodes / 650,920 edges, `mmap: true`; warm-up 3.8 s (823 hazards).
+
+- Live mixed load right after the deploy (14 requests of each kind, all 200): route p50 3.5 s / max 4.9 s, segments 1.3 / 2.6 s, hazards 1.2 / 2.4 s, health 0.7 / 1.6 s.
+- Memory on Render after that load: peak 382 MiB, then 337 MiB. The same load on v1 settled at 345–347 MiB, so the saving seen in production so far is about 10 MiB, not the 61 MiB measured locally (memory-mapped pages that have been read still count towards the container).
+- **Memory growth seen on v1:** the instance that had run since 18:33 UTC was at 446 MiB of 512 between 00:35 and 01:09 UTC (360 MiB at 00:30). The cause is not identified. Whether v2 behaves the same over hours has not been observed.
+- Rollback to v1: set `ROUTING_GRAPH_ARTIFACT_URL` / `ROUTING_GRAPH_ARTIFACT_SHA256` back to the `graph-island-v1` values and redeploy.
 
 ## Known limits
 - No address search: no permitted geocoder is configured (public Nominatim is not allowed). Points are set on the map, by coordinates, or by "Use my location".
