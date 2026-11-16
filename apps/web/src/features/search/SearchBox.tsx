@@ -131,7 +131,7 @@ export function SearchBox() {
       statusKind = 'count';
       status = (
         <>
-          {ambiguous && <span className="not-sr-only block">{t('search.order.ambiguous')}</span>}
+          {ambiguous && <span className="block">{t('search.order.ambiguous')}</span>}
           <span className="sr-only">{t('search.results', { count: results.length })}</span>
         </>
       );

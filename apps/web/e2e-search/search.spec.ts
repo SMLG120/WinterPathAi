@@ -1,20 +1,21 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const HAVE_INDEX = existsSync(join(__dirname, '../public/search/manifest.json'));
+const HAVE_INDEX = existsSync(join(fileURLToPath(new URL('.', import.meta.url)), '../public/search/manifest.json'));
 test.skip(!HAVE_INDEX, 'no local search index in public/search (built from raw data, never committed)');
 
 async function openPlanner(page: Page, lang: 'en' | 'fr' = 'en') {
   await page.goto(`/${lang}/plan`);
   const handle = page.getByTestId('sheet-handle');
   if ((await handle.isVisible()) && (await page.getByTestId('planner-panel').getAttribute('data-snap')) === 'peek') await handle.click();
-  return page.getByRole('combobox');
+  return page.getByTestId('search-input');
 }
 
 async function searchAndPick(page: Page, query: string, expected: RegExp) {
-  const box = page.getByRole('combobox');
+  const box = page.getByTestId('search-input');
   await box.fill(query);
   const list = page.getByRole('listbox');
   await expect(list).toBeVisible();

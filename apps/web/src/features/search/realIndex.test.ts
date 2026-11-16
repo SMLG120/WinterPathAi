@@ -26,7 +26,8 @@ describe.skipIf(!HAVE)('real index (local only)', () => {
   const p = new StaticIndexProvider('/search/', fsFetch);
   const run = async (q: string) => {
     const t0 = performance.now();
-    const out = await p.search(q);
+    // Same kind of tie-break bias the UI passes (centre of the coverage area); downtown here.
+    const out = await p.search(q, { near: { lon: -73.5673, lat: 45.5017 } });
     const ms = performance.now() - t0;
     process.stdout.write(`\nQ: ${q}  [${out.status}, ${out.results.length} results, ${ms.toFixed(0)} ms]\n  ${out.results.slice(0, 4).map(show).join('\n  ')}\n`);
     return out;
@@ -42,6 +43,7 @@ describe.skipIf(!HAVE)('real index (local only)', () => {
       const { results } = await run(q);
       expect(results[0]).toMatchObject({ kind: 'place', source: 'osm', evidence: 'unverified_report' });
       expect(results[0]!.label).toMatch(/McGill/);
+      expect(results[0]!.detail).toMatch(/Montréal$/); // downtown campus before the Sainte-Anne-de-Bellevue one
     }
   });
   it('Gare Centrale → a station', async () => {
@@ -51,8 +53,11 @@ describe.skipIf(!HAVE)('real index (local only)', () => {
   it('Laval, Longueuil, Brossard addresses', async () => {
     const laval = await run('1555 boul Chomedey, Laval');
     expect(laval.results[0]).toMatchObject({ kind: 'address', detail: 'Laval' });
-    const longueuil = await run('150 rue St-Charles O, Longueuil');
+    const longueuil = await run('151 rue St-Charles O, Longueuil');
     expect(longueuil.results[0]).toMatchObject({ kind: 'address', detail: 'Longueuil' });
+    expect(longueuil.results[0]!.note).toBeUndefined();
+    const notListed = await run('150 rue St-Charles O, Longueuil');
+    expect(notListed.results[0]).toMatchObject({ kind: 'address', detail: 'Longueuil', note: 'nearest_civic' });
     const brossard = await run('6000 boul de Rome, Brossard');
     expect(brossard.results[0]).toMatchObject({ kind: 'address', detail: 'Brossard' });
   });
