@@ -3,3 +3,8 @@ dist-real/
 dist-shots/
 dist-readonly/
 dist-perf/
+dist-search/
+
+# Static place-search index: generated from RQA + OSM by
+# services/ingestion (python -m winterpath_ingestion.search_index); never committed (docs/SEARCH.md).
+public/search/

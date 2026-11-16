@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowDownUp, Eraser, Layers, LocateFixed, PanelLeftClose, PanelLeftOpen, Route as RouteIcon, Search } from 'lucide-react';
+import { ArrowDownUp, Eraser, Layers, LocateFixed, PanelLeftClose, PanelLeftOpen, Route as RouteIcon } from 'lucide-react';
 import { useCompareRoutes, useCoverage, useHazards, useSegments } from '@/api/queries';
 import { setCoverage } from '@/lib/coverage';
 import { useBackendStore } from '@/stores/backend';
@@ -9,7 +9,7 @@ import { DemoBadge } from '@/components/evidence/DemoBadge';
 import { SimulatedBanner } from '@/components/evidence/EvidenceBadge';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Input, Label, Select } from '@/components/ui/input';
+import { Label, Select } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CompareCard } from '@/features/plan/CompareCard';
 import { GeolocateButton } from '@/features/plan/GeolocateButton';
@@ -18,6 +18,7 @@ import { HazardSourceNotice } from '@/features/plan/HazardSourceNotice';
 import { useHazardCoverage } from '@/features/plan/hazardCoverage';
 import { Legend } from '@/features/plan/Legend';
 import { PointInput } from '@/features/plan/PointInput';
+import { SearchBox } from '@/features/search/SearchBox';
 import { RouteError } from '@/features/plan/RouteError';
 import { RecentDestinations } from '@/features/plan/RecentDestinations';
 import { nextSnap, settleSnap, snapHeight, type Snap } from '@/features/plan/sheet';
@@ -243,16 +244,7 @@ export default function Plan() {
         <p className="mt-1 text-sm text-muted-foreground">{t('intro')}</p>
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="address-search" className="flex items-center gap-1.5">
-          <Search className="size-4" aria-hidden="true" />
-          {t('search.label')}
-        </Label>
-        <Input id="address-search" disabled aria-describedby="address-search-help" />
-        <p id="address-search-help" className="text-xs text-muted-foreground">
-          {t('search.disabled')}
-        </p>
-      </div>
+      <SearchBox />
 
       <PointInput which="origin" extra={<GeolocateButton onLocated={(p) => s.setPoint('origin', p)} />} />
       <div className="flex justify-center">
