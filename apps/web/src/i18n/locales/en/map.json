@@ -1,0 +1,59 @@
+{
+  "markers": {
+    "origin": "Start (A)",
+    "destination": "Destination (B)",
+    "searched": "{{point}}: searched place “{{label}}”. Approximate: the route starts from the nearest walkable path, if one is within 75 m.",
+    "searchedNoLabel": "{{point}}: searched place. Approximate: the route starts from the nearest walkable path, if one is within 75 m."
+  },
+  "routes": {
+    "lineLabel": "{{route}} route line",
+    "selectHint": "Click or tap a route line to show it; the cards below list the same routes."
+  },
+  "status": {
+    "computing": "Computing routes…",
+    "loadingPlain": "Loading map layers…",
+    "updatingPlain": "Updating map layers…",
+    "fresh": "Map layers updated {{time}}",
+    "freshPlain": "Map layers up to date",
+    "cached": "Map layers from cache, loaded {{time}}",
+    "cachedPlain": "Map layers from cache",
+    "stale": "Map layers may be out of date (loaded {{time}})",
+    "stalePlain": "Map layers may be out of date",
+    "unavailablePlain": "Map layers unavailable right now",
+    "errorPlain": "Couldn't load map layers",
+    "keptOlder": "showing the last view that loaded",
+    "retry": "Retry",
+    "zoomIn": "Zoom in to load sidewalk and closure layers",
+    "outside": "This view is outside the routable area"
+  },
+  "legend": {
+    "pointsTitle": "Start and destination",
+    "origin": "Start: circle A",
+    "destination": "Destination: square B",
+    "searched": "Searched place: dashed pin, approximate until a route is computed",
+    "selected": "Selected route: thick line, drawn on top",
+    "alternative": "Alternative: thin line; click it or its card to show it",
+    "coverageTitle": "Routable area",
+    "boundary": "Boundary of the routable area",
+    "outside": "Outside (hatched): no routes, no layers",
+    "graphBuilt": "Walking network built {{time}}",
+    "osmSnapshot": "OpenStreetMap data of {{date}}",
+    "gaps_one": "{{count}} known gap in coverage",
+    "gaps_other": "{{count}} known gaps in coverage",
+    "unknownNote": "Unknown is not low risk: grey dashed lines have no condition data.",
+    "coverageLoading": "Checking the routable area…",
+    "coverageError": "The routable area couldn't be loaded; the map shows the default area."
+  },
+  "confidence": {
+    "title": "Winter-condition data on this route",
+    "known": "{{pct}} with condition data",
+    "unknown": "{{pct}} unknown",
+    "source": {
+      "model": "Source: validated model (estimate)",
+      "heuristic": "Source: labelled heuristic (estimate)",
+      "none": "No risk layer active: conditions are not assessed"
+    },
+    "mostlyUnknown": "Mostly unknown: conditions are not known for most of this route.",
+    "meter": "Condition data coverage: {{known}} known, {{unknown}} unknown"
+  }
+}

@@ -1,0 +1,18 @@
+/* Planner map: touch-sized controls. Desktop (fine pointer) keeps MapLibre's 29 px buttons (≥ 24 px, WCAG 2.2 target size). */
+@media (pointer: coarse) {
+  .wp-map .maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
+  }
+  /* The page's recenter button sits at top 86 px on the right; put the larger zoom buttons under it instead of on top of it. */
+  .wp-map .maplibregl-ctrl-top-right .maplibregl-ctrl-group {
+    margin-top: 140px;
+  }
+}
+
+/* Status chip control: no MapLibre box styling, just our card. */
+.wp-map .wp-map-status {
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}

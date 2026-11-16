@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from './fixtures';
 
+// New contexts below have no baseURL; follow playwright.config.ts (E2E_PORT, default 5174).
+const ORIGIN = `http://localhost:${Number(process.env.E2E_PORT) || 5174}`;
+
 const PAGES = [
   { path: '', en: "Walk smarter through Montreal's winter.", fr: "Marchez plus malin dans l'hiver montréalais." },
   { path: '/plan', en: 'Plan a winter walk', fr: 'Planifier une marche hivernale' },
@@ -113,7 +116,7 @@ test('admin moderation: token-gated, not linked from navigation', async ({ page 
 test('reduced motion: sections render without fade (opacity 1 immediately)', async ({ browser }) => {
   const ctx = await browser.newContext({ reducedMotion: 'reduce' });
   const page = await ctx.newPage();
-  await page.goto('http://localhost:5174/en');
+  await page.goto(`${ORIGIN}/en`);
   const op = await page.locator('#faq').evaluate((el) => getComputedStyle(el).opacity);
   expect(op).toBe('1');
   await ctx.close();
@@ -122,7 +125,7 @@ test('reduced motion: sections render without fade (opacity 1 immediately)', asy
 test('reduced motion → static poster, no 3D canvas', async ({ browser }) => {
   const ctx = await browser.newContext({ reducedMotion: 'reduce' });
   const page = await ctx.newPage();
-  await page.goto('http://localhost:5174/en');
+  await page.goto(`${ORIGIN}/en`);
   await expect(page.getByTestId('hero-visual').locator('svg').first()).toBeVisible();
   await page.waitForTimeout(3000);
   await expect(page.getByTestId('hero-visual').locator('canvas')).toHaveCount(0);
@@ -151,7 +154,7 @@ test('condition explainer: 3D stage loads near view with an illustrative caption
 
   const ctx = await browser.newContext({ reducedMotion: 'reduce' });
   const rm = await ctx.newPage();
-  await rm.goto('http://localhost:5174/fr/how-it-works');
+  await rm.goto(`${ORIGIN}/fr/how-it-works`);
   await expect(rm.getByRole('tab', { name: 'Escaliers extérieurs' })).toBeVisible();
   await expect(rm.getByTestId('explainer-stage')).toHaveCount(0);
   await ctx.close();
