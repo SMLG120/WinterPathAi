@@ -47,6 +47,21 @@ def in_coverage(lon: float, lat: float, coverage: Bbox = PILOT_BBOX) -> bool:
     return w <= lon <= e and s <= lat <= n
 
 
+def outside_area(lon: float, lat: float, area: dict[str, Any] | None) -> bool:
+    """True only when a coverage outline is known and the point is clearly outside it.
+
+    No outline (or an unreadable one) -> False: never claim "outside" without evidence.
+    """
+    if not area:
+        return False
+    from shapely.geometry import Point, shape
+
+    try:
+        return not shape(area).covers(Point(lon, lat))
+    except Exception:  # malformed outline: fall back to "not known to be outside"
+        return False
+
+
 def bbox_intersects(geom: dict[str, Any], bbox: Bbox) -> bool:
     from shapely.geometry import box, shape
 

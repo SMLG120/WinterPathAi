@@ -50,6 +50,14 @@ describe.skipIf(!HAVE)('real index (local only)', () => {
     const { results } = await run('Gare Centrale');
     expect(results[0]).toMatchObject({ kind: 'place', placeKind: 'station' });
   });
+  it('Terrebonne and Repentigny (North Shore, outside routing coverage today)', async () => {
+    const terrebonne = await run('1000 boul des Seigneurs, Terrebonne');
+    expect(terrebonne.results[0]).toMatchObject({ kind: 'address', detail: 'Terrebonne' });
+    const repentigny = await run('435 boul Iberville, Repentigny');
+    expect(repentigny.results[0]).toMatchObject({ kind: 'address', detail: 'Repentigny' });
+    const place = await run('Terrebonne');
+    expect(place.results.length).toBeGreaterThan(0);
+  });
   it('Laval, Longueuil, Brossard addresses', async () => {
     const laval = await run('1555 boul Chomedey, Laval');
     expect(laval.results[0]).toMatchObject({ kind: 'address', detail: 'Laval' });

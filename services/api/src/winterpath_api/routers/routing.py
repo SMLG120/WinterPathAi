@@ -30,7 +30,7 @@ from ..cache import (
 )
 from ..deps import get_state
 from ..errors import ApiError
-from ..params import in_coverage
+from ..params import in_coverage, outside_area
 from ..schemas import RouteCompareRequest, RouteCompareResponse, WeatherContext
 from ..state import AppState
 
@@ -186,6 +186,19 @@ async def compare_routes(
     try:
         raw, hit, meta = await state.compute.run(compute)
     except SnapError as exc:
+        # Inside the bbox but outside the served outline (e.g. Laval, Longueuil): the honest
+        # answer is "not covered", not "move closer to a sidewalk". Only reached after snapping
+        # failed, so a point the graph can serve is never refused because of the outline.
+        p = body.origin if exc.which == "origin" else body.destination
+        if exc.which in ("origin", "destination") and outside_area(
+            p.lon, p.lat, state.coverage_area
+        ):
+            raise ApiError(
+                422,
+                "OUTSIDE_COVERAGE",
+                f"{exc.which} is outside the coverage area.",
+                {"which": exc.which, "coverage_bbox": list(state.coverage_bbox)},
+            ) from exc
         raise ApiError(
             422,
             "OFF_NETWORK",
