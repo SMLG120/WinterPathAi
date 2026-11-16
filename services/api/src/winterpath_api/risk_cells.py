@@ -104,6 +104,9 @@ class Snapshot:
         self._index = index
         self._cell_est = cell_est
         self.token = token
+        #: unique per distinct content (cache keys); ``token`` may be shared by snapshots whose
+        #: levels are equal, ``version`` is shared only by the same estimates
+        self.version: Any = token
         rank = np.array(
             [_UNKNOWN if e.is_unknown else LEVELS.index(e.level) for e in cell_est],
             dtype=np.uint8,
@@ -155,6 +158,11 @@ class SnapshotSource:
             if hit is not None and self._clock() < hit[0]:
                 return hit[1]
             ests = [self._cell_estimate(c, at) for c in self.index.cells]
+            if hit is not None and hit[1]._cell_est == ests:
+                # nothing changed: keep the same snapshot (and its version, so response caches
+                # keyed on it stay valid) instead of rebuilding identical arrays
+                self._cache[day] = (self._clock() + self._ttl_s, hit[1])
+                return hit[1]
             self._serial += 1
             snap = Snapshot(self.index, ests, (day, self._serial))
             if hit is not None and np.array_equal(hit[1].levels, snap.levels):
