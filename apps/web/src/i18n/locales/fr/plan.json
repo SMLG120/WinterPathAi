@@ -19,8 +19,55 @@
     "outsideHint": "Ce point est hors de la zone couverte ; le calcul d'itinéraire sera refusé."
   },
   "search": {
-    "label": "Rechercher une adresse",
-    "disabled": "La recherche d'adresse est désactivée : aucun fournisseur de géocodage autorisé n'est configuré pour ce déploiement. Choisissez un point sur la carte ou entrez des coordonnées."
+    "label": "Rechercher une adresse ou un lieu",
+    "placeholder": "p. ex. 1455 boul. De Maisonneuve O, Gare Centrale, 45,497; -73,579",
+    "fill": "Remplir",
+    "fillHint": "Choisissez le point que le résultat sélectionné définira.",
+    "help": "Adresses et lieux nommés du Grand Montréal, en français ou en anglais. Un résultat est un lieu, pas un point de marche confirmé : le calcul d'itinéraire détermine s'il est accessible.",
+    "searching": "Recherche…",
+    "typeMore": "Tapez au moins deux lettres d'un nom de rue ou de lieu.",
+    "empty": "Aucune adresse ni aucun lieu ne correspond à « {{query}} ». Vérifiez l'orthographe, ajoutez la municipalité après une virgule ou choisissez un point sur la carte.",
+    "unavailable": "La recherche est indisponible pour le moment (l'index de recherche n'a pas pu être chargé). Choisissez un point sur la carte ou entrez des coordonnées.",
+    "error": "La recherche a échoué. Vérifiez votre connexion et réessayez.",
+    "retry": "Relancer la recherche",
+    "coordsOutOfRange": "Ces nombres ne sont pas des coordonnées valides. Utilisez latitude, longitude — p. ex. 45,5048; -73,5772.",
+    "results_one": "{{count}} résultat. Utilisez les flèches haut et bas pour parcourir, Entrée pour choisir.",
+    "results_other": "{{count}} résultats. Utilisez les flèches haut et bas pour parcourir, Entrée pour choisir.",
+    "selected": "{{point}} : {{label}}.",
+    "completed": "Rue choisie : tapez le numéro civique au début, p. ex. 1455.",
+    "kind": {
+      "address": "Adresse",
+      "place": "Lieu",
+      "street": "Rue — ajoutez un numéro civique",
+      "coordinates": "Coordonnées"
+    },
+    "source": {
+      "rqa": "Référentiel québécois des adresses (RQA)",
+      "osm": "OpenStreetMap (cartographie communautaire)",
+      "typed": "Coordonnées saisies"
+    },
+    "quality": {
+      "label": "Emplacement",
+      "building": "sur le bâtiment, pas forcément à l'entrée",
+      "front_lot": "devant du lot",
+      "access": "accès principal à la propriété",
+      "lot_centre": "centre du lot",
+      "site": "site sans limite précise",
+      "interpolated": "approximative, interpolée le long de la rue",
+      "uncertain": "position incertaine",
+      "other": "qualité de position non précisée"
+    },
+    "placePoint": "Point d'étiquette d'un lieu cartographié par la communauté, pas une entrée",
+    "nearestCivic": "Le {{civic}} n'est pas répertorié sur cette rue ; voici le numéro répertorié le plus proche",
+    "order": {
+      "lat_lon": "lu comme latitude, longitude",
+      "lon_lat": "lu comme longitude, latitude",
+      "ambiguous": "L'ordre de ces nombres est ambigu : choisissez la lecture voulue."
+    },
+    "outsideArea": "hors du Grand Montréal",
+    "attribution": "Adresses : Référentiel québécois des adresses, Gouvernement du Québec (CC BY 4.0). Lieux : © les contributeurs d'OpenStreetMap (ODbL).",
+    "fromSearch": "Issu de la recherche",
+    "notEndpoint": "Un lieu trouvé par la recherche n'est pas un point de marche confirmé ; le calcul d'itinéraire vérifie s'il est accessible."
   },
   "geo": {
     "button": "Utiliser ma position",

@@ -11,3 +11,7 @@
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Place-search shards live under a content-hashed build id (manifest.json points at it), so they never change.
+/search/v/*
+  Cache-Control: public, max-age=31536000, immutable

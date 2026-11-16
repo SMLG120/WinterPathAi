@@ -91,11 +91,13 @@ test('missing points are reported, not silently ignored', async ({ page }) => {
   await expect(page.getByText('Set both a start and a destination.')).toBeVisible();
 });
 
-test('address search is disabled with an explanation (no public Nominatim)', async ({ page }) => {
+test('place search is enabled as an accessible combobox (self-hosted index, no public Nominatim)', async ({ page }) => {
   await page.goto('/en/plan');
   await openSheetIfMobile(page);
-  await expect(page.getByLabel('Search an address')).toBeDisabled();
-  await expect(page.getByText(/no permitted geocoding provider/)).toBeVisible();
+  const box = page.getByTestId('search-input');
+  await expect(box).toBeEnabled();
+  await expect(box).toHaveAttribute('role', 'combobox');
+  await expect(page.getByText(/no permitted geocoding provider/)).toHaveCount(0);
 });
 
 test('map attribution stays visible (desktop bottom-right, mobile top-left above the sheet)', async ({ page }) => {

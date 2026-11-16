@@ -4,6 +4,7 @@ import { Crosshair, X } from 'lucide-react';
 import type { LonLat } from '@/api/types';
 import { Button } from '@/components/ui/button';
 import { FieldError, Input, Label } from '@/components/ui/input';
+import { ResultMeta } from '@/features/search/SearchBox';
 import { formatLonLat, isInPilot, isValidLonLat } from '@/lib/geo';
 import { usePlannerStore, type PointKey } from '@/stores/planner';
 
@@ -12,6 +13,7 @@ export function PointInput({ which, extra }: { which: PointKey; extra?: React.Re
   const { t } = useTranslation('plan');
   const id = useId();
   const value = usePlannerStore((s) => s[which]);
+  const label = usePlannerStore((s) => s.labels[which]);
   const picking = usePlannerStore((s) => s.picking);
   const setPoint = usePlannerStore((s) => s.setPoint);
   const setPicking = usePlannerStore((s) => s.setPicking);
@@ -55,6 +57,17 @@ export function PointInput({ which, extra }: { which: PointKey; extra?: React.Re
       <p className="text-sm" aria-live="polite" data-testid={`point-${which}-value`}>
         {value ? formatLonLat(value) : <span className="text-muted-foreground">{t('points.notSet')}</span>}
       </p>
+      {value && label && (
+        <div className="space-y-1 text-sm" data-testid={`point-${which}-label`}>
+          <p>
+            <span className="sr-only">{t('search.fromSearch')}: </span>
+            <span className="font-medium">{label.text}</span>
+            {label.detail ? <span className="text-muted-foreground"> · {label.detail}</span> : null}
+          </p>
+          <ResultMeta r={{ source: label.source, quality: label.quality, kind: label.kind, evidence: label.evidence }} />
+          {label.kind !== 'coordinates' && <p className="text-xs text-muted-foreground">{t('search.notEndpoint')}</p>}
+        </div>
+      )}
       {outside && <p className="text-sm text-danger">{t('manual.outsideHint')}</p>}
       <div className="flex flex-wrap gap-2">
         <Button
