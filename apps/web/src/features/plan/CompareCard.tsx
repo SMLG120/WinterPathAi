@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import type { RouteVariant } from '@/stores/planner-types';
 import { ROUTE_STYLE } from './mapStyle';
 import { RouteCards } from './RouteCards';
+import { ConditionCoverage } from '@/features/map/ConditionCoverage';
+import { highlightHandlers, useRouteHighlight } from '@/features/map/routeHighlight';
 
 function RouteSwatch({ variant }: { variant: RouteVariant }) {
   const s = ROUTE_STYLE[variant];
@@ -22,22 +24,35 @@ function RouteSwatch({ variant }: { variant: RouteVariant }) {
   );
 }
 
-function RouteDetails({ route, selected, onSelect }: { route: Route; selected: boolean; onSelect: () => void }) {
+function RouteDetails({
+  route,
+  selected,
+  onSelect,
+  riskLayer,
+}: {
+  route: Route;
+  selected: boolean;
+  onSelect: () => void;
+  riskLayer: RouteCompareResponse['risk_layer'];
+}) {
   const { t, i18n } = useTranslation('plan');
+  const hot = useRouteHighlight((s) => s.hovered === route.variant);
   const lang = i18n.language;
   const hid = `route-${route.variant}-title`;
   return (
     <article
       aria-labelledby={hid}
-      className={cn('rounded-lg border p-4', selected ? 'border-primary ring-1 ring-primary' : 'border-border')}
+      className={cn('rounded-lg border p-4 transition-colors', selected ? 'border-primary ring-1 ring-primary' : 'border-border', hot && !selected && 'border-primary bg-muted/50')}
       data-testid={`route-${route.variant}`}
+      data-hovered={hot || undefined}
+      {...highlightHandlers(route.variant)}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id={hid} className="flex items-center gap-2 font-semibold">
           <RouteSwatch variant={route.variant} />
           {t(`results.${route.variant}`)}
         </h3>
-        <Button size="sm" variant={selected ? 'default' : 'outline'} aria-pressed={selected} onClick={onSelect}>
+        <Button size="sm" className="min-h-11 lg:min-h-0" variant={selected ? 'default' : 'outline'} aria-pressed={selected} onClick={onSelect}>
           {selected ? t('results.shown') : t('results.show')}
         </Button>
       </div>
@@ -57,6 +72,7 @@ function RouteDetails({ route, selected, onSelect }: { route: Route; selected: b
           <dd className="text-base font-semibold">{formatPercent(route.unknown_share, lang)}</dd>
         </div>
       </dl>
+      <ConditionCoverage unknownShare={route.unknown_share} riskLayer={riskLayer} className="mt-3" />
       {route.unknown_share > 0 && (
         <p className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground">
           <EvidenceBadge state="unknown" className="shrink-0" />
@@ -124,7 +140,7 @@ export const CompareCard = forwardRef<
         <DemoBadge />
       </div>
       {simulated && <SimulatedBanner />}
-      <RouteCards routes={data.routes} selected={selected} onSelect={onSelect} />
+      <RouteCards routes={data.routes} selected={selected} onSelect={onSelect} riskLayer={data.risk_layer} />
       <p className="text-sm text-muted-foreground">
         {t('results.riskLayer.label')}: <span className="font-medium text-foreground">{t(`results.riskLayer.${data.risk_layer}`)}</span>
         {' · '}
@@ -152,7 +168,7 @@ export const CompareCard = forwardRef<
       {notice}
       <h3 className="pt-2 text-base font-semibold">{t('results.details')}</h3>
       {ordered.map((r) => (
-        <RouteDetails key={r.variant} route={r} selected={r.variant === selected} onSelect={() => onSelect(r.variant)} />
+        <RouteDetails key={r.variant} route={r} selected={r.variant === selected} onSelect={() => onSelect(r.variant)} riskLayer={data.risk_layer} />
       ))}
     </section>
   );

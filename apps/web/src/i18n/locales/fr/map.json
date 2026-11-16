@@ -1,0 +1,59 @@
+{
+  "markers": {
+    "origin": "Départ (A)",
+    "destination": "Arrivée (B)",
+    "searched": "{{point}} : lieu recherché « {{label}} ». Approximatif : le trajet part du chemin piétonnier le plus proche, s’il y en a un à moins de 75 m.",
+    "searchedNoLabel": "{{point}} : lieu recherché. Approximatif : le trajet part du chemin piétonnier le plus proche, s’il y en a un à moins de 75 m."
+  },
+  "routes": {
+    "lineLabel": "Tracé du trajet {{route}}",
+    "selectHint": "Cliquez ou touchez un tracé pour l’afficher; les cartes ci-dessous présentent les mêmes trajets."
+  },
+  "status": {
+    "computing": "Calcul des trajets…",
+    "loadingPlain": "Chargement des couches…",
+    "updatingPlain": "Mise à jour des couches…",
+    "fresh": "Couches mises à jour à {{time}}",
+    "freshPlain": "Couches à jour",
+    "cached": "Couches en cache, chargées à {{time}}",
+    "cachedPlain": "Couches en cache",
+    "stale": "Couches peut-être périmées (chargées à {{time}})",
+    "stalePlain": "Couches peut-être périmées",
+    "unavailablePlain": "Couches indisponibles pour l’instant",
+    "errorPlain": "Impossible de charger les couches",
+    "keptOlder": "affichage de la dernière vue chargée",
+    "retry": "Réessayer",
+    "zoomIn": "Zoomez pour charger les trottoirs et les fermetures",
+    "outside": "Cette vue est hors de la zone desservie"
+  },
+  "legend": {
+    "pointsTitle": "Départ et arrivée",
+    "origin": "Départ : cercle A",
+    "destination": "Arrivée : carré B",
+    "searched": "Lieu recherché : épingle pointillée, approximative tant qu’aucun trajet n’est calculé",
+    "selected": "Trajet affiché : trait épais, par-dessus",
+    "alternative": "Autre trajet : trait fin; cliquez-le ou sa carte pour l’afficher",
+    "coverageTitle": "Zone desservie",
+    "boundary": "Limite de la zone desservie",
+    "outside": "Hors zone (hachuré) : ni trajets ni couches",
+    "graphBuilt": "Réseau piétonnier construit le {{time}}",
+    "osmSnapshot": "Données OpenStreetMap du {{date}}",
+    "gaps_one": "{{count}} lacune connue dans la couverture",
+    "gaps_other": "{{count}} lacunes connues dans la couverture",
+    "unknownNote": "Inconnu ne veut pas dire faible risque : les traits gris pointillés n’ont aucune donnée d’état.",
+    "coverageLoading": "Vérification de la zone desservie…",
+    "coverageError": "La zone desservie n’a pas pu être chargée; la carte montre la zone par défaut."
+  },
+  "confidence": {
+    "title": "Données d’état hivernal sur ce trajet",
+    "known": "{{pct}} avec données d’état",
+    "unknown": "{{pct}} inconnu",
+    "source": {
+      "model": "Source : modèle validé (estimation)",
+      "heuristic": "Source : heuristique identifiée (estimation)",
+      "none": "Aucune couche de risque active : l’état n’est pas évalué"
+    },
+    "mostlyUnknown": "Surtout inconnu : l’état n’est pas connu sur la majeure partie de ce trajet.",
+    "meter": "Couverture des données d’état : {{known}} connu, {{unknown}} inconnu"
+  }
+}
