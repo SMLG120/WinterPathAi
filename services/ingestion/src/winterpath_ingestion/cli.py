@@ -29,6 +29,9 @@ def main(argv: list[str] | None = None) -> int:
             "load",
             "boundaries",
             "osm-island",
+            "sda-boundaries",
+            "osm-region",
+            "fixed-links",
         ],
     )
     ap.add_argument("--refresh", action="store_true", help="re-download raw inputs")
@@ -58,6 +61,14 @@ def main(argv: list[str] | None = None) -> int:
         help="voirie / entraves / load: pilot bbox (default) or the whole island "
         "(island products live in data/processed/*_island; load them into the local wp_island "
         "DB only)",
+    )
+    ap.add_argument(
+        "--graph-region",
+        choices=["island", "stage1", "stage1-laval", "stage2"],
+        default="stage1",
+        help="osm-region only: island (same output as osm-island), stage1 (+ Laval, Longueuil), "
+        "stage1-laval (+ Laval only) or stage2 (+ Terrebonne, Repentigny, Brossard, "
+        "Boucherville, Saint-Lambert); local builds under data/processed/osm_greater_stage*",
     )
     ap.add_argument(
         "--wait",
@@ -113,6 +124,21 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(r, default=str))
         return 0
 
+    if args.pipeline == "fixed-links":
+        from .osm import geofabrik, links
+        from .osm.region import pinned_pbf_url
+        from .sources import sda
+
+        sda.run(s)
+        pbf = geofabrik.fetch(s.raw_dir, s.user_agent, url=pinned_pbf_url(s))
+        out = s.processed_dir / "fixed_links"
+        out.mkdir(parents=True, exist_ok=True)
+        st = links.run(
+            pbf.path, s.raw_dir / "boundaries" / "quebec_sda" / "SDA.gpkg", out / "links.json"
+        )
+        print(json.dumps({"pipeline": "fixed-links", "out": str(out), "structures": len(st)}))
+        return 0
+
     if args.pipeline == "311" and args.recent_days is not None:
         from .sources.r311 import run_recent
 
@@ -154,6 +180,14 @@ def main(argv: list[str] | None = None) -> int:
             from .sources.boundaries import run
         elif step == "osm-island":
             from .osm.island import run
+        elif step == "sda-boundaries":
+            from .sources.sda import run
+        elif step == "osm-region":
+            from functools import partial
+
+            from .osm.region import REGIONS, run_region
+
+            run = partial(run_region, spec=REGIONS[args.graph_region])
         else:
             from .sources.eccc import run
         kw = {"region": args.region} if step in ("voirie", "entraves") else {}
