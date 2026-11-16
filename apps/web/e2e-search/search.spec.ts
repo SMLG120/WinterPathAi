@@ -47,8 +47,10 @@ for (const c of CASES) {
     await expect(label).toContainText(c.expect);
     await expect(label).toContainText(/not a confirmed walking endpoint/);
     await expect(page.getByTestId(`point-${c.target}-value`)).toHaveText(/^45\.\d{5}, -73\.\d{5}$/);
-    // The existing map marker follows the store (PlannerMap is unchanged).
-    await expect(page.getByTestId('planner-map').getByRole('img', { name: c.target === 'origin' ? 'Start' : 'Destination' })).toBeAttached();
+    // The map marker follows the store and is drawn as a searched place (dashed pin), not a confirmed endpoint.
+    const marker = page.getByTestId('planner-map').getByTestId(`marker-${c.target}`);
+    await expect(marker).toBeAttached();
+    await expect(marker).toHaveAttribute('data-marker-kind', 'searched-place');
   });
 }
 

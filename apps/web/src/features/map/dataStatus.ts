@@ -7,6 +7,7 @@
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useQueryClient, type Query } from '@tanstack/react-query';
+import { OVERLAY_STALE_MS } from '@/api/queries';
 
 export type DataStatus =
   /** Layer off, zoomed out, or outside coverage: nothing requested. */
@@ -37,8 +38,8 @@ export type QueryLike = {
 
 export type OverlayStatus = { status: DataStatus; updatedAt: number | null; hasData: boolean };
 
-/** Same as the query hooks' staleTime (api/queries.ts: 60 s). */
-export const FRESH_OVERLAY_MS = 60_000;
+/** Same as the overlay query hooks' staleTime (api/queries.ts OVERLAY_STALE_MS). */
+export const FRESH_OVERLAY_MS = OVERLAY_STALE_MS;
 /** Beyond this a cached overlay is called stale (closures/311 change within the day). */
 export const STALE_OVERLAY_MS = 15 * 60_000;
 

@@ -28,6 +28,16 @@ export function readEndpointMeta(state: unknown, key: PointKey): EndpointMeta | 
     label = str(m.label) ?? str(m.name);
     source = str(m.source);
   }
+  // Place search (stores/planner.ts `labels`): typed coordinates are not a searched place.
+  const labels = s.labels;
+  if (!label && !source && labels && typeof labels === 'object') {
+    const l = (labels as Record<string, unknown>)[key];
+    if (l && typeof l === 'object') {
+      const x = l as Record<string, unknown>;
+      label = str(x.text);
+      source = x.kind === 'coordinates' || x.source === 'typed' ? 'coordinates' : label ? 'search' : null;
+    }
+  }
   label ??= str(s[`${key}Label`]);
   source ??= str(s[`${key}Source`]);
   return label || source ? { label, source } : undefined;

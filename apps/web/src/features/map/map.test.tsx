@@ -12,7 +12,7 @@ import { boundsSpanM, CONTROL_PADDING, fitDuration, fitPaddingFor, fitTarget } f
 import { boxPolygon, inServedArea, maskCollection, outlineCollection, parseArea, servedPolygons } from './coverageArea';
 import { isSearchedPlace, readEndpointMeta } from './endpoints';
 import { markerElement, markerSvg } from './markers';
-import { combineStatus, overlayStatus, STALE_OVERLAY_MS, type QueryLike } from './dataStatus';
+import { combineStatus, FRESH_OVERLAY_MS, overlayStatus, STALE_OVERLAY_MS, type QueryLike } from './dataStatus';
 import { useRouteHighlight } from './routeHighlight';
 import { ConditionCoverage } from './ConditionCoverage';
 import { MapStatusChip } from './MapStatusChip';
@@ -96,7 +96,7 @@ describe('overlay data status (from query state; swappable)', () => {
     expect(overlayStatus(q({ fetchStatus: 'fetching' }), now).status).toBe('updating');
     expect(overlayStatus(q({ status: 'pending', isPlaceholderData: true, hasData: true }), now).status).toBe('updating');
     expect(overlayStatus(q({}), now + 10_000).status).toBe('fresh');
-    expect(overlayStatus(q({}), now + 120_000).status).toBe('cached');
+    expect(overlayStatus(q({}), now + FRESH_OVERLAY_MS + 1_000).status).toBe('cached');
     expect(overlayStatus(q({}), now + STALE_OVERLAY_MS + 1).status).toBe('stale');
     expect(overlayStatus(q({ status: 'error', error: { status: 503, code: 'UPSTREAM_UNAVAILABLE' } }), now).status).toBe('unavailable');
     expect(overlayStatus(q({ status: 'error', error: { status: 0, code: 'NETWORK' } }), now).status).toBe('unavailable');
@@ -227,5 +227,17 @@ describe('legend', () => {
   it('fixture coverage name is shown as given (labelled TEST FIXTURE)', () => {
     renderWith(islandCoverage());
     expect(screen.getByTestId('legend-coverage-info')).toHaveTextContent('TEST FIXTURE');
+  });
+});
+
+describe('endpoint meta from the place-search store shape (integration)', () => {
+  it('reads labels[key] as a searched place, typed coordinates as coordinates, null as nothing', () => {
+    const place = { text: 'Université McGill', detail: 'Montréal', kind: 'place', source: 'osm' };
+    const typed = { text: '45.504800, -73.577200', detail: '', kind: 'coordinates', source: 'typed' };
+    const s = { labels: { origin: place, destination: typed } };
+    expect(readEndpointMeta(s, 'origin')).toEqual({ label: 'Université McGill', source: 'search' });
+    expect(isSearchedPlace(readEndpointMeta(s, 'origin'))).toBe(true);
+    expect(readEndpointMeta(s, 'destination')).toEqual({ label: '45.504800, -73.577200', source: 'coordinates' });
+    expect(readEndpointMeta({ labels: { origin: null, destination: null } }, 'origin')).toBeUndefined();
   });
 });
