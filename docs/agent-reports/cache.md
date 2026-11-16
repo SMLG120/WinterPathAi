@@ -34,8 +34,8 @@ apps/web$ npx vitest run
  Test Files  22 passed (22)
       Tests  178 passed (178)
 ```
-Skips are environmental: 9 × `DATABASE_URL not set` (PostGIS; Docker Desktop was paused), 2 × ML per-day
-score tables absent (git-ignored parquet), others likewise — none caused by this branch.
+Skips are environmental: 13 × `DATABASE_URL not set` (PostGIS; Docker Desktop was paused), 2 × ML per-day
+score tables absent (git-ignored parquet) — none caused by this branch.
 
 ## Benchmark (local Mac, NOT Render)
 Island graph v2 release asset (sha256 `2f40b5e4…6bb9`), memory-mapped, fast search, warm-up on, one uvicorn worker,
