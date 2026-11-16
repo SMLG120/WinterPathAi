@@ -60,6 +60,8 @@ export async function unwrap<T>(p: Promise<FetchResult<T>>, complete?: (d: T) =>
   try {
     res = await p;
   } catch (e) {
+    // The caller cancelled (TanStack aborts queries nobody observes any more): not an API error.
+    if (isAbortError(e)) throw e;
     if (e instanceof FetchFailure) throw new ApiRequestError(0, undefined, null, FAILURE_CODE[e.kind]);
     // openapi-fetch parses the body after a successful fetch: a SyntaxError here is a truncated/garbled body.
     if (e instanceof SyntaxError) throw new ApiRequestError(200, undefined, null, 'INCOMPLETE');
@@ -75,6 +77,10 @@ export async function unwrap<T>(p: Promise<FetchResult<T>>, complete?: (d: T) =>
     throw new ApiRequestError(res.response.status, undefined, null, 'INCOMPLETE');
   }
   return res.data as T;
+}
+
+export function isAbortError(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && (e as { name?: unknown }).name === 'AbortError';
 }
 
 export function isApiError(e: unknown): e is ApiRequestError {
