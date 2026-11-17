@@ -129,8 +129,8 @@ def main(argv: list[str] | None = None) -> int:
         from .osm.region import pinned_pbf_url
         from .sources import sda
 
-        sda.run(s)
-        pbf = geofabrik.fetch(s.raw_dir, s.user_agent, url=pinned_pbf_url(s))
+        sda.run(s, refresh=args.refresh, force=args.force)
+        pbf = geofabrik.fetch(s.raw_dir, s.user_agent, refresh=args.refresh, url=pinned_pbf_url(s))
         out = s.processed_dir / "fixed_links"
         out.mkdir(parents=True, exist_ok=True)
         st = links.run(

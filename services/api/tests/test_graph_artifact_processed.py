@@ -80,3 +80,17 @@ def test_from_processed_refuses_non_osm_output(tmp_path, processed) -> None:
         graph_artifact.main(
             ["--out", str(tmp_path / "x.npz"), "--from-processed", str(d), "--coverage-name", "x"]
         )
+
+
+def test_unparseable_snapshot_is_unknown_freshness_not_a_crash(tmp_path, processed) -> None:
+    """Code review PR #2: the fixture loader treats a non-ISO snapshot as unknown; so must this."""
+    d = tmp_path / "odd"
+    shutil.copytree(processed, d)
+    m = json.loads((d / "manifest.json").read_text())
+    m["osm_snapshot"] = "sequence 4321"  # e.g. a replication sequence, not a timestamp
+    m["finished_at"] = "not a date"
+    (d / "manifest.json").write_text(json.dumps(m))
+    g = graph_artifact.graph_from_processed(d)
+    assert g.metadata.osm_snapshot == "sequence 4321"
+    assert g.metadata.source_freshness == {"osm": None}
+    assert g.metadata.built_at is None
