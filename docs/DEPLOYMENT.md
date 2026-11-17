@@ -52,13 +52,18 @@ Status as of 2026-11-11. Limits and their sources: `docs/FREE_TIER_LIMITS.md`. V
 
 ## 3. Web (Cloudflare Pages, direct upload)
 ```bash
+# 1. Place-search index (git-ignored apps/web/public/search; docs/SEARCH.md). Raw inputs stay outside Git.
+scripts/build-search-index.sh <data>/raw/addresses/RQA_CSV.zip <data>/raw/osm/geofabrik/quebec-YYMMDD.osm.pbf
+# 2. Bundle + deploy
 cd apps/web && npm ci
 VITE_API_BASE_URL=https://winterpath-api.onrender.com/api/v1 VITE_PUBLIC_WRITES=false \
 VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/positron VITE_API_TIMEOUT_MS=15000 \
-npm run build:pages          # refuses unsafe env; checks dist/ for maps, mocks, secrets, headers
+npm run build:pages          # refuses unsafe env; checks dist/ for maps, mocks, secrets, headers, search index, Pages limits
 npx wrangler@4.154.0 pages project create winterpath --production-branch main   # once (done 2026-11-11)
 npx wrangler@4.154.0 pages deploy dist --project-name winterpath --branch main --commit-hash <sha>
 ```
+- `build:pages` fails if `dist/search` is missing, has missing or altered shards, a stale build directory, or lacks the RQA/OSM attribution. Only CI sets `PAGES_ALLOW_NO_SEARCH_INDEX=1`; never set it for a deploy (the search box would show "Search is unavailable").
+- Note the index `build_id` the script prints. Rolling back a Pages deployment also rolls back its index (the index is part of the upload).
 - `wrangler` needs `CLOUDFLARE_API_TOKEN` (permission **Account → Cloudflare Pages → Edit**, scoped to the account) and `CLOUDFLARE_ACCOUNT_ID`.
 - Then set Render `API_CORS_ORIGINS=https://winterpath.pages.dev` (the exact origin wrangler prints) and redeploy the API.
 

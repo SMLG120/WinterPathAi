@@ -61,6 +61,30 @@ async function isSleepingHost(res: Response): Promise<boolean> {
   }
 }
 
+function abortError(signal: AbortSignal): unknown {
+  return signal.reason ?? new DOMException('The operation was aborted.', 'AbortError');
+}
+
+/** `sleep(ms)` that ends early (rejecting) when `signal` aborts. */
+function sleepUnlessAborted(sleep: (ms: number) => Promise<void>, ms: number, signal: AbortSignal | null): Promise<void> {
+  if (!signal) return sleep(ms);
+  if (signal.aborted) return Promise.reject(abortError(signal));
+  return new Promise<void>((resolve, reject) => {
+    const onAbort = () => reject(abortError(signal));
+    signal.addEventListener('abort', onAbort, { once: true });
+    sleep(ms).then(
+      () => {
+        signal.removeEventListener('abort', onAbort);
+        resolve();
+      },
+      (e: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(e);
+      },
+    );
+  });
+}
+
 export function createResilientFetch(opts: ResilientOptions): typeof fetch {
   const baseFetch = opts.baseFetch ?? ((...a: Parameters<typeof fetch>) => globalThis.fetch(...a));
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
@@ -94,6 +118,8 @@ export function createResilientFetch(opts: ResilientOptions): typeof fetch {
     let waking = false;
     try {
       for (let n = 1; ; n++) {
+        // A cancelled request (obsolete map viewport) stops retrying at once.
+        if (original.signal?.aborted) throw abortError(original.signal);
         try {
           const res = await attempt(original.clone());
           if (!(await isSleepingHost(res))) return res;
@@ -109,7 +135,7 @@ export function createResilientFetch(opts: ResilientOptions): typeof fetch {
           waking = true;
           opts.onWaking?.(1);
         }
-        await sleep(wait);
+        await sleepUnlessAborted(sleep, wait, original.signal);
       }
     } finally {
       if (waking) opts.onWaking?.(-1);

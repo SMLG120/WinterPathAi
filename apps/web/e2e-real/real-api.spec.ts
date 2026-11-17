@@ -91,7 +91,7 @@ test('snap failure from the real API (legacy OUTSIDE_COVERAGE + details) gets ne
   await page.getByTestId('compare').click();
   const err = page.getByTestId('route-error');
   await expect(err).toHaveAttribute('data-kind', 'OFF_NETWORK');
-  await expect(err).toContainText('Your destination is inside the pilot area but more than 75 m');
+  await expect(err).toContainText('Your destination is inside the coverage area but more than 75 m');
 });
 
 test('step-free on real data: refusal explains distance to verified step-free network', async ({ page }) => {

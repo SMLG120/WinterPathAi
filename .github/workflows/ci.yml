@@ -170,9 +170,12 @@ jobs:
         # Placeholders only (example.invalid is reserved and never resolves); no real endpoints or
         # secrets. pagesCheck refuses an unsafe env, then scans dist for mock code, sourcemaps,
         # secrets and missing headers. Builds into dist; nothing is published.
+        # The place-search index needs ~2 GB of raw inputs (RQA + Québec PBF), so CI builds without
+        # it; build:pages refuses that for a real deploy (docs/DEPLOYMENT.md §3).
         env:
           VITE_API_BASE_URL: https://example.invalid/api/v1
           VITE_PUBLIC_WRITES: "false"
+          PAGES_ALLOW_NO_SEARCH_INDEX: "1"
         run: |
           if node -e "process.exit(require('./package.json').scripts?.['build:pages'] ? 0 : 1)"; then
             npm run build:pages

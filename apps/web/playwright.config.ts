@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 5174;
+// E2E_PORT lets parallel worktrees run the suite side by side (default 5174).
+const PORT = Number(process.env.E2E_PORT) || 5174;
 
 export default defineConfig({
   testDir: './e2e',
@@ -25,7 +26,7 @@ export default defineConfig({
   ],
   // E2E runs against the MSW mock build (VITE_USE_MOCKS=true), served by `vite preview`.
   webServer: {
-    command: 'VITE_USE_MOCKS=true npx vite build --outDir dist-mock && npx vite preview --outDir dist-mock --port 5174 --strictPort',
+    command: `VITE_USE_MOCKS=true npx vite build --outDir dist-mock && npx vite preview --outDir dist-mock --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/en`,
     // Deterministic stub basemap: Playwright can't route requests made through MSW's service worker,
     // so the test build gets an inline style via the normal env switch (no OpenFreeMap traffic in tests).

@@ -14,8 +14,10 @@
 
 from __future__ import annotations
 
+import itertools
+import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Hashable, Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
 
@@ -58,6 +60,17 @@ def community_hazard(r: StoredReport) -> Hazard:
     )
 
 
+def community_fingerprint(hazards: Sequence[Hazard]) -> tuple:
+    """Identity of a list of community hazards (each is a pure function of an immutable,
+    approved report: id, place, validity)."""
+    return tuple((h.hazard_id, h.valid_from, h.valid_to) for h in hazards)
+
+
+#: process-unique repository identity: list versions are only comparable within one repository,
+#: and some caches (the /hazards STR-tree index) are process-wide.
+_REPO_IDS = itertools.count(1)
+
+
 class HazardRepository(Protocol):
     def list(self, at: datetime) -> list[Hazard]:
         """All hazards relevant at ``at`` (any kind), for map display and routing."""
@@ -72,11 +85,18 @@ class InMemoryHazardRepository:
     def __init__(self, reports: ReportRepository, hazards: Sequence[Hazard] = ()) -> None:
         self.reports = reports
         self.hazards = list(hazards)
+        self._uid = next(_REPO_IDS)
 
     def list(self, at: datetime) -> list[Hazard]:
-        out = [h for h in self.hazards if h.active_at(at)]
-        out.extend(community_hazard(r) for r in self.reports.approved_active(at))
-        return out
+        return self.list_versioned(at)[0]
+
+    def list_versioned(self, at: datetime) -> tuple[list[Hazard], Hashable]:
+        """The list and its identity: the static hazards are kept alive by this repository, so
+        their object ids are stable; the community part is fingerprinted by content."""
+        static = [h for h in self.hazards if h.active_at(at)]
+        community = [community_hazard(r) for r in self.reports.approved_active(at)]
+        version = ("mem", self._uid, tuple(id(h) for h in static), community_fingerprint(community))
+        return [*static, *community], version
 
     def freshness(self) -> dict[str, datetime | None]:
         return {}
@@ -178,26 +198,41 @@ class PostgisHazardRepository:
         #: reports are never cached. 0 = read on every request.
         self._ttl = cache_ttl_s
         self._clock = clock
-        self._lists: dict[datetime, tuple[float, list[Hazard]]] = {}
+        self._lists: dict[datetime, tuple[float, list[Hazard], int]] = {}
+        #: increases on every database read of the list (response-cache versions)
+        self._serial = 0
+        self._uid = next(_REPO_IDS)
+        #: one database read per expired bucket; the serial it gets is unique to that list
+        self._lists_lock = threading.Lock()
         self._fresh: tuple[float, dict[str, datetime | None]] | None = None
         self.report_311_table = report_311_table  # constant (tests may point it at a temp table)
         self._has_active_fn: bool | None = None
         self._has_nature: bool | None = None
 
     def list(self, at: datetime) -> list[Hazard]:
+        return self.list_versioned(at)[0]
+
+    def list_versioned(self, at: datetime) -> tuple[list[Hazard], Hashable | None]:
+        """The list and its identity. ``None`` when nothing is cached (``cache_ttl_s`` 0): every
+        call is a fresh read, so there is no version a response cache could rely on."""
         if self._ttl <= 0:
-            return [*self._db_hazards(at), *self._community(at)]
+            return [*self._db_hazards(at), *self._community(at)], None
         # One list per TTL-sized time bucket (at least a minute): a per-minute key would re-read
         # the tables every minute whatever the TTL. A closure starting inside the bucket is seen
         # at the next bucket; the engine still filters every hazard by the request's own time.
         step = max(60, int(self._ttl))
         key = datetime.fromtimestamp(int(at.timestamp()) // step * step, tz=at.tzinfo)
-        hit = self._lists.get(key)
-        if hit is None or self._clock() >= hit[0]:
-            if len(self._lists) >= 16:
-                self._lists.clear()
-            hit = self._lists[key] = (self._clock() + self._ttl, self._db_hazards(key))
-        return [*hit[1], *self._community(at)]
+        with self._lists_lock:
+            hit = self._lists.get(key)
+            if hit is None or self._clock() >= hit[0]:
+                if len(self._lists) >= 16:
+                    self._lists.clear()
+                self._serial += 1
+                serial = self._serial  # taken before the read: concurrent misses wait on the lock
+                listed = self._db_hazards(key)
+                hit = self._lists[key] = (self._clock() + self._ttl, listed, serial)
+        community = self._community(at)
+        return [*hit[1], *community], ("db", self._uid, hit[2], community_fingerprint(community))
 
     def _community(self, at: datetime) -> list[Hazard]:
         return [community_hazard(r) for r in self.reports.approved_active(at)]

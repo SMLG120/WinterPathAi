@@ -19,8 +19,55 @@
     "outsideHint": "This point is outside the coverage area; routing will be refused."
   },
   "search": {
-    "label": "Search an address",
-    "disabled": "Address search is off: no permitted geocoding provider is configured for this deployment. Pick a point on the map or enter coordinates instead."
+    "label": "Search an address or place",
+    "placeholder": "e.g. 1455 boul. De Maisonneuve O, Gare Centrale, 45.497, -73.579",
+    "fill": "Fill",
+    "fillHint": "Choose which point the selected result sets.",
+    "help": "Greater Montréal addresses and named places, in French or English. A result is a place, not a confirmed walking endpoint: routing decides whether it can be reached.",
+    "searching": "Searching…",
+    "typeMore": "Type at least two letters of a street or place name.",
+    "empty": "No address or place matches “{{query}}”. Check the spelling, add the municipality after a comma, or pick a point on the map.",
+    "unavailable": "Search is unavailable right now (the search index could not be loaded). Pick a point on the map or enter coordinates instead.",
+    "error": "Search failed. Check your connection and try again.",
+    "retry": "Retry search",
+    "coordsOutOfRange": "These numbers are not valid coordinates. Use latitude, longitude — e.g. 45.5048, -73.5772.",
+    "results_one": "{{count}} result. Use the up and down arrows to review, Enter to choose.",
+    "results_other": "{{count}} results. Use the up and down arrows to review, Enter to choose.",
+    "selected": "{{point}} set to {{label}}.",
+    "completed": "Street chosen: type the civic number at the start, e.g. 1455.",
+    "kind": {
+      "address": "Address",
+      "place": "Place",
+      "street": "Street — add a civic number",
+      "coordinates": "Coordinates"
+    },
+    "source": {
+      "rqa": "Québec address registry (RQA)",
+      "osm": "OpenStreetMap (community-mapped)",
+      "typed": "Coordinates you typed"
+    },
+    "quality": {
+      "label": "Position",
+      "building": "on the building, not necessarily the entrance",
+      "front_lot": "front of the lot",
+      "access": "main access to the property",
+      "lot_centre": "centre of the lot",
+      "site": "site with no clear boundary",
+      "interpolated": "approximate, interpolated along the street",
+      "uncertain": "uncertain position",
+      "other": "position quality not stated"
+    },
+    "placePoint": "Label point of a community-mapped place, not an entrance",
+    "nearestCivic": "{{civic}} is not listed on this street; this is the closest listed number",
+    "order": {
+      "lat_lon": "read as latitude, longitude",
+      "lon_lat": "read as longitude, latitude",
+      "ambiguous": "The order of these numbers is ambiguous: choose the reading you meant."
+    },
+    "outsideArea": "outside Greater Montréal",
+    "attribution": "Addresses: Référentiel québécois des adresses, Gouvernement du Québec (CC BY 4.0). Places: © OpenStreetMap contributors (ODbL).",
+    "fromSearch": "From search",
+    "notEndpoint": "A searched place is not a confirmed walking endpoint; routing checks whether it can be reached."
   },
   "geo": {
     "button": "Use my location",

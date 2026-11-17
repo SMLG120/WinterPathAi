@@ -2,9 +2,15 @@
  * Guard for the Cloudflare Pages production bundle (docs/SECURITY.md: "production build made with
  * VITE_USE_MOCKS unset — not yet enforced"). Used by `npm run build:pages`:
  *   node build/pagesCheck.ts env   → refuses an unsafe build environment (before building)
- *   node build/pagesCheck.ts dist  → scans the built dist/ (after building)
+ *   node build/pagesCheck.ts dist  → scans the built dist/ (after building), including the
+ *                                    self-hosted search index (docs/SEARCH.md)
+ *   node build/pagesCheck.ts search [dir] → checks only the search index under dir/search
+ *                                    (scripts/build-search-index.sh runs it on public/)
+ * PAGES_ALLOW_NO_SEARCH_INDEX=1 lets `dist` pass without an index (CI only: the inputs are ~2 GB);
+ * a present index is always checked.
  * Exit code 1 with a list of problems; prints only file names and rule ids, never matched values.
  */
+import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -53,7 +59,54 @@ function walk(dir: string): string[] {
   });
 }
 
-export function checkDist(dir: string): string[] {
+/** Cloudflare Pages limits (direct upload): files per deployment and bytes per file. */
+export const PAGES_MAX_FILES = 20_000;
+export const PAGES_MAX_FILE_BYTES = 25 * 1024 * 1024;
+const SEARCH_FORMAT = 'winterpath-search/1';
+
+/**
+ * The static place-search index under `<dir>/search`: manifest format, build directory, every
+ * shard present with the manifest's sha256, no stale build directories, and the RQA (CC BY 4.0)
+ * and OSM (ODbL) attributions the search box shows.
+ */
+export function checkSearchIndex(dir: string, opts: { allowMissing?: boolean } = {}): string[] {
+  const root = join(dir, 'search');
+  const mpath = join(root, 'manifest.json');
+  if (!existsSync(mpath))
+    return opts.allowMissing ? [] : ['search/manifest.json missing: build the index first (scripts/build-search-index.sh)'];
+  let m: { format?: unknown; build_id?: unknown; base?: unknown; shards?: unknown; sources?: unknown };
+  try {
+    m = JSON.parse(readFileSync(mpath, 'utf8'));
+  } catch {
+    return ['search/manifest.json is not JSON'];
+  }
+  const p: string[] = [];
+  if (m.format !== SEARCH_FORMAT) p.push(`search/manifest.json format is not ${SEARCH_FORMAT}`);
+  if (typeof m.build_id !== 'string' || m.base !== `v/${m.build_id}/`) p.push('search/manifest.json base does not match its build_id');
+  const shards = m.shards && typeof m.shards === 'object' ? (m.shards as Record<string, unknown>) : {};
+  if (Object.keys(shards).length === 0) p.push('search/manifest.json lists no shards');
+  const sources = Array.isArray(m.sources) ? (m.sources as Record<string, unknown>[]) : [];
+  for (const id of ['rqa', 'osm']) {
+    const s = sources.find((x) => x?.id === id);
+    const a = s?.attribution as Record<string, unknown> | undefined;
+    if (!s || typeof a?.fr !== 'string' || typeof a?.en !== 'string' || !s.licence) p.push(`search/manifest.json: source ${id} or its fr/en attribution and licence missing`);
+  }
+  if (p.length) return p;
+  let missing = 0;
+  let mismatched = 0;
+  for (const [rel, sha] of Object.entries(shards)) {
+    const f = join(root, String(m.base), rel);
+    if (!existsSync(f)) missing++;
+    else if (createHash('sha256').update(readFileSync(f)).digest('hex') !== sha) mismatched++;
+  }
+  if (missing) p.push(`search index: ${missing} shard file(s) listed in the manifest are missing`);
+  if (mismatched) p.push(`search index: ${mismatched} shard file(s) do not match their manifest sha256`);
+  const vdir = join(root, 'v');
+  for (const d of existsSync(vdir) ? readdirSync(vdir) : []) if (d !== m.build_id) p.push(`search/v/${d}: stale build directory (not in the manifest)`);
+  return p;
+}
+
+export function checkDist(dir: string, opts: { allowNoSearchIndex?: boolean } = {}): string[] {
   const p: string[] = [];
   if (!existsSync(join(dir, 'index.html'))) return [`${dir}/index.html missing — build first`];
   if (existsSync(join(dir, '404.html'))) p.push('404.html present: disables the Pages SPA fallback');
@@ -70,8 +123,12 @@ export function checkDist(dir: string): string[] {
     for (const need of ["frame-ancestors 'none'", 'X-Content-Type-Options: nosniff', 'geolocation=(self)', 'max-age=31536000, immutable'])
       if (!h.includes(need)) p.push(`_headers missing: ${need}`);
   }
-  for (const f of walk(dir)) {
+  p.push(...checkSearchIndex(dir, { allowMissing: opts.allowNoSearchIndex }));
+  const files = walk(dir);
+  if (files.length > PAGES_MAX_FILES) p.push(`${files.length} files: over the Cloudflare Pages limit of ${PAGES_MAX_FILES}`);
+  for (const f of files) {
     const rel = relative(dir, f);
+    if (statSync(f).size > PAGES_MAX_FILE_BYTES) p.push(`${rel}: over the Cloudflare Pages 25 MiB file limit`);
     if (f.endsWith('.map')) p.push(`${rel}: sourcemap`);
     if (!/\.(js|mjs|css|html|json|txt|svg|webmanifest)$/.test(f) && !rel.endsWith('_headers')) continue;
     const text = readFileSync(f, 'utf8');
@@ -85,7 +142,17 @@ export function checkDist(dir: string): string[] {
 const isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
   const mode = process.argv[2];
-  const problems = mode === 'env' ? checkEnv(process.env) : mode === 'dist' ? checkDist(process.argv[3] ?? 'dist') : ['usage: node build/pagesCheck.ts env|dist [dir]'];
+  const allowNoSearchIndex = process.env.PAGES_ALLOW_NO_SEARCH_INDEX === '1';
+  const problems =
+    mode === 'env'
+      ? checkEnv(process.env)
+      : mode === 'dist'
+        ? checkDist(process.argv[3] ?? 'dist', { allowNoSearchIndex })
+        : mode === 'search'
+          ? checkSearchIndex(process.argv[3] ?? 'public')
+          : ['usage: node build/pagesCheck.ts env|dist|search [dir]'];
+  if (mode === 'dist' && allowNoSearchIndex && !existsSync(join(process.argv[3] ?? 'dist', 'search', 'manifest.json')))
+    process.stdout.write('pages-check dist: no search index (PAGES_ALLOW_NO_SEARCH_INDEX=1); not deployable\n');
   if (problems.length) {
     console.error(`pages-check ${mode}: FAILED\n` + problems.map((x) => `  - ${x}`).join('\n'));
     process.exit(1);
