@@ -1,5 +1,5 @@
-# gitleaks false positives: OSM tags quoted verbatim in the conditional-ways table, e.g.
-# 'access:conditional=yes @ winter' matched generic-api-key. Reviewed line by line 2026-11-17; no secrets.
+# gitleaks false positives: OSM conditional-access tags quoted verbatim in the conditional-ways table
+# of docs/agent-reports/greater.md matched generic-api-key. Reviewed line by line 2026-11-17; no secrets.
 # Allowlisted by user decision 2026-11-17 (PR #2). Exact fingerprints only.
 1b26aa382e8fa11b199a9f5e02b08551bca04ecd:docs/agent-reports/greater.md:generic-api-key:65
 1b26aa382e8fa11b199a9f5e02b08551bca04ecd:docs/agent-reports/greater.md:generic-api-key:72
