@@ -102,3 +102,33 @@ Reading:
 
 Next gate before publishing IL: one Docker run of IL at `--cpus=0.1 --memory=512m` (anonymous memory, OOM,
 cross-river p95 < 15 s), then user approval to publish `graph-greater-v1`.
+
+## Step 0 results — Docker, Render-Free size (2026-11-16 23:06–23:16)
+Image `infra/docker/api.Dockerfile` built from PR #1 (`integration/search-cache-map` @ `bdb1823`); container
+`--cpus=0.1 --memory=512m --memory-swap=512m`; artifact mounted read-only and SHA-pinned; mmap, fast search,
+warm-up; **no risk layer, in-memory stores (no PostGIS hazards/closures)**. Same 80 trips (sequential) and 3-client
+panning as the Mac run. Memory = cgroup v2 `anon` (non-reclaimable); `memory.peak` includes reclaimable file pages.
+```
+v2 healthy after 30s (size 188557261)
+v2     island-local     ok=20/20 p50=  2.1 s p95=  9.6 s max= 13.7 s over15s=0 errors={}
+v2     Laval-local      ok= 0/20 no routes errors={'OUTSIDE_COVERAGE': 20}
+v2     Longueuil-local  ok= 0/20 no routes errors={'OUTSIDE_COVERAGE': 20}
+v2     cross-river      ok= 0/20 no routes errors={'OUTSIDE_COVERAGE': 20}
+v2     pan segments     ok=120/120 p50=  1805 ms p95=  5898 ms
+v2     pan hazards      ok=120/120 p50=   148 ms p95=  1021 ms
+v2     MEMORY cgroup anon MiB: idle=145 after_routes=159 after_panning=166 peak_anon=171 | memory.peak=342 MiB | oomkilled=false status=running
+IL healthy after 40s (size 227668000)
+IL     island-local     ok=20/20 p50=  2.4 s p95=  8.0 s max= 12.1 s over15s=0 errors={}
+IL     Laval-local      ok=20/20 p50=  1.0 s p95=  2.5 s max=  2.8 s over15s=0 errors={}
+IL     Longueuil-local  ok= 0/20 no routes errors={'OUTSIDE_COVERAGE': 20}
+IL     cross-river      ok= 7/20 p50=  3.7 s p95=  4.6 s max=  4.6 s over15s=0 errors={'OUTSIDE_COVERAGE': 13}
+IL     pan segments     ok=120/120 p50=  1602 ms p95=  4101 ms
+IL     pan hazards      ok=120/120 p50=   100 ms p95=   699 ms
+IL     MEMORY cgroup anon MiB: idle=150 after_routes=164 after_panning=173 peak_anon=186 | memory.peak=371 MiB | oomkilled=false status=running
+```
+**Gate: IL passes** — peak anon 186 MiB (+15 MiB, ×1.09 vs v2), no OOM, cross-river p95 4.6 s, nothing over 15 s.
+Caveats: no production DB/risk layer in this run (ISLAND_COVERAGE.md measured 319 MiB anon with them; ×1.09 ≈ 348 MiB,
+still under 400 — projected); island-local max 12–14 s at 0.1 CPU is close to the 15 s web timeout in both runs
+(existing behaviour, not caused by IL); one container, sequential trips, not concurrent users on Render.
+Remaining before release: user approval to publish `graph-greater-v1`, `/coverage` outline for island + Laval,
+risk scores for Laval cells (currently none → 100 % unknown), Laval has no Ville de Montréal closures/311.
