@@ -11,3 +11,5 @@
 1b26aa382e8fa11b199a9f5e02b08551bca04ecd:docs/agent-reports/greater.md:generic-api-key:102
 1b26aa382e8fa11b199a9f5e02b08551bca04ecd:docs/agent-reports/greater.md:generic-api-key:103
 1b26aa382e8fa11b199a9f5e02b08551bca04ecd:docs/agent-reports/greater.md:generic-api-key:106
+# Plus the ignore file's own earlier comment (da9c95b), which quoted a tag value; user decision 2026-11-17.
+da9c95b8de05e2d67427f9132056fece5cd99b0c:.gitleaksignore:generic-api-key:2
