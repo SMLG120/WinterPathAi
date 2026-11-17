@@ -11,13 +11,13 @@ Branch `agent/laval-closures`. Run date 2026-11-17.
 - The dataset is **obstruction permits** (roadway), not only "road works".
 
 ## Schema (35 784 features, CRS84)
-Geometry: LineString 31 313, MultiLineString 4 471, none missing. **No identifier column.** Properties (all rows): TYPE (14 values: Entrave, Fermeture, Détour, Obstruction partielle, ...), STATUT (Abandonné 35 456, Existant 226, '' 89, Proposé 13), DATE_DEBUT / DATE_FIN (`MM/DD/YYYY HH:MM:SS`; 506 / 562 empty; DATE_FIN has a year-0205 typo), REMARQUE, NATURE_TRAVAUX (20 values), ALERTE511, CIRCULATION (10), PUBLIQUE, ENTRAVE (12: '', Partielle, Fermeture complète, Rue barrée, Stationnement, Trottoir (1 row), ...), RESPONSABLE (13), LOCALISATION (street names, free text).
+Geometry: LineString 31 313, MultiLineString 4 471, none missing. **No identifier column.** Properties (all rows): TYPE (14 values: Entrave, Fermeture, Détour, Obstruction partielle, ...), STATUT (Abandonné 35 456, Existant 226, '' 89, Proposé 13), DATE_DEBUT / DATE_FIN (`MM/DD/YYYY HH:MM:SS`; 506 / 562 empty; DATE_FIN has a year-0205 typo), REMARQUE, NATURE_TRAVAUX (20 values), ALERTE511, CIRCULATION (10), PUBLIQUE, ENTRAVE (12: '', Partielle, Fermeture complète, Rue barrée, Stationnement, Trottoir (81 rows; the agent first counted 1), ...), RESPONSABLE (13), LOCALISATION (street names, free text).
 There is no pedestrian-passage field. **Lead review correction (2026-11-17):** `ENTRAVE='Trottoir'` (obstruction on the sidewalk) occurs on **81** features (80 `Abandonné`, 1 `Existant`), not 1; it is now kept verbatim in `sidewalk_blockedtype`. It is not a statement that passage is blocked, so `blocks_passage` stays null. Other trottoir/piéton mentions are free text (REMARQUE, LOCALISATION, NATURE_TRAVAUX 'Réfection de trottoir-bordure') and are not parsed.
 
 ## Counts
 - features_total 35 784; 519 byte-identical duplicate features collapsed; kept inside the SDA Laval (65005) polygon: **35 263** closures (coarse-bbox run gave 35 265).
 - status: permit_issued 225 (Existant); unknown 35 038 (Abandonné 34 936, '' 89, Proposé 13).
-- Active today (2026-11-17: permit_issued AND valid_from <= now AND (valid_to null OR now < valid_to)): **89**. 9 Existant rows lack valid_from and are not counted.
+- In their date window today (2026-11-17: permit_issued AND valid_from <= now AND (valid_to null OR now < valid_to)): **89** (agent's count, before the end-of-day fix below). This is an upper bound, not "active": with no weekly schedule, `wp.closure_active_at` returns NULL (unknown) for every one of them. 9 Existant rows lack valid_from and are not counted.
 - Null valid_from 503, null valid_to 561; date_flags: end_before_start 111, DATE_FIN implausible/unparsed 3.
 - blocks_passage: true 0 / false 0 / **null 35 263**.
 - Geometry: LineString 30 916, MultiLineString 4 347.
@@ -44,7 +44,7 @@ All checks passed!                      (uv run ruff check .)
 ```
 New: tests/test_laval_chantiers.py (18 tests) + tests/fixtures/laval_chantiers_sample.geojson (4 real rows, coordinates rounded to 6 dp).
 
-## Change request (coordinator; docs/contracts untouched)
+## Change request (agent's request; the coordinator later applied it as contract v1.10.0 on this branch)
 CR-LAVAL-1: add canonical source id `laval-chantiers` to /data-sources (registry.py entry added: Ville de Laval, CC BY 4.0, attribution above, url https://www.donneesquebec.ca/recherche/dataset/chantiers-routiers). Also: (a) approve the `laval:` closure_id prefix (content hash); (b) no db_load loader written (needs the wp.source row and a decision on target DB), so `load --source laval-chantiers` is not wired; (c) note in data-model that Laval closures are lines and that `status='unknown'` covers the historic "Abandonné" rows.
 
 ## Open issues
@@ -57,3 +57,16 @@ CR-LAVAL-1: add canonical source id `laval-chantiers` to /data-sources (registry
 ## Lead review (2026-11-17)
 - Re-ran in services/ingestion: `ruff check` → All checks passed!; `ruff format --check` → 39 files already formatted; `pytest -q` → 115 passed, 10 skipped (7 new parametrised cases for the sidewalk mapping).
 - Real file through `build_closures` (bbox only): 35,265 closures; `sidewalk_blockedtype` Trottoir 81 / null 35,184; `blocks_passage` null for all.
+
+## PR #3 code review fixes (lead, 2026-11-17)
+1. Registry `status` `disabled` until loaded (`upsert_sources` writes every row on each load).
+2. Midnight DATE_FIN (35,221 of 35,222 non-empty) = end of that day → `valid_to` next local midnight, flag `DATE_FIN_date_only_end_of_day`.
+3. Run checksum includes `MAPPING_VERSION` (`laval-chantiers-v2`), so a mapping change rebuilds.
+4. `outside_region` / `empty_geometry` counters: every feature is accounted for.
+5. Years > 2100 implausible → null.
+6. Empty output has the normal columns (`COLUMNS`).
+7. This report corrected (contract wording, "in date window" is an upper bound, Trottoir 81).
+8. Contract v1.10.0: loader must replace all Laval rows per load; `weekly_schedule` stored as null.
+
+Results (local): `ruff check` → All checks passed!; `ruff format --check` → 39 files already formatted; `pytest -q` → 123 passed, 10 skipped, 2 warnings.
+Real file through `build_closures` (bbox only): 35,784 features = 35,265 closures + 519 duplicates (outside_region 0, no_geometry 0); status permit_issued 225 / unknown 35,040; Trottoir 81; blocks_passage non-null 0; date flags: end_of_day 34,702, end_before_start 107, unparsed_or_implausible 3; in date window 2026-11-17 12:00: 89 (upper bound; closure_active_at returns NULL for all).

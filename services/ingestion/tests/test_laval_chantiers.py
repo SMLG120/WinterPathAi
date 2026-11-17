@@ -97,7 +97,7 @@ def test_outside_laval_and_no_geometry_dropped():
     nog = _syn()
     nog["geometry"] = None
     gdf, st = lc.build_closures([far, nog])
-    assert len(gdf) == 0 and st["no_geometry"] == 1
+    assert len(gdf) == 0 and st["no_geometry"] == 1 and st["outside_region"] == 1
 
 
 def test_registry_entry():
@@ -121,3 +121,62 @@ def test_sidewalk_blockedtype_only_from_explicit_entrave(entrave, expected):
     p = {"ENTRAVE": entrave}
     assert lc.map_sidewalk_blockedtype(p) == expected
     assert lc.map_blocks_passage(p) is None  # sidewalk obstructed != passage blocked
+
+
+# --- code review PR #3 -------------------------------------------------------------------------
+
+
+def test_registry_entry_disabled_until_loaded():
+    """upsert_sources writes every registry row on each load: Laval must not show as active."""
+    s = next(x for x in SOURCES if x["source_id"] == "laval-chantiers")
+    assert s["status"] == "disabled"
+
+
+def test_far_future_year_is_implausible():
+    assert lc.parse_date("07/26/2205 00:00:00") is None
+    assert lc.parse_date("07/26/2100 00:00:00") is not None
+
+
+def test_midnight_end_is_end_of_that_day():
+    # date only → next local midnight; across the 2026-11-01 DST change the offset follows
+    assert lc.parse_end("11/01/2026 00:00:00") == ("2026-11-02T00:00:00-05:00", True)
+    assert lc.parse_end("12/01/2026 17:00:00") == ("2026-12-01T17:00:00-05:00", False)
+    assert lc.parse_end("") == (None, False)
+    gdf, _ = lc.build_closures([_syn(d0="11/20/2026 00:00:00", d1="12/01/2026 00:00:00")])
+    r = gdf.iloc[0]
+    assert r["valid_to"] == "2026-12-02T00:00:00-05:00"
+    assert "DATE_FIN_date_only_end_of_day" in r["attrs"]["date_flags"]
+
+
+def test_same_day_permit_is_not_end_before_start():
+    gdf, _ = lc.build_closures([_syn(d0="12/01/2026 00:00:00", d1="12/01/2026 00:00:00")])
+    assert "end_before_start" not in gdf.iloc[0]["attrs"]["date_flags"]
+
+
+def test_empty_output_has_the_normal_columns():
+    full, _ = lc.build_closures([_syn()])
+    far = _syn()
+    far["geometry"]["coordinates"] = [[-73.2, 45.3], [-73.19, 45.31]]
+    empty, _ = lc.build_closures([far])
+    assert list(empty.columns) == list(full.columns) == list(lc.COLUMNS)
+
+
+def test_run_checksum_includes_mapping_version(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    from winterpath_ingestion.config import Settings
+
+    seen = []
+    monkeypatch.setattr(
+        lc,
+        "download",
+        lambda *a, **k: SimpleNamespace(path=tmp_path / "x", sha256="ab", fetched_at="t"),
+    )
+    monkeypatch.setattr(
+        lc, "run_atomic", lambda name, d, checksum, build, force: seen.append(checksum)
+    )
+    s = Settings(data_dir=tmp_path, user_agent="test")
+    lc.run(s)
+    monkeypatch.setattr(lc, "MAPPING_VERSION", "laval-chantiers-vX")
+    lc.run(s)
+    assert seen[0] != seen[1]
