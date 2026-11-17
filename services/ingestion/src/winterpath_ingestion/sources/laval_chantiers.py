@@ -5,9 +5,13 @@ verified 2026-11-17). Evidence state: `confirmed` for the obstruction record its
 city data) — NOT for any sidewalk status.
 
 Honesty rules applied here:
-* The feed has NO pedestrian/sidewalk field. `blocks_passage` is therefore always null
+* The feed has no pedestrian-passage field. `blocks_passage` is therefore always null
   (unknown); a roadway closure ("Rue barrée", "Fermeture complète") never implies a sidewalk
   closure, and free text (REMARQUE/LOCALISATION) is never parsed into certainty.
+* The one explicit sidewalk signal is `ENTRAVE = "Trottoir"` (obstruction located on the
+  sidewalk; 81 of 35,784 features in the 2026-11-17 file). It is kept verbatim in
+  `sidewalk_blockedtype` so consumers see the sidewalk is affected; it does not say passage is
+  blocked, so `blocks_passage` stays null (contract: null is flagged, never treated as clear).
 * The feed has no identifier: `closure_id` = `laval:<sha1[:16] of the canonical feature>`
   (stable while the publisher's record is unchanged; byte-identical duplicate features are
   collapsed and counted).
@@ -74,6 +78,16 @@ def map_status(raw: str | None) -> str:
     return CLOSURE_STATUS.get((raw or "").strip(), "unknown")
 
 
+#: ENTRAVE values that explicitly place the obstruction on the sidewalk (kept verbatim).
+SIDEWALK_ENTRAVE = frozenset({"Trottoir"})
+
+
+def map_sidewalk_blockedtype(props: dict) -> str | None:
+    """The published ENTRAVE value when it names the sidewalk; else null (never inferred)."""
+    raw = (props.get("ENTRAVE") or "").strip()
+    return raw if raw in SIDEWALK_ENTRAVE else None
+
+
 def map_blocks_passage(props: dict) -> bool | None:
     """True/False only if a table entry says so for the published ENTRAVE value; else null."""
     return BLOCKS_PASSAGE_BY_ENTRAVE.get((props.get("ENTRAVE") or "").strip())
@@ -137,7 +151,7 @@ def build_closures(features: list[dict], keep=None, bbox=LAVAL_BBOX):
         rows.append(
             {
                 "closure_id": cid,
-                "sidewalk_blockedtype": None,
+                "sidewalk_blockedtype": map_sidewalk_blockedtype(p),
                 "blocks_passage": map_blocks_passage(p),
                 "backsidewalk_blocks_passage": None,
                 "valid_from": vf,

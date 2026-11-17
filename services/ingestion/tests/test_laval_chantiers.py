@@ -103,3 +103,21 @@ def test_outside_laval_and_no_geometry_dropped():
 def test_registry_entry():
     s = next(x for x in SOURCES if x["source_id"] == "laval-chantiers")
     assert s["license"] == "CC BY 4.0" and "Ville de Laval" in s["attribution"]
+
+
+@pytest.mark.parametrize(
+    ("entrave", "expected"),
+    [
+        ("Trottoir", "Trottoir"),
+        (" Trottoir ", "Trottoir"),
+        ("Partielle", None),
+        ("Rue barrée", None),
+        ("Hors chaussée", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_sidewalk_blockedtype_only_from_explicit_entrave(entrave, expected):
+    p = {"ENTRAVE": entrave}
+    assert lc.map_sidewalk_blockedtype(p) == expected
+    assert lc.map_blocks_passage(p) is None  # sidewalk obstructed != passage blocked

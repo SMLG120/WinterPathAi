@@ -12,7 +12,7 @@ Branch `agent/laval-closures`. Run date 2026-11-17.
 
 ## Schema (35 784 features, CRS84)
 Geometry: LineString 31 313, MultiLineString 4 471, none missing. **No identifier column.** Properties (all rows): TYPE (14 values: Entrave, Fermeture, Détour, Obstruction partielle, ...), STATUT (Abandonné 35 456, Existant 226, '' 89, Proposé 13), DATE_DEBUT / DATE_FIN (`MM/DD/YYYY HH:MM:SS`; 506 / 562 empty; DATE_FIN has a year-0205 typo), REMARQUE, NATURE_TRAVAUX (20 values), ALERTE511, CIRCULATION (10), PUBLIQUE, ENTRAVE (12: '', Partielle, Fermeture complète, Rue barrée, Stationnement, Trottoir (1 row), ...), RESPONSABLE (13), LOCALISATION (street names, free text).
-There is no pedestrian/sidewalk-passage field. 875 rows mention trottoir/piéton in free text only; ENTRAVE='Trottoir' occurs on 1 permit and is not a statement that passage is blocked.
+There is no pedestrian-passage field. **Lead review correction (2026-11-17):** `ENTRAVE='Trottoir'` (obstruction on the sidewalk) occurs on **81** features (80 `Abandonné`, 1 `Existant`), not 1; it is now kept verbatim in `sidewalk_blockedtype`. It is not a statement that passage is blocked, so `blocks_passage` stays null. Other trottoir/piéton mentions are free text (REMARQUE, LOCALISATION, NATURE_TRAVAUX 'Réfection de trottoir-bordure') and are not parsed.
 
 ## Counts
 - features_total 35 784; 519 byte-identical duplicate features collapsed; kept inside the SDA Laval (65005) polygon: **35 263** closures (coarse-bbox run gave 35 265).
@@ -29,7 +29,7 @@ There is no pedestrian/sidewalk-passage field. 875 rows mention trottoir/piéton
 | status | STATUT: Existant→permit_issued; all else (Abandonné, Proposé, '', unseen)→unknown, raw in attrs.currentstatus. "Abandonné" is NOT read as cancelled/completed (35k historic records; meaning unverified) |
 | valid_from / valid_to | DATE_DEBUT / DATE_FIN as America/Montreal local → ISO with offset; empty/unparseable/year<2000 → null (raw kept in attrs, flag in attrs.date_flags). Whether DATE_FIN midnight is inclusive is not published |
 | blocks_passage, backsidewalk_blocks_passage | always null: no pedestrian field; a roadway closure never implies a sidewalk closure |
-| sidewalk_blockedtype | null |
+| sidewalk_blockedtype | `ENTRAVE` verbatim when it is `Trottoir` (81 rows: 1 permit_issued, 80 unknown); otherwise null — never inferred from free text |
 | attrs | all 12 raw properties verbatim, currentstatus, date_flags, weekly_schedule=null (not published → activity inside the window unknown) |
 | evidence_state | confirmed (the permit record only) |
 | geometry | published line as is (roadway, not sidewalk) |
@@ -52,3 +52,8 @@ CR-LAVAL-1: add canonical source id `laval-chantiers` to /data-sources (registry
 - Hash ids: an upstream edit yields a new id.
 - No weekly schedule; active-by-dates is only an upper bound.
 - Routing must match these roadway lines to edges itself; nothing here claims sidewalk status.
+
+
+## Lead review (2026-11-17)
+- Re-ran in services/ingestion: `ruff check` → All checks passed!; `ruff format --check` → 39 files already formatted; `pytest -q` → 115 passed, 10 skipped (7 new parametrised cases for the sidewalk mapping).
+- Real file through `build_closures` (bbox only): 35,265 closures; `sidewalk_blockedtype` Trottoir 81 / null 35,184; `blocks_passage` null for all.
