@@ -119,13 +119,37 @@ export const useHazards = (bbox: string | null) => {
   );
 };
 
+/** /map/segments pages followed per overlay box (API max limit 1000). Beyond that, `next_cursor`
+ * stays set on the merged collection so the overlay is known to be truncated. */
+export const SEGMENT_PAGE_LIMIT = 1000;
+export const SEGMENT_MAX_PAGES = 5;
+
+export async function fetchAllSegments(get: (cursor?: string) => Promise<SegmentCollection>): Promise<SegmentCollection> {
+  const first = await get();
+  const features = [...first.features];
+  let page = first;
+  for (let i = 1; i < SEGMENT_MAX_PAGES && page.next_cursor; i++) {
+    page = await get(page.next_cursor);
+    features.push(...page.features);
+  }
+  return { ...first, features, next_cursor: page.next_cursor };
+}
+
 export const useSegments = (bbox: string | null) => {
   useOverlayTrim('segments', bbox);
   return withFreshness(
     useQuery<SegmentCollection>({
       queryKey: qk.segments(bbox ?? ''),
       queryFn: ({ signal }) =>
-        unwrap(api.GET('/map/segments', { params: { query: { bbox: bbox! } }, signal })) as Promise<SegmentCollection>,
+        fetchAllSegments(
+          (cursor) =>
+            unwrap(
+              api.GET('/map/segments', {
+                params: { query: { bbox: bbox!, limit: SEGMENT_PAGE_LIMIT, ...(cursor ? { cursor } : {}) } },
+                signal,
+              }),
+            ) as Promise<SegmentCollection>,
+        ),
       enabled: bbox !== null,
       placeholderData: keepPreviousData,
       staleTime: OVERLAY_STALE_MS,

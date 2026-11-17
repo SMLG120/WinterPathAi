@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import itertools
+import threading
 import time
 from collections.abc import Hashable, Sequence
 from datetime import datetime, timedelta
@@ -64,6 +66,11 @@ def community_fingerprint(hazards: Sequence[Hazard]) -> tuple:
     return tuple((h.hazard_id, h.valid_from, h.valid_to) for h in hazards)
 
 
+#: process-unique repository identity: list versions are only comparable within one repository,
+#: and some caches (the /hazards STR-tree index) are process-wide.
+_REPO_IDS = itertools.count(1)
+
+
 class HazardRepository(Protocol):
     def list(self, at: datetime) -> list[Hazard]:
         """All hazards relevant at ``at`` (any kind), for map display and routing."""
@@ -78,6 +85,7 @@ class InMemoryHazardRepository:
     def __init__(self, reports: ReportRepository, hazards: Sequence[Hazard] = ()) -> None:
         self.reports = reports
         self.hazards = list(hazards)
+        self._uid = next(_REPO_IDS)
 
     def list(self, at: datetime) -> list[Hazard]:
         return self.list_versioned(at)[0]
@@ -87,7 +95,7 @@ class InMemoryHazardRepository:
         their object ids are stable; the community part is fingerprinted by content."""
         static = [h for h in self.hazards if h.active_at(at)]
         community = [community_hazard(r) for r in self.reports.approved_active(at)]
-        version = ("mem", tuple(id(h) for h in static), community_fingerprint(community))
+        version = ("mem", self._uid, tuple(id(h) for h in static), community_fingerprint(community))
         return [*static, *community], version
 
     def freshness(self) -> dict[str, datetime | None]:
@@ -193,6 +201,9 @@ class PostgisHazardRepository:
         self._lists: dict[datetime, tuple[float, list[Hazard], int]] = {}
         #: increases on every database read of the list (response-cache versions)
         self._serial = 0
+        self._uid = next(_REPO_IDS)
+        #: one database read per expired bucket; the serial it gets is unique to that list
+        self._lists_lock = threading.Lock()
         self._fresh: tuple[float, dict[str, datetime | None]] | None = None
         self.report_311_table = report_311_table  # constant (tests may point it at a temp table)
         self._has_active_fn: bool | None = None
@@ -211,15 +222,17 @@ class PostgisHazardRepository:
         # at the next bucket; the engine still filters every hazard by the request's own time.
         step = max(60, int(self._ttl))
         key = datetime.fromtimestamp(int(at.timestamp()) // step * step, tz=at.tzinfo)
-        hit = self._lists.get(key)
-        if hit is None or self._clock() >= hit[0]:
-            if len(self._lists) >= 16:
-                self._lists.clear()
-            self._serial += 1
-            listed = self._db_hazards(key)
-            hit = self._lists[key] = (self._clock() + self._ttl, listed, self._serial)
+        with self._lists_lock:
+            hit = self._lists.get(key)
+            if hit is None or self._clock() >= hit[0]:
+                if len(self._lists) >= 16:
+                    self._lists.clear()
+                self._serial += 1
+                serial = self._serial  # taken before the read: concurrent misses wait on the lock
+                listed = self._db_hazards(key)
+                hit = self._lists[key] = (self._clock() + self._ttl, listed, serial)
         community = self._community(at)
-        return [*hit[1], *community], ("db", hit[2], community_fingerprint(community))
+        return [*hit[1], *community], ("db", self._uid, hit[2], community_fingerprint(community))
 
     def _community(self, at: datetime) -> list[Hazard]:
         return [community_hazard(r) for r in self.reports.approved_active(at)]

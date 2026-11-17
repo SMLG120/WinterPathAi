@@ -408,3 +408,43 @@ def test_snapshot_version_is_stable_until_estimates_change() -> None:
     clock.t += 301
     s3 = src.at(at)
     assert s3.version != s1.version and s3.estimate(1).level is RiskLevel.HIGH
+
+
+def test_hazard_list_versions_are_unique_per_repository() -> None:
+    """Code review PR #1: the /hazards STR-tree index is process-wide, so two repositories must
+    never produce the same version for different lists."""
+    at = datetime(2026, 1, 15, 12, tzinfo=UTC)
+    a = InMemoryHazardRepository(InMemoryReportRepository())
+    b = InMemoryHazardRepository(InMemoryReportRepository())
+    assert a.list_versioned(at)[1] != b.list_versioned(at)[1]
+    assert a.list_versioned(at)[1] == a.list_versioned(at)[1]
+
+
+def test_db_hazard_list_concurrent_misses_read_once_and_share_one_version(monkeypatch) -> None:
+    """Code review PR #1: the serial was read after the DB read, so concurrent misses could tag
+    different lists with the same version."""
+    from winterpath_api.repositories.hazards import PostgisHazardRepository
+
+    at = datetime(2026, 1, 15, 12, tzinfo=UTC)
+    reads: list[int] = []
+
+    def slow_read(self, key):
+        reads.append(1)
+        time.sleep(0.05)
+        return [object()]  # a distinct list object per read
+
+    monkeypatch.setattr(PostgisHazardRepository, "_db_hazards", slow_read)
+    repo = PostgisHazardRepository(None, InMemoryReportRepository(), cache_ttl_s=60)
+    out: list = []
+    threads = [
+        threading.Thread(target=lambda: out.append(repo.list_versioned(at))) for _ in range(4)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(reads) == 1
+    assert len({v for _, v in out}) == 1
+    assert all(lst[0] is out[0][0][0] for lst, _ in out)
+    other = PostgisHazardRepository(None, InMemoryReportRepository(), cache_ttl_s=60)
+    assert other.list_versioned(at)[1] != out[0][1]

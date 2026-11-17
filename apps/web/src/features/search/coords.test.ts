@@ -39,3 +39,12 @@ describe('parseCoordinates', () => {
     for (const q of ['1455 12', '1455 boul De Maisonneuve', 'Gare Centrale', '45', '']) expect(parseCoordinates(q)).toEqual({ kind: 'none' });
   });
 });
+
+describe('French ordinal streets are not coordinates (code review, PR #1)', () => {
+  it.each(['200 3e', '45 3e', '12 8E', '5664 1re', '1200 8e avenue', '45;3e'])('%s → none', (q) => {
+    expect(parseCoordinates(q).kind).toBe('none');
+  });
+  it('an explicit East hemisphere still parses', () => {
+    for (const q of ['45.5 3 E', '45.5 3°E', '45.5N 73.57W', '45.50 -73.57']) expect(parseCoordinates(q).kind).toBe('coords');
+  });
+});

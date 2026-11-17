@@ -24,6 +24,10 @@ const PATTERNS = [
   new RegExp(String.raw`^${NUM}\s+${NUM}$`, 'i'), // 45.50 -73.57 / 45,50 -73,57
 ];
 
+// An integer written straight against an 'e' ("3e", "12E") is a French ordinal street ("3e Avenue"),
+// not "3° East": the input stays an address query. "3 E", "3°E" and "3.0E" are still longitudes.
+const ORDINAL = /(?:^|[\s;,])\d{1,3}e(?=$|[\s;,])/i;
+
 type Part = { v: number; hemi: 'N' | 'S' | 'E' | 'W' | null; decimals: boolean };
 
 function part(num: string, hemi: string | undefined): Part {
@@ -54,7 +58,7 @@ export function parseCoordinates(input: string): CoordParse {
     m = re.exec(s);
     if (m) break;
   }
-  if (!m) return { kind: 'none' };
+  if (!m || ORDINAL.test(s)) return { kind: 'none' };
   const a = part(m[1]!, m[2]);
   const b = part(m[3]!, m[4]);
   if (!(a.decimals || b.decimals || a.hemi || b.hemi)) return { kind: 'none' };

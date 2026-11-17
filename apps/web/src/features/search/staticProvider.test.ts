@@ -100,3 +100,44 @@ describe('StaticIndexProvider — failures', () => {
     await expect(p.search('gare')).rejects.toMatchObject({ reason: 'network' });
   });
 });
+
+describe('index redeploy while a tab is open (code review, PR #1)', () => {
+  it('a shard missing under the old build reloads the manifest once and answers', async () => {
+    const t = testFetch();
+    let deployed = 'test';
+    const calls: string[] = [];
+    const f: typeof fetch = async (input, init) => {
+      const url = String(input);
+      calls.push(`${url}${init?.cache === 'no-cache' ? ' (revalidate)' : ''}`);
+      if (url === '/search/manifest.json') {
+        const m = { ...testManifest(), build_id: deployed, base: `v/${deployed}/` };
+        return new Response(JSON.stringify(m), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      // Only the deployed build exists; the builder deleted the others.
+      const prefix = `/search/v/${deployed}/`;
+      if (!url.startsWith(prefix)) return new Response('<!doctype html>', { status: 200, headers: { 'content-type': 'text/html' } });
+      return t.fetch(url.replace(prefix, '/search/v/test/'));
+    };
+    const p = new StaticIndexProvider('/search/', f);
+    expect((await p.search('gare')).results.length).toBeGreaterThan(0);
+    deployed = 'next';
+    const r = await p.search('universite'); // a shard not cached yet: old build path is gone
+    expect(r.results.length).toBeGreaterThan(0);
+    expect(calls.filter((c) => c === '/search/manifest.json (revalidate)')).toHaveLength(2);
+    expect(calls.some((c) => c.startsWith('/search/v/next/'))).toBe(true);
+  });
+
+  it('a shard missing from the current build is still reported, after at most one reload', async () => {
+    // The manifest lists a shard the server does not have, before and after the reload.
+    const m = testManifest();
+    m.shards['s/zz.json'] = 'x';
+    const { p, calls } = provider({ manifest: m });
+    await p.search('gare'); // manifest loaded by an earlier search
+    await expect(p.search('zz')).rejects.toMatchObject({ reason: 'missing' });
+    expect(calls.filter((c) => c.endsWith('manifest.json'))).toHaveLength(2);
+    // A manifest loaded during this same search is current: no second reload.
+    const fresh = provider({ manifest: m });
+    await expect(fresh.p.search('zz')).rejects.toMatchObject({ reason: 'missing' });
+    expect(fresh.calls.filter((c) => c.endsWith('manifest.json'))).toHaveLength(1);
+  });
+});

@@ -72,10 +72,10 @@ export class StaticIndexProvider implements SearchProvider {
     private readonly fetchImpl: typeof fetch = (...a) => fetch(...a),
   ) {}
 
-  private async getJson(path: string, signal: AbortSignal | undefined, sha256?: string): Promise<unknown> {
+  private async getJson(path: string, signal: AbortSignal | undefined, sha256?: string, revalidate = false): Promise<unknown> {
     let res: Response;
     try {
-      res = await this.fetchImpl(this.baseUrl + path, { signal, credentials: 'same-origin' });
+      res = await this.fetchImpl(this.baseUrl + path, { signal, credentials: 'same-origin', ...(revalidate ? { cache: 'no-cache' as const } : {}) });
     } catch (e) {
       if ((e as Error)?.name === 'AbortError') throw e;
       throw new SearchUnavailableError(`search index unreachable: ${path}`, 'network');
@@ -97,7 +97,9 @@ export class StaticIndexProvider implements SearchProvider {
 
   manifest(): Promise<Manifest> {
     if (!this.manifestP) {
-      this.manifestP = (this.getJson('manifest.json', undefined) as Promise<Manifest>).then((m) => {
+      // Revalidated: after an index redeploy the old build directory is deleted (build.py), so a
+      // stale manifest points at shards that no longer exist.
+      this.manifestP = (this.getJson('manifest.json', undefined, undefined, true) as Promise<Manifest>).then((m) => {
         if (m?.format !== FORMAT || typeof m.base !== 'string' || !m.shards) throw new SearchUnavailableError('unsupported search index format', 'format');
         return m;
       });
@@ -128,6 +130,20 @@ export class StaticIndexProvider implements SearchProvider {
   }
 
   async search(query: string, opts: { signal?: AbortSignal; limit?: number; near?: LonLat } = {}): Promise<SearchOutcome> {
+    const m = this.manifestP;
+    try {
+      return await this.searchOnce(query, opts);
+    } catch (e) {
+      // A shard the loaded manifest names is gone: the index was redeployed while this tab was
+      // open. Drop the manifest and shard cache and try once with the current manifest.
+      if (!(e instanceof SearchUnavailableError) || e.reason !== 'missing' || m === null || this.manifestP !== m) throw e;
+      this.manifestP = null;
+      this.cache.clear();
+      return this.searchOnce(query, opts);
+    }
+  }
+
+  private async searchOnce(query: string, opts: { signal?: AbortSignal; limit?: number; near?: LonLat }): Promise<SearchOutcome> {
     const limit = opts.limit ?? DEFAULT_LIMIT;
     const q = query.trim();
     if (!q) return { status: 'ok', results: [] };
