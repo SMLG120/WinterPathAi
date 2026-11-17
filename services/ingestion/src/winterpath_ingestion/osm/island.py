@@ -128,7 +128,7 @@ def per_unit(
     """Nodes by location; edges and km by edge midpoint (unclipped admin limits, so a bridge deck
     counts to the unit whose water it crosses). km are undirected (each segment once).
     ``with_largest`` adds each unit's share in the largest component (component_id 0), the only
-    one routed; off for the island so its stats stay byte-identical."""
+    one routed; off for the island so its stats keep the Wave 1 columns."""
     lim = limits[["NOM", "TYPE", "geometry"]]
     nj = gpd.sjoin(nodes[["node_id", "geometry"]], lim, how="left", predicate="within")
     nj = nj.drop_duplicates("node_id")
@@ -210,7 +210,7 @@ def component_report(edges: gpd.GeoDataFrame, nodes: gpd.GeoDataFrame, limits) -
 
 
 def run(settings: Settings, *, refresh: bool = False, force: bool = False) -> RunResult:
-    """The island build (unchanged output); the generic code lives in :mod:`.region`."""
+    """The island build through :mod:`.region` (current policy, including the seasonal rule)."""
     from .region import ISLAND, run_region
 
     return run_region(settings, ISLAND, refresh=refresh, force=force)

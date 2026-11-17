@@ -48,6 +48,7 @@ def graph_from_processed(directory: str | Path) -> CompactGraph:
     from winterpath_routing.compact import CompactGraphBuilder
     from winterpath_routing.models import GraphMetadata, Node
     from winterpath_routing.providers import (
+        _looks_like_dt,
         _parse_dt,
         _with_node_crossing,
         edge_from_properties,
@@ -87,9 +88,12 @@ def graph_from_processed(directory: str | Path) -> CompactGraph:
     return b.build(
         GraphMetadata(
             simulated=False,
-            osm_snapshot=snapshot,
-            built_at=_parse_dt(manifest.get("finished_at")),
-            source_freshness={"osm": _parse_dt(snapshot)} if snapshot else {},
+            osm_snapshot=str(snapshot) if snapshot is not None else None,
+            # Same guard as the fixture provider: an unparseable snapshot is unknown freshness.
+            built_at=_parse_dt(fin) if _looks_like_dt(fin := manifest.get("finished_at")) else None,
+            source_freshness={"osm": _parse_dt(snapshot) if _looks_like_dt(snapshot) else None}
+            if snapshot
+            else {},
             description=f"OSM pedestrian graph, {title} (processed GeoJSON)",
         )
     )

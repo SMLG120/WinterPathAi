@@ -15,9 +15,10 @@ Method (deterministic, one streaming pass over the cached Geofabrik PBF):
    ``tunnel:name`` / ``name`` as tagged; nothing is renamed. Growth stays within one mode
    (road/path ways vs railway ways), so a metro tunnel is not merged with station corridors.
 4. Each way is classified with the graph's own inclusion rule (:func:`.graph.exclusion_reason`):
-   foot-legal (an edge in the graph) or excluded with the reason. Seasonal / time-conditional
-   tags (``*:conditional``, ``opening_hours``, ``seasonal``, ``winter_service``) are copied
-   verbatim. The graph does **not** evaluate them (see the coverage document).
+   foot-legal (an edge in the graph) or excluded with the reason. Since graph policy
+   ``v1.6.0+seasonal-v1`` that rule excludes ``seasonal=*`` ways unless winter is listed, so such a
+   way shows ``foot_legal`` false with the seasonal reason. Other time-conditional tags
+   (``*:conditional``, ``opening_hours``, ``winter_service``) are copied verbatim and not evaluated.
 """
 
 from __future__ import annotations

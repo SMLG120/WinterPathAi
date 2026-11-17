@@ -1,10 +1,13 @@
 """Pedestrian graph for a named region: the Island of Montréal, or the island plus neighbouring
 municipalities (Greater Montréal, staged). Local build only.
 
-The island is one region definition (:data:`ISLAND`); its output is byte-identical to the
-Wave 1 build (proof in ``docs/GREATER_MONTREAL_COVERAGE.md``). Graph rules are exactly the pilot's
-(:func:`graph.build_graph`): same inclusion policy, splitting and stable IDs; two edges connect only
-where OSM ways share a node; near-misses are reported, never repaired.
+The island is one region definition (:data:`ISLAND`). Under graph policy ``v1.6.0`` its output was
+byte-identical to the Wave 1 build (proof in ``docs/GREATER_MONTREAL_COVERAGE.md``); the seasonal
+rule (``v1.6.0+seasonal-v1``, contract v1.9.0) changes the island graph too: 7 seasonal ways and the
+ways reachable only through them are excluded, so the island must be rebuilt and revalidated.
+Graph rules are exactly the pilot's (:func:`graph.build_graph`): same inclusion policy, splitting
+and stable IDs; two edges connect only where OSM ways share a node; near-misses are reported,
+never repaired.
 
 Area rule (deterministic):
 

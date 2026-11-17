@@ -8,7 +8,7 @@ limits: Québec SDA (CC BY 4.0), see `osm/region.py` for the area rule.
 
 `wp-ingest osm-region --graph-region island --force` rebuilt the island through the region path.
 
-* Processed GeoJSON equals the Wave 1 build (`data/processed/osm_island`) after blanking the per-run
+* Under graph policy `v1.6.0` (before the seasonal rule below changed the island graph), processed GeoJSON equals the Wave 1 build (`data/processed/osm_island`) after blanking the per-run
   `ingest_run_id` (a fresh UUID each run, so raw file hashes can never match): edges
   `530778519c6c...c76d6` (650,920 edges), nodes `29a860c54462...410c0` (257,542 nodes), both builds.
 * The artifact built with `--from-processed` is **not** byte-identical to the published
@@ -37,8 +37,9 @@ Pont Lachapelle `foot=use_sidepath` ways, rail/REM/metro (not a road), Longueuil
 Pont-Tunnel Louis-H.-La Fontaine (`highway=construction`), Autoroute Transcanadienne (motorway).
 Other neighbours (not Stage 1): Pont Victoria `foot=no`, Honoré-Mercier trunk, Champlain estacade
 cycleway 408747052 (`access:conditional=no @ 6:00-22:00`, `winter_service=no`) and its service
-road (`access:conditional=no @ (Nov 15-Apr 15 00:00-24:00; ...)`). The graph does **not** evaluate
-`seasonal`/`*:conditional` tags; they are reported verbatim only.
+road (`access:conditional=no @ (Nov 15-Apr 15 00:00-24:00; ...)`). When this list was made the graph did
+not evaluate `seasonal`/`*:conditional` tags; since `v1.6.0+seasonal-v1` it excludes `seasonal=*` ways
+that do not list winter (see "Seasonal-access rule" below). `*:conditional` tags are still reported verbatim only.
 
 Longueuil's connection to the island depends on one seasonal-tagged way: in the earlier link-removal
 test, removing 852435426 dropped the share of Longueuil nodes connected to the main island from
