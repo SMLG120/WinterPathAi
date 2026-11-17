@@ -19,3 +19,20 @@ after choosing a result).
 - `apps/web`: `vitest run` → Test Files 30 passed (30), Tests 287 passed (287); `npm run lint` exit 0; `npm run typecheck` exit 0
 - `apps/web`: `playwright test -c playwright.search.config.ts` → 20 passed (55.0s); `playwright test` → 147 passed (5.6m)
 - `services/api`: `ruff check` → All checks passed!; `ruff format --check` → 43 files already formatted; `pytest -q` → 157 passed, 15 skipped, 1 warning
+
+# Search index build step in the deploy pipeline (lead, 2026-11-17)
+- `scripts/build-search-index.sh <RQA_CSV.zip> <quebec.osm.pbf>` builds `apps/web/public/search` and checks it.
+- `npm run build:pages` (`build/pagesCheck.ts dist`) now refuses a bundle whose index is missing, has missing or
+  altered shards (sha256), a stale build directory, a wrong base, or lacks the RQA/OSM fr/en attribution and
+  licence; it also enforces the Pages limits (20,000 files, 25 MiB per file). CI sets
+  `PAGES_ALLOW_NO_SEARCH_INDEX=1` (inputs are ~2 GB); a present index is still checked.
+- docs/DEPLOYMENT.md §3 and docs/SEARCH.md updated.
+
+## Results (local, 2026-11-17)
+- Real build: `scripts/build-search-index.sh …/RQA_CSV.zip …/quebec-261110.osm.pbf` → "pages-check search: OK",
+  "search index db33448b307ff577: 944 shards" (same build_id as the existing index: deterministic);
+  267.71 s real, 1,683,341,312 bytes maximum resident set size.
+- `build:pages` with placeholder env: with index exit 0 ("pages-check dist: OK"); without index exit 1
+  ("search/manifest.json missing: build the index first (scripts/build-search-index.sh)");
+  without index + `PAGES_ALLOW_NO_SEARCH_INDEX=1` exit 0 with "no search index …; not deployable".
+- `apps/web`: `vitest run` → 30 files, 291 passed (build checks 12); lint exit 0; typecheck exit 0; `actionlint .github/workflows/ci.yml` exit 0.

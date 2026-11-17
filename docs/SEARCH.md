@@ -188,8 +188,11 @@ uv run python -m winterpath_ingestion.search_index \
 - The OSM pass needs a few GB of RAM (`flex_mem` location index over all of Québec).
 - Measured numbers are in `docs/agent-reports/search.md`.
 
-## Deployment (not done; needs the coordinator)
+## Deployment
 
+- Build step: `scripts/build-search-index.sh <RQA_CSV.zip> <quebec.osm.pbf>` (docs/DEPLOYMENT.md §3), then
+  `npm run build:pages`, which refuses a bundle whose index is missing, altered, stale or unattributed
+  (`build/pagesCheck.ts`). CI builds without the index (`PAGES_ALLOW_NO_SEARCH_INDEX=1`).
 - The shards are **not committed**: they are derived from raw data (about 20 MB, about 945
   files), and `apps/web/.gitignore` ignores `public/search/`.
 - Deployments are direct uploads (`wrangler pages deploy dist`), so the index must be built
