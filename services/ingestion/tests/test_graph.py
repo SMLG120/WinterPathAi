@@ -5,6 +5,7 @@ import random
 import re
 
 import networkx as nx
+import pytest
 from pyproj import Transformer
 from shapely.geometry import LineString
 
@@ -126,3 +127,32 @@ def test_gaps_reported_not_repaired(built):
         if gap["type"] == "near_miss_dangling_endpoint":
             assert gap["distance_m"] <= 2.0
             assert gap["node_id"] not in gap["near_edge_id"].split(">")[0]
+
+
+@pytest.mark.parametrize(
+    ("seasonal", "kept"),
+    [
+        ("winter", True),
+        ("spring;summer;fall;winter", True),
+        (" Summer ; WINTER ", True),
+        ("spring;summer;fall", False),
+        ("yes", False),
+        ("Yes", False),
+        ("", False),
+        ("garbage", False),
+        ("no", True),
+        (" No ", True),
+    ],
+)
+def test_seasonal_rule(seasonal, kept):
+    from winterpath_ingestion.osm.graph import exclusion_reason
+
+    reason = exclusion_reason({"highway": "footway", "seasonal": seasonal})
+    assert (reason is None) is kept
+
+
+def test_seasonal_absent_unchanged_and_other_reasons_first():
+    from winterpath_ingestion.osm.graph import exclusion_reason
+
+    assert exclusion_reason({"highway": "footway"}) is None
+    assert exclusion_reason({"highway": "motorway", "seasonal": "winter"}) == "highway=motorway"

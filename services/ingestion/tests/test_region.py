@@ -18,7 +18,9 @@ BOUNDARIES = (
     "c2357160a8dce9039283cae02408cf48f02c20fd183fb75b93f80234555f70ef|"
     "687843fa0a55e555d8c94fc154c17d803feb36524ce603f58ac4b3ec70cd856d|v1"
 )
-ISLAND_CHECKSUM = "c5c9e2b3c0cdebce3c5af15e8178254b127a0a1e64b44e68925c6849f8231711"
+ISLAND_CHECKSUM = (
+    "af84df7af9f313c6f8c476823684faf60092aca3a4039a3cb96298048d1bbdba"  # with seasonal-v1
+)
 
 
 def test_island_keys_are_the_wave1_strings():

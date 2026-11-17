@@ -14,7 +14,7 @@ from .graph import CONDITIONAL_HIGHWAYS, FOOT_PERMITTED, INCLUDED_HIGHWAYS, buil
 
 # Part of the run checksum: a policy change must rebuild even if the PBF is unchanged.
 GRAPH_POLICY = (
-    "v1.6.0:"
+    "v1.6.0+seasonal-v1:"
     + ",".join(sorted(INCLUDED_HIGHWAYS))
     + "|cond:"
     + ",".join(sorted(CONDITIONAL_HIGHWAYS))

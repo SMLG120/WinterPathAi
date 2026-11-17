@@ -75,6 +75,22 @@ def foot_access(tags: dict[str, str]) -> str:
     return "unknown"
 
 
+def seasonal_exclusion(tags: dict[str, str]) -> str | None:
+    """User decision 2026-11-16 (conservative seasonal exclusion): a way with ``seasonal=*`` is
+    excluded unless the value lists ``winter`` (split on ';', trimmed, case-insensitive).
+    ``seasonal=yes`` and unparseable values are excluded (open period unknown is never open);
+    ``seasonal=no`` or absent leaves the way unchanged."""
+    raw = tags.get("seasonal")
+    if raw is None:
+        return None
+    parts = [p.strip().lower() for p in raw.split(";")]
+    if parts == ["no"]:
+        return None
+    if "winter" in parts:
+        return None
+    return f"seasonal={raw} (winter not listed)"
+
+
 def exclusion_reason(tags: dict[str, str]) -> str | None:
     hw = tags.get("highway")
     if hw in CONDITIONAL_HIGHWAYS:
@@ -90,7 +106,7 @@ def exclusion_reason(tags: dict[str, str]) -> str | None:
     # access=private|no; any other foot value (or none) leaves the access restriction in force.
     if tags.get("access") in ACCESS_PROHIBITED and tags.get("foot") not in FOOT_PERMITTED:
         return f"access={tags['access']}"
-    return None
+    return seasonal_exclusion(tags)
 
 
 def admitted_by_foot_override(tags: dict[str, str]) -> bool:
