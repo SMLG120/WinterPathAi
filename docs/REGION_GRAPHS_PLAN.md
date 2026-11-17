@@ -73,3 +73,32 @@ stitching** and invents no connection.
 - 34 (island) / 42 (Stage 1) `*:conditional` ways are reported, not applied.
 - Winter-risk scores exist only for island H3 cells; Laval/Longueuil routes will be ~100 % `unknown` until the
   ML scoring covers them. Ville de Montréal closures and 311 do not cover other cities.
+
+## Step 0 results — Mac fallback (2026-11-16; Docker Desktop was paused, so NOT Render/Docker numbers)
+API code: `integration/search-cache-map` @ `bdb1823` (PR #1: response caches + OUTSIDE_COVERAGE fix), one uvicorn
+worker, mmap, fast search, warm-up, no risk layer, in-memory stores, full Mac CPU, no memory limit.
+Memory = macOS `footprint` (dirty + compressed; excludes clean mapped graph pages). Trips = agent B's 80 pairs
+(`island-local`, `Laval-local`, `Longueuil-local`, `cross-river` 7 island–Laval / 7 island–Longueuil / 6 Laval–Longueuil),
+then 3 concurrent panning clients × 40 snapped downtown viewports.
+
+| Artifact | Size | Island p50/p95 | Laval p50/p95 | Longueuil | Cross-river ok | Footprint idle → routes → panning |
+|---|---|---|---|---|---|---|
+| v2 (production) | 188.6 MB | 65 / 239 ms | OUTSIDE_COVERAGE ×20 | OUTSIDE_COVERAGE ×20 | 0/20 | 166 → 184 → 197 MiB |
+| I (seasonal) `675efa44…` | 188.1 MB | 67 / 248 ms | OUTSIDE_COVERAGE ×20 | OUTSIDE_COVERAGE ×20 | 0/20 | 162 → 179 → 194 MiB |
+| IL (seasonal) `bddc1b56…` | 227.7 MB | 69 / 269 ms | 36 / 65 ms (20/20) | OUTSIDE_COVERAGE ×20 | 7/20 (all 7 island–Laval) | 177 → 201 → 218 MiB |
+| S1 (seasonal) `6b9c1d50…` | 249.9 MB | 70 / 271 ms | 39 / 63 ms (20/20) | **OFF_NETWORK ×20** | 7/20 | 187 → 209 → 230 MiB |
+
+Panning: all 120 `/map/segments` and 120 `/hazards` answered 200 in every run (segments p50 51–58 ms, p95 99–115 ms).
+
+Reading:
+- Dirty memory grows ×1.11 for IL and ×1.17 for S1 over v2, far less than the ×1.30 RSS used in the earlier
+  projection. Scaling the Docker anonymous-memory figures from ISLAND_COVERAGE.md (239 MiB after a load test;
+  319 MiB after the segments test) by ×1.11 gives ~265–354 MiB for IL: **under the 400 MiB gate, but projected,
+  not measured in a 512 MB / 0.1 CPU container.** Latency at 0.1 CPU is not measured.
+- **S1 must not ship.** Longueuil is inside S1's outline but, after the seasonal rule, outside the routed main
+  component, so every Longueuil trip is refused with OFF_NETWORK ("inside the coverage area but more than 75 m
+  from a walkway") — false. Longueuil needs its own artifact (south area) or must stay out of the outline.
+- **IL is the candidate:** Laval-local and island–Laval trips route; Longueuil is honestly OUTSIDE_COVERAGE.
+
+Next gate before publishing IL: one Docker run of IL at `--cpus=0.1 --memory=512m` (anonymous memory, OOM,
+cross-river p95 < 15 s), then user approval to publish `graph-greater-v1`.
