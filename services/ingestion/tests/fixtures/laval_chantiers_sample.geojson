@@ -1,0 +1,133 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "TYPE": "Fermeture",
+    "STATUT": "Existant",
+    "DATE_DEBUT": "10/01/2026 00:00:00",
+    "DATE_FIN": "11/30/2026 00:00:00",
+    "REMARQUE": "Excavation pour remplacement de conduite  sur la rue Tilleuls",
+    "NATURE_TRAVAUX": "Travaux d'infrastructures et d'excavation",
+    "ALERTE511": "Non",
+    "CIRCULATION": "Détour",
+    "PUBLIQUE": "Oui",
+    "ENTRAVE": "Fermeture complète",
+    "RESPONSABLE": "Ville - Ingénierie",
+    "LOCALISATION": "Av. des Tilleuls entre rue Kugler et rue de la Colline"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.60453,
+      45.653579
+     ],
+     [
+      -73.603929,
+      45.653901
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "TYPE": "Fermeture",
+    "STATUT": "Abandonné",
+    "DATE_DEBUT": "07/07/2017 00:00:00",
+    "DATE_FIN": "07/08/2017 00:00:00",
+    "REMARQUE": "\"Les petits gourmet dans ma cour\"",
+    "NATURE_TRAVAUX": "Évènements spéciaux",
+    "ALERTE511": "Non",
+    "CIRCULATION": "Détour",
+    "PUBLIQUE": "oui",
+    "ENTRAVE": "Rue barrée",
+    "RESPONSABLE": "Ville - autres",
+    "LOCALISATION": "Mont-Carmel (rue) entre Trois-Rivières (av. des) et Parent (rue)"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.684275,
+      45.597028
+     ],
+     [
+      -73.683744,
+      45.596548
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "TYPE": "Entrave",
+    "STATUT": "Proposé",
+    "DATE_DEBUT": "",
+    "DATE_FIN": "",
+    "REMARQUE": "Tolérance de stationnement Place Bell (voir cité de la culture et du sport)",
+    "NATURE_TRAVAUX": "",
+    "ALERTE511": "Non",
+    "CIRCULATION": "",
+    "PUBLIQUE": "Oui",
+    "ENTRAVE": "",
+    "RESPONSABLE": "",
+    "LOCALISATION": "Entre les cases de stationnement pour véhicule électrique et le boulevard de la Concorde"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.72077,
+      45.556626
+     ],
+     [
+      -73.720106,
+      45.555946
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "TYPE": "Entrave",
+    "STATUT": "Abandonné",
+    "DATE_DEBUT": "02/22/2021 00:00:00",
+    "DATE_FIN": "02/25/2021 00:00:00",
+    "REMARQUE": "Aménagement de trottoirs et de pistes multifonctionnelles",
+    "NATURE_TRAVAUX": "Travaux d'éléments routiers",
+    "ALERTE511": "Non",
+    "CIRCULATION": "Normale",
+    "PUBLIQUE": "Oui",
+    "ENTRAVE": "Trottoir",
+    "RESPONSABLE": "Ville - Ingénierie",
+    "LOCALISATION": "15e Avenue"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -73.858765,
+      45.562634
+     ],
+     [
+      -73.854657,
+      45.558783
+     ],
+     [
+      -73.854241,
+      45.558672
+     ],
+     [
+      -73.85352,
+      45.558549
+     ]
+    ]
+   }
+  }
+ ]
+}

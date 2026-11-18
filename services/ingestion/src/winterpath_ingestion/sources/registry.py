@@ -47,6 +47,23 @@ SOURCES: list[dict] = [
         "permit point, not the affected segment.",
     },
     {
+        "source_id": "laval-chantiers",
+        "name": "Chantiers routiers (permis d'obstruction)",
+        "publisher": "Ville de Laval",
+        "license": "CC BY 4.0",
+        "license_url": CC_BY,
+        "commercial_use": "allowed",
+        "attribution": "Contient des données de la Ville de Laval, sous licence CC BY 4.0",
+        "url": "https://www.donneesquebec.ca/recherche/dataset/chantiers-routiers",
+        # disabled until a loader puts Laval closures in wp.closure: upsert_sources writes every
+        # row on each load, and /data-sources must not advertise coverage with no data behind it.
+        "status": "disabled",
+        "notes": "Not loaded yet. Line geometry of the obstructed roadway. No pedestrian-passage "
+        "field: blocks_passage is always null (unknown); sidewalk_blockedtype only from ENTRAVE "
+        "'Trottoir'. No identifier published: closure_id is a content hash. Only STATUT "
+        "'Existant' maps to permit_issued.",
+    },
+    {
         "source_id": "mtl-311",
         "name": "Requêtes 311 (aggregated, winter categories)",
         "publisher": "Ville de Montréal",

@@ -1,4 +1,6 @@
-# Data model — PostGIS contract v1.9.0
+# Data model — PostGIS contract v1.10.0
+
+> v1.10.0 (2026-11-17, CR-LAVAL-1, coordinator): new canonical source `laval-chantiers` (Ville de Laval road works) feeding `wp.closure` with `laval:` ids; Laval-specific mapping rules below. Schema unchanged; no API shape change.
 
 > v1.9.0 (2026-11-16, user decision, conservative seasonal exclusion): OSM ways tagged `seasonal=*` are excluded from the pedestrian graph unless the value lists `winter`; `seasonal=yes` and unparseable values are excluded too. Schema unchanged; graph policy `v1.6.0+seasonal-v1`.
 
@@ -23,7 +25,7 @@ Conventions: schema `wp`; geometry SRID **4326** with GiST index; metric values 
 ## Tables
 
 ### `wp.source` — registry (mirrors `/data-sources`)
-Canonical `source_id`s (v1.3): `osm`, `mtl-voirie`, `mtl-311`, `mtl-entraves`, `mtl-planif-neige`, `eccc-geomet`. All agents use exactly these.
+Canonical `source_id`s (v1.3): `osm`, `mtl-voirie`, `mtl-311`, `mtl-entraves`, `mtl-planif-neige`, `eccc-geomet`; v1.10 adds `laval-chantiers` (Ville de Laval, Données Québec `chantiers-routiers`, CC BY 4.0, attribution « Contient des données de la Ville de Laval, sous licence CC BY 4.0 »). All agents use exactly these.
 `source_id text PK`, `name`, `publisher`, `license`, `license_url`, `commercial_use` (enum as OpenAPI), `attribution`, `url`, `status`, `last_success_at`, `notes`.
 
 ### `wp.ingest_run`
@@ -68,6 +70,18 @@ Indexes: GiST(geom), btree(from_node_id), btree(to_node_id), btree(component_id)
 
 ### `wp.closure` — Entraves
 `closure_id text PK` (`entrave:<id>`), `geom geometry(Geometry,4326)` (Entraves publishes the **permit point**; edge matching is approximate), `sidewalk_blockedtype text`, `blocks_passage boolean null`, `backsidewalk_blocks_passage boolean null` (v1.2; same rule applied to `backsidewalk_blockedtype`), `attrs jsonb` (v1.2; permit id and named affected street sections — never geocoded into certainty) (true **only** if `sidewalk_blockedtype` explicitly indicates blocked pedestrian passage; mapping table documented by Data agent), `valid_from`, `valid_to`, `status`, `source_id`, `ingest_run_id`. GiST. Evidence state: `confirmed` (official permit data).
+
+**Laval closures (v1.10, `source_id = laval-chantiers`):**
+- `closure_id` = `laval:<first 16 hex of sha1 over the canonical published feature>`. The publisher has no identifier, so an upstream edit to a record yields a new id; byte-identical duplicate features are collapsed and counted.
+- `geom` = the published (Multi)LineString of the **roadway** section, kept as is; it is not a sidewalk geometry and edge matching stays approximate.
+- `sidewalk_blockedtype` = the published `ENTRAVE` value verbatim **only** when it is `Trottoir` (obstruction on the sidewalk); otherwise null. Never inferred from free text (`REMARQUE`, `LOCALISATION`, `NATURE_TRAVAUX`).
+- `blocks_passage` and `backsidewalk_blocks_passage` are **null for every Laval row**: the feed has no pedestrian-passage field, `Trottoir` says the sidewalk is obstructed, not that passage is blocked, and a roadway closure never implies a sidewalk closure. Null is flagged by routing, never treated as clear.
+- `status`: `Existant` → `permit_issued`; `Abandonné`, `Proposé` and blank → `unknown` (raw value in `attrs.currentstatus`) until the publisher confirms their meaning.
+- Dates `DATE_DEBUT`/`DATE_FIN` (`MM/DD/YYYY HH:MM:SS`, America/Montreal) → `valid_from`/`valid_to`; missing or implausible (year < 2000 or > 2100) → null, flagged in `attrs.date_flags`. The feed writes date-only values as midnight: a midnight `DATE_FIN` becomes `valid_to` = the **next** local midnight (the final day is never turned into a definite "inactive"), flagged `DATE_FIN_date_only_end_of_day`.
+- No weekly schedule is published: `attrs.weekly_schedule` is stored as JSON null, so `wp.closure_active_at` returns NULL (unknown) for every in-date Laval permit, never true.
+- **Loader rule:** because ids change when the publisher edits a record, a Laval load must **replace** all `source_id = laval-chantiers` rows of `wp.closure` in one transaction (no insert/update-only upsert), so a superseded record cannot stay behind as a stale `permit_issued` row.
+- The `wp.source` row stays `status = disabled` until that loader exists and Laval closures are loaded.
+- Evidence state `confirmed` applies to the works record only, never to a sidewalk state.
 
 **Closure status (v1.4):** `status` is the publisher lifecycle only — `permit_issued` (from `Permis émis`) · `cancelled` · `completed` · `unknown` (CHECK constraint; unmapped raw values → `unknown`, raw kept in `attrs.currentstatus`). Time-derived states are **never stored**. Consumers call `wp.closure_active_at(c wp.closure, t timestamptz)` (three-valued: true/false/null = unknown): `status='permit_issued'` AND `valid_from <= t` AND (`valid_to` IS NULL OR `t < valid_to`) AND the weekly schedule in `attrs.weekly_schedule` (America/Montreal local weekday; partial-day windows respected) permits `t`. A `null` schedule flag means **unknown activity** — routing must flag or penalise it, never treat it as clear. Routing excludes an edge only when the closure is active at `t` **and** `blocks_passage` is true. Evidence (2026-11-10 file): 1 974 permits all `Permis émis`; 347 already ended and 80 not started despite the feed title; 942 partial-day.
 

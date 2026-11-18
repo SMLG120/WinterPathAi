@@ -23,6 +23,7 @@ def main(argv: list[str] | None = None) -> int:
             "fixture",
             "voirie",
             "entraves",
+            "laval-chantiers",
             "311",
             "eccc",
             "all",
@@ -174,6 +175,8 @@ def main(argv: list[str] | None = None) -> int:
             from .sources.voirie import run
         elif step == "entraves":
             from .sources.entraves import run
+        elif step == "laval-chantiers":
+            from .sources.laval_chantiers import run
         elif step == "311":
             from .sources.r311 import run
         elif step == "boundaries":
