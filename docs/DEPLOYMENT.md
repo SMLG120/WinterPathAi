@@ -18,8 +18,8 @@ Status as of 2026-11-11. Limits and their sources: `docs/FREE_TIER_LIMITS.md`. V
 | Component | State | Identifier |
 |---|---|---|
 | Database | **Deployed**: migrated to `0007_risk_cell_score`, data loaded | Supabase project `WinterPathAI`, us-east-1 |
-| API | **Deployed and live** (`129ffb7`, `API_STORE_BACKEND=postgis`) | Render `srv-dbqbv3ui0phs73c82qng`, `https://winterpath-api.onrender.com` |
-| Web | **Deployed and live**: direct upload of `main` 129ffb7 (wrangler 4.154.0). Security headers, API calls and route comparison verified in a browser | Pages project `winterpath`, `https://winterpath.pages.dev` |
+| API | **Deployed and live** (`8eeae52`, PR #1 merge, deployed 2026-11-18 from the Render dashboard; previous `129ffb7`. `API_STORE_BACKEND=postgis`). Health all `ok`, `/routes/compare` 200, `POST /reports` 503 `WRITES_DISABLED` | Render `srv-dbqbv3ui0phs73c82qng`, `https://winterpath-api.onrender.com` |
+| Web | **Deployed and live**: direct upload of `main` 8eeae52 on 2026-11-18 (wrangler 4.154.0, deployment `7527dee2`), search index `db33448b307ff577` (944 shards); previous `129ffb7`. Security headers, search, API calls and route comparison verified in a headless browser | Pages project `winterpath`, `https://winterpath.pages.dev` |
 | Scheduled jobs | **Configured**. Weather job verified (run 43084925719); scoring fixed in `cb5226a`, re-run 43086426247 | `.github/workflows/scheduled.yml`, secret `WP_ETL_DATABASE_URL` |
 
 ## 1. Database (Supabase Free)
