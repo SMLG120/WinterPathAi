@@ -1,4 +1,6 @@
-# Data model — PostGIS contract v1.7.0
+# Data model — PostGIS contract v1.9.0
+
+> v1.9.0 (2026-11-16, user decision, conservative seasonal exclusion): OSM ways tagged `seasonal=*` are excluded from the pedestrian graph unless the value lists `winter`; `seasonal=yes` and unparseable values are excluded too. Schema unchanged; graph policy `v1.6.0+seasonal-v1`.
 
 > v1.7.0 (2026-11-11, free-tier deployment): new `wp.risk_cell_score` so deployed APIs read daily risk scores from PostGIS instead of local files; Supabase deployment notes.
 
@@ -30,7 +32,7 @@ Canonical `source_id`s (v1.3): `osm`, `mtl-voirie`, `mtl-311`, `mtl-entraves`, `
 ### OSM source & path-type policy (v1.5, user decision 2026-11-10)
 - **Source:** Geofabrik `quebec-latest.osm.pbf` (download.geofabrik.de), clipped to the pilot bbox; record file date, MD5/SHA and download URL in `wp.ingest_run`. The public Overpass instance is **no longer used by the pipeline** (its policy directs commercial use to self-hosted/paid servers). Overpass may be used only for ad-hoc developer checks.
 - **Included highway types:** unchanged (footway incl. sidewalk/crossing, path, pedestrian, steps, living_street, residential, tertiary, secondary, primary) **plus** `service` and `cycleway` **only when** `foot ∈ {yes, designated, permissive}` is explicitly tagged.
-- **Excluded:** `corridor` / indoor (RÉSO) until opening hours and public access are verified from a cited source; `service`/`cycleway` without explicit foot permission; `foot=no|use_sidepath` everywhere; `access=private|no` **unless** `foot ∈ {yes, designated, permissive}` is explicitly tagged on the same way (v1.6, CR-DATA-7: OSM's mode-specific tag overrides the general `access` tag). Data reports how many ways this rule admits.
+- **Excluded:** `corridor` / indoor (RÉSO) until opening hours and public access are verified from a cited source; `service`/`cycleway` without explicit foot permission; `foot=no|use_sidepath` everywhere; `access=private|no` **unless** `foot ∈ {yes, designated, permissive}` is explicitly tagged on the same way (v1.6, CR-DATA-7: OSM's mode-specific tag overrides the general `access` tag). Data reports how many ways this rule admits. **Seasonal (v1.9, user decision 2026-11-16):** a way with `seasonal=*` is excluded unless the value, split on `;` and compared case-insensitively, lists `winter`; `seasonal=yes`, other values and unparseable values (e.g. `spring/summer/autumn`) are excluded, because an unknown open period is never treated as open; `seasonal=no` or absent changes nothing. Exclusion, never a penalty; no edge is added. `*:conditional` access tags are reported, not yet applied.
 
 ### `wp.node`
 `node_id text PK`, `geom geometry(Point,4326)`, `osm_id bigint null`, `kind (street_node|crossing|entrance|synthetic)`, `crossing_type`, `kerb`, `source_id`, `ingest_run_id`. GiST(`geom`).

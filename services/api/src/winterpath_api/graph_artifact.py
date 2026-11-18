@@ -5,8 +5,10 @@
         --coverage-area data/processed/boundaries/main_island.geojson
 
 Run on a build machine, never by the API. Sources: ``--from-postgis`` (DATABASE_URL),
-``--from-fixture DIR`` (edges.geojson / nodes.geojson / metadata.json) or ``--from-artifact``
-(re-pack an existing artifact, e.g. to refresh the risk-cell index). Nothing is invented: the
+``--from-fixture DIR`` (edges.geojson / nodes.geojson / metadata.json), ``--from-processed DIR``
+(an ingestion output such as ``data/processed/osm_greater_stage1``: edges.geojson, nodes.geojson
+and the run's manifest.json, no database needed) or ``--from-artifact`` (re-pack an existing
+artifact, e.g. to refresh the risk-cell index). Nothing is invented: the
 graph is exactly what the provider returns, and the coverage area is the file given.
 
 The output also carries, for the API:
@@ -35,9 +37,73 @@ from winterpath_routing.compact import CompactGraph
 from .risk_cells import RiskCellIndex, _jsonable
 
 
+def graph_from_processed(directory: str | Path) -> CompactGraph:
+    """CompactGraph from an ingestion output directory (``wp-ingest osm-island|osm-region``).
+
+    Same per-feature conversion as the fixture provider (``edge_from_properties``, crossing data
+    inherited from crossing nodes), streamed into the compact builder so no list of ``Edge``
+    objects is held. Metadata comes from the run manifest: real OSM data (``simulated`` false),
+    snapshot = the PBF replication timestamp, freshness = that snapshot only.
+    """
+    from winterpath_routing.compact import CompactGraphBuilder
+    from winterpath_routing.models import GraphMetadata, Node
+    from winterpath_routing.providers import (
+        _looks_like_dt,
+        _parse_dt,
+        _with_node_crossing,
+        edge_from_properties,
+    )
+
+    d = Path(directory)
+    manifest = json.loads((d / "manifest.json").read_text())
+    if manifest.get("source_id") != "osm":
+        raise SystemExit(f"{d}: not an OSM graph output (manifest source_id)")
+    snapshot = manifest.get("osm_snapshot")
+    b = CompactGraphBuilder()
+    nodes: dict[str, Node] = {}
+    for f in json.loads((d / "nodes.geojson").read_text())["features"]:
+        p = f["properties"]
+        nid = str(f.get("id") or p["node_id"])
+        lon, lat = f["geometry"]["coordinates"][:2]
+        n = Node(
+            node_id=nid,
+            lon=float(lon),
+            lat=float(lat),
+            kind=str(p.get("kind") or "street_node"),
+            crossing_type=p.get("crossing_type"),
+            kerb=p.get("kerb"),
+        )
+        nodes[nid] = n
+        b.add_node(n)
+    feats = json.loads((d / "edges.geojson").read_text())["features"]
+    feats.reverse()
+    while feats:  # pop as we go: the parsed GeoJSON is the largest object in this process
+        f = feats.pop()
+        p = f["properties"]
+        eid = str(f.get("id") or p["edge_id"])
+        b.add_edge(
+            _with_node_crossing(edge_from_properties(eid, f["geometry"]["coordinates"], p), nodes)
+        )
+    title = manifest.get("title") or manifest.get("region") or d.name
+    return b.build(
+        GraphMetadata(
+            simulated=False,
+            osm_snapshot=str(snapshot) if snapshot is not None else None,
+            # Same guard as the fixture provider: an unparseable snapshot is unknown freshness.
+            built_at=_parse_dt(fin) if _looks_like_dt(fin := manifest.get("finished_at")) else None,
+            source_freshness={"osm": _parse_dt(snapshot) if _looks_like_dt(snapshot) else None}
+            if snapshot
+            else {},
+            description=f"OSM pedestrian graph, {title} (processed GeoJSON)",
+        )
+    )
+
+
 def _graph(args: argparse.Namespace) -> CompactGraph:
     if args.from_artifact:
         return compact_io.load(args.from_artifact)[0]
+    if args.from_processed:
+        return graph_from_processed(args.from_processed)
     if args.from_fixture:
         from winterpath_routing.providers import FixtureGraphProvider
 
@@ -92,6 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     src.add_argument("--from-postgis", action="store_true")
     src.add_argument("--from-fixture")
     src.add_argument("--from-artifact")
+    src.add_argument("--from-processed")
     ap.add_argument("--bbox", help="w,s,e,n for --from-postgis")
     ap.add_argument("--coverage-name", required=True)
     ap.add_argument("--coverage-area", help="GeoJSON polygon(s) of the served area")

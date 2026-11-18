@@ -75,3 +75,29 @@ def test_load_source_rejects(argv):
     with pytest.raises(SystemExit) as e:
         cli.main(argv)
     assert e.value.code == 2
+
+
+@pytest.mark.parametrize(
+    ("flags", "refresh", "force"), [([], False, False), (["--refresh", "--force"], True, True)]
+)
+def test_fixed_links_passes_refresh_and_force(monkeypatch, tmp_path, capsys, flags, refresh, force):
+    """Code review PR #2: `fixed-links --refresh` must not reuse the cached SDA GPKG and PBF."""
+    from types import SimpleNamespace
+
+    from winterpath_ingestion.config import Settings
+    from winterpath_ingestion.osm import geofabrik, links
+    from winterpath_ingestion.sources import sda
+
+    seen = {}
+    monkeypatch.setattr(cli, "get_settings", lambda: Settings(data_dir=tmp_path, user_agent="test"))
+    monkeypatch.setattr(sda, "run", lambda s, **kw: seen.setdefault("sda", kw))
+
+    def fake_fetch(*a, **kw):
+        seen["pbf"] = kw
+        return SimpleNamespace(path=tmp_path / "x.pbf")
+
+    monkeypatch.setattr(geofabrik, "fetch", fake_fetch)
+    monkeypatch.setattr(links, "run", lambda *a, **kw: [])
+    assert cli.main(["fixed-links", *flags]) == 0
+    assert seen["sda"] == {"refresh": refresh, "force": force}
+    assert seen["pbf"]["refresh"] is refresh
